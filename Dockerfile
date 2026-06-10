@@ -1,0 +1,78 @@
+# ---- Stage 1: Build ----
+FROM node:20-slim AS builder
+
+WORKDIR /app
+
+# Install OpenSSL (required by Prisma) and other deps
+RUN apt-get update -qq && apt-get install -y -qq openssl && rm -rf /var/lib/apt/lists/*
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Use PostgreSQL schema for production build
+RUN cp prisma/schema.postgres.prisma prisma/schema.prisma
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build Next.js (standalone output)
+RUN npm run build
+
+# ---- Stage 2: Production ----
+FROM node:20-slim AS runner
+
+WORKDIR /app
+
+# Install OpenSSL for Prisma runtime
+RUN apt-get update -qq && apt-get install -y -qq openssl && rm -rf /var/lib/apt/lists/*
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy standalone build output
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Copy Prisma files for runtime migrations
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+
+# Install only essential production deps (bcryptjs for seed)
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
+RUN npm install --omit=dev bcryptjs 2>/dev/null || true
+
+# Create startup script
+RUN cat > /app/start.sh << 'STARTUP'
+#!/bin/sh
+set -e
+
+echo "🔄 Pushing database schema..."
+npx prisma db push --skip-generate 2>/dev/null || echo "⚠️ Schema push had warnings"
+
+echo "🌱 Running database seed..."
+npx prisma db seed 2>/dev/null || echo "⚠️ Seed skipped (may already have data)"
+
+echo "🚀 Starting electoral system server..."
+exec node server.js
+STARTUP
+
+RUN chmod +x /app/start.sh && chown nextjs:nodejs /app/start.sh
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["/app/start.sh"]
