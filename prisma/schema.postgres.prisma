@@ -1,0 +1,192 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator client_postgres {
+  provider = "prisma-client-js"
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum SupportStatus {
+  SUPPORTIVE
+  NEUTRAL
+  OPPOSED
+}
+
+enum Degree {
+  ILLITERATE
+  PRIMARY
+  INTERMEDIATE
+  HIGH_SCHOOL
+  DIPLOMA
+  BACHELOR
+  MASTER
+  PHD
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String   // Hashed with bcryptjs
+  role      String   // ADMIN, KEY_USER, OBSERVER
+  createdAt DateTime @default(now())
+}
+
+// هيكلة شجرية هرمية لتفكيك النفوذ العشائري بدقة
+model Tribe {
+  id          String     @id @default(cuid())
+  name        String     @unique // اسم العشيرة الرئيسي الموحد
+  subTribes   SubTribe[]
+  voters      Voter[]
+  electionKeys ElectionKey[]
+}
+
+model SubTribe {
+  id          String      @id @default(cuid())
+  name        String      // اسم الفخذ أو البيت
+  tribeId     String
+  tribe       Tribe       @relation(fields: [tribeId], references: [id])
+  voters      Voter[]
+  electionKeys ElectionKey[]
+  
+  @@unique([name, tribeId])
+}
+
+model ElectionKey {
+  id              String        @id @default(cuid())
+  keyCode         String        @unique // كود خاص بكل مفتاح انتخابي
+  firstName       String
+  fatherName      String
+  grandfatherName String
+  fourthName      String
+  gender          Gender
+  birthDate       DateTime
+  education       Degree
+  profession      String
+  phone           String        @unique
+  socialMedia     Json?
+  province        String        @default("ذي قار")
+  district        String        @default("الغراف")
+  subDistrict     String
+  pollingCenter   String        // مركز الاقتراع
+  expectedVotes   Int           @default(0)
+  influenceLevel  Int           @default(1) // (1-5)
+  mobilizationCap Int           @default(1) // (1-5)
+  loyaltyScore    Int           @default(3) // (1-5)
+  riskLevel       Int           @default(1) // (1-5)
+  
+  // محرك المعايرة الذكية لنسب الانحياز (Dynamic Calibration Engine)
+  keyAccuracyScore Float        @default(1.0) // معامل دقة المفتاح التاريخية (0.0 - 1.0)
+  reliabilityLogs  Json?        // تتبع منحنى دقة تقارير المفتاح بمرور الوقت
+  
+  tribeId         String?
+  tribe           Tribe?        @relation(fields: [tribeId], references: [id])
+  subTribeId      String?
+  subTribe        SubTribe?     @relation(fields: [subTribeId], references: [id])
+  
+  voters          Voter[]
+  services        Service[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Voter {
+  id              String        @id @default(cuid())
+  firstName       String
+  fatherName      String
+  grandfatherName String
+  fourthName      String
+  gender          Gender
+  birthDate       DateTime
+  phone           String?
+  education       Degree?
+  profession      String?
+  province        String        @default("ذي قار")
+  district        String        @default("الغراف")
+  subDistrict     String
+  pollingCenter   String        // مركز الاقتراع الكلي
+  ballotStation   String        // رقم المحطة الانتخابية الدقيق (Micro-Targeting)
+  status          SupportStatus @default(NEUTRAL)
+  supportDegree   Int           @default(3) // (1-5)
+  supportReason   String?
+  voterCategory   String?
+  conversionPath  String?
+  votedOnDay      Boolean       @default(false) // حالة التصويت الفعلي يوم الاقتراع
+  
+  // نمذجة الكتلة الصامتة والمترددين (Floating Voters Profile Clustering)
+  predictedClusterId String?    // رقم المجموعة الديمغرافية للتنبؤ باتجاه المترددين
+  imputationWeights  Json?      // أوزان احتمالية التصويت البديلة
+  
+  keyId           String
+  electionKey     ElectionKey   @relation(fields: [keyId], references: [id])
+  
+  tribeId         String?
+  tribe           Tribe?        @relation(fields: [tribeId], references: [id])
+  subTribeId      String?
+  subTribe        SubTribe?     @relation(fields: [subTribeId], references: [id])
+  
+  relationship    String?
+  influenceRate   Int           @default(50) // نسبة التأثير المبدئية (0-100%)
+  isPrimaryFollow Boolean       @default(true)
+  lastContactDate DateTime?
+  contactResult   String?
+  nextAction      String?
+  followUpDate    DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Service {
+  id              String       @id @default(cuid())
+  title           String
+  category        String       // صحي، توظيف، رصف، مساعدات...
+  description     String
+  status          String       // منجزة، قيد المتابعة، مرفوضة
+  cost            Float        @default(0.0)
+  keyId           String?
+  electionKey     ElectionKey? @relation(fields: [keyId], references: [id])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model CommissionData {
+  id               String  @id @default(cuid())
+  province         String
+  district         String
+  subDistrict      String
+  pollingCenter    String  
+  ballotStation    String  // المحطة الانتخابية التفصيلية لمطابقة الأرقام
+  registeredVoters Int
+  historicalTurnout Float
+  expectedTurnout  Float?
+  
+  @@unique([pollingCenter, ballotStation])
+}
+
+model Competitor {
+  id            String @id @default(cuid())
+  name          String
+  party         String
+  tribe         String
+  baseDistrict  String
+  estimatedVotes Int   @default(0)
+}
+
+model SentimentTrend {
+  id          String   @id @default(cuid())
+  source      String   // Facebook, Telegram, Local Survey
+  sentiment   String   // POSITIVE, NEGATIVE, NEUTRAL
+  keywords    String[]
+  score       Float
+  region      String
+  createdAt   DateTime @default(now())
+}
