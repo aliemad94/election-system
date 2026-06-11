@@ -6,7 +6,29 @@ import {
   User, MessageSquare, Key, Calendar, Edit2, ShieldAlert, Award, FileText, Trash2
 } from 'lucide-react';
 
-const DISTRICTS = ['الناصرية', 'الشطرة', 'سوق الشيوخ', 'الرفاعي', 'قلعة سكر', 'عشيرة', 'البطحاء', 'الغراف'];
+const DISTRICTS = [
+  'الناصرية',
+  'الشطرة',
+  'سوق الشيوخ',
+  'الرفاعي',
+  'الجبايش',
+  'قلعة سكر',
+  'الغراف',
+  'النصر',
+  'الفجر',
+  'الفهود',
+  'البطحاء',
+  'سيد دخيل',
+  'الإصلاح',
+  'الدواية',
+  'الفضلية',
+  'العكيكة',
+  'الطار',
+  'كرمة بني سعيد',
+  'أور',
+  'المنار',
+  'الحمار'
+];
 
 interface Tribe {
   id: string;
@@ -109,6 +131,11 @@ export default function VoterRegistration() {
   const [formMessage, setFormMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [form, setForm] = useState(defaultForm);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  const [total, setTotal] = useState(0);
+
   const fetchTribes = useCallback(async () => {
     try {
       const res = await fetch('/api/tribes');
@@ -132,19 +159,23 @@ export default function VoterRegistration() {
 
   const fetchVoters = useCallback(async () => {
     try {
+      setLoading(true);
       const params = new URLSearchParams();
       if (searchQuery) params.set('search', searchQuery);
       if (filterDistrict) params.set('district', filterDistrict);
       if (filterVoted) params.set('votedStatus', filterVoted);
+      params.set('page', String(page));
+      params.set('limit', String(limit));
       const res = await fetch(`/api/voters?${params.toString()}`);
       const data = await res.json();
       setVoters(data.voters || []);
+      setTotal(data.total || 0);
     } catch (err) {
       console.error('Error fetching voters:', err);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, filterDistrict, filterVoted]);
+  }, [searchQuery, filterDistrict, filterVoted, page, limit]);
 
   useEffect(() => {
     fetchTribes();
@@ -155,6 +186,96 @@ export default function VoterRegistration() {
     fetchVoters();
   }, [fetchVoters]);
 
+  // Reset to first page when search or filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filterDistrict, filterVoted, limit]);
+
+  useEffect(() => {
+    const handleGlobalSelect = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.type === 'voter') {
+        setSearchQuery(customEvent.detail.fullName);
+      }
+    };
+    window.addEventListener('global-search-select', handleGlobalSelect);
+    return () => window.removeEventListener('global-search-select', handleGlobalSelect);
+  }, []);
+  const handleExportCSV = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('search', searchQuery);
+      if (filterDistrict) params.set('district', filterDistrict);
+      if (filterVoted) params.set('votedStatus', filterVoted);
+      params.set('limit', '10000');
+      
+      const res = await fetch(`/api/voters?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch data for export');
+      const data = await res.json();
+      const exportVoters = data.voters || [];
+      
+      if (exportVoters.length === 0) {
+        alert('لا توجد بيانات لتصديرها');
+        return;
+      }
+
+      const headers = [
+        'الاسم الكامل',
+        'رقم الهاتف',
+        'الهوية الوطنية',
+        'الجنس',
+        'تاريخ الميلاد',
+        'التحصيل الدراسي',
+        'المهنة',
+        'القضاء',
+        'الناحية',
+        'المنطقة',
+        'مركز الاقتراع',
+        'المحطة الانتخابية',
+        'درجة التأييد',
+        'المفتاح المسؤول',
+        'حالة التصويت الفعلي'
+      ];
+
+      const csvRows: string[] = [];
+      csvRows.push('\uFEFF' + headers.join(','));
+
+      exportVoters.forEach((v: any) => {
+        const row = [
+          `"${(v.fullName || '').replace(/"/g, '""')}"`,
+          `"${(v.phone || v.phoneNumber || '').replace(/"/g, '""')}"`,
+          `"${(v.nationalId || '').replace(/"/g, '""')}"`,
+          `"${(v.gender || 'ذكر').replace(/"/g, '""')}"`,
+          `"${v.birthDate || v.dateOfBirth ? new Date(v.birthDate || v.dateOfBirth).toISOString().split('T')[0] : ''}"`,
+          `"${(v.education || v.educationLevel || '').replace(/"/g, '""')}"`,
+          `"${(v.profession || '').replace(/"/g, '""')}"`,
+          `"${(v.district || '').replace(/"/g, '""')}"`,
+          `"${(v.subDistrict || '').replace(/"/g, '""')}"`,
+          `"${(v.area || '').replace(/"/g, '""')}"`,
+          `"${(v.pollingCenter || '').replace(/"/g, '""')}"`,
+          `"${(v.ballotStation || '').replace(/"/g, '""')}"`,
+          `"${v.supportDegree || v.confidenceScore || 3}"`,
+          `"${(v.electionKey ? `${v.electionKey.keyCode || ''} - ${v.electionKey.firstName || ''}` : 'بدون مفتاح').replace(/"/g, '""')}"`,
+          `"${v.votedStatus ? 'صوّت فعلياً' : 'لم يصوت بعد'}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `voters_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error exporting CSV:', err);
+      alert('حدث خطأ أثناء تصدير البيانات');
+    }
+  };
   const parseSocialMedia = (socialStr: any) => {
     if (!socialStr) return { facebook: '', telegram: '', whatsapp: '' };
     if (typeof socialStr === 'object') {
@@ -795,6 +916,15 @@ export default function VoterRegistration() {
           </select>
           <ChevronDown className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-el-outline pointer-events-none" />
         </div>
+        <button
+          onClick={handleExportCSV}
+          disabled={voters.length === 0}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 h-9 rounded text-[12px] font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+          title="تصدير كشوف الناخبين الحالية لملف إكسل"
+        >
+          <FileText className="w-4 h-4" />
+          تصدير Excel
+        </button>
       </div>
 
       {loading ? (
@@ -908,8 +1038,55 @@ export default function VoterRegistration() {
               </tbody>
             </table>
           </div>
-          <div className="p-3 border-t border-el-outline-variant text-[12px] leading-[16px] text-el-on-surface-variant text-center">
-            إجمالي الناخبين المسجلين: <b className="text-el-primary font-mono">{voters.length}</b> ناخب في ذي قار
+          <div className="p-4 border-t border-el-outline-variant flex flex-col sm:flex-row justify-between items-center gap-4 text-[12px] leading-[16px] text-el-on-surface-variant bg-el-surface-container/5">
+            <div>
+              الناخبون المعروضون: <span className="font-bold text-el-primary font-mono">{voters.length}</span> من أصل <span className="font-bold text-el-primary font-mono">{total}</span> ناخب مسجل
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-3 py-1.5 rounded border border-el-outline-variant bg-el-surface-container hover:bg-el-surface-container-high transition-all text-el-on-surface disabled:opacity-50 disabled:pointer-events-none active:scale-95 cursor-pointer"
+              >
+                السابق
+              </button>
+              
+              <div className="flex items-center gap-1 font-mono">
+                <span className="font-bold text-el-primary">{page}</span>
+                <span className="text-el-on-surface-variant/60">/</span>
+                <span>{Math.ceil(total / limit) || 1}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPage(p => Math.min(Math.ceil(total / limit), p + 1))}
+                disabled={page >= Math.ceil(total / limit)}
+                className="px-3 py-1.5 rounded border border-el-outline-variant bg-el-surface-container hover:bg-el-surface-container-high transition-all text-el-on-surface disabled:opacity-50 disabled:pointer-events-none active:scale-95 cursor-pointer"
+              >
+                التالي
+              </button>
+            </div>
+
+            {/* Limit selector */}
+            <div className="flex items-center gap-2">
+              <span>عرض:</span>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="bg-el-surface-container border border-el-outline-variant text-el-on-surface text-[12px] rounded px-2 py-1 focus:outline-none focus:border-el-primary cursor-pointer"
+              >
+                <option value={10}>10 صفوف</option>
+                <option value={25}>25 صف</option>
+                <option value={50}>50 صف</option>
+                <option value={100}>100 صف</option>
+              </select>
+            </div>
           </div>
         </div>
       )}

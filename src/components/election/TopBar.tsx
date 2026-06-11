@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
-import { Search, Bell, Settings, Map, Menu, LogOut, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Bell, Settings, Map, Menu, LogOut, Shield, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 interface TopBarProps {
   onMenuToggle: () => void;
@@ -11,6 +12,13 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogout }: TopBarProps) {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <header className="fixed top-0 left-0 w-full z-30 flex justify-between items-center px-4 h-12 bg-el-surface border-b border-el-outline-variant md:pr-64">
       <div className="flex items-center gap-4 w-full justify-between">
@@ -59,6 +67,21 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
               type="text"
             />
           </div>
+
+          {/* Theme Toggle */}
+          {mounted && (
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="text-el-on-surface-variant hover:bg-el-surface-container-high transition-colors p-1.5 rounded cursor-pointer active:opacity-80 flex items-center justify-center"
+              title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5 text-amber-400 fill-amber-400" />
+              ) : (
+                <Moon className="w-5 h-5 text-el-primary" />
+              )}
+            </button>
+          )}
 
           {/* Actions */}
           <button className="text-el-on-surface-variant hover:bg-el-surface-container-high transition-colors p-1 rounded cursor-pointer active:opacity-80 relative">
