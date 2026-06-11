@@ -136,7 +136,7 @@ export default function DataAnalysis() {
       } catch (err) {
         console.error('Error fetching analysis:', err);
       } finally {
-        setData(prev => prev || null);
+        setData((prev: any) => prev || null);
         setLoading(false);
       }
     }

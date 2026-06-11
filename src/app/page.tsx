@@ -27,19 +27,19 @@ import type { PageId } from '@/components/election/Sidebar';
 
 interface AuthState {
   isLoggedIn: boolean;
-  authToken: string;
+  userRole: string;
   isOwner: boolean;
   mounted: boolean;
 }
 
 type AuthAction =
   | { type: 'HYDRATE'; payload: AuthState }
-  | { type: 'LOGIN'; token: string }
+  | { type: 'LOGIN'; role: string }
   | { type: 'LOGOUT' };
 
 const initialAuthState: AuthState = {
   isLoggedIn: false,
-  authToken: '',
+  userRole: '',
   isOwner: false,
   mounted: false,
 };
@@ -49,46 +49,17 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
     case 'HYDRATE':
       return action.payload;
     case 'LOGIN': {
-      let isOwner = false;
-      try {
-        isOwner = atob(action.token).startsWith('owner:');
-      } catch {
-        // not owner
-      }
-      sessionStorage.setItem('election_auth', action.token);
-      return { isLoggedIn: true, authToken: action.token, isOwner, mounted: true };
+      const isOwner = action.role === 'ADMIN';
+      return { isLoggedIn: true, userRole: action.role, isOwner, mounted: true };
     }
     case 'LOGOUT':
-      sessionStorage.removeItem('election_auth');
       if (typeof window !== 'undefined') {
         document.cookie = "election_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; secure; samesite=strict";
       }
-      return { isLoggedIn: false, authToken: '', isOwner: false, mounted: true };
+      return { isLoggedIn: false, userRole: '', isOwner: false, mounted: true };
     default:
       return state;
   }
-}
-
-function getHydratedState(): AuthState {
-  if (typeof window === 'undefined') {
-    return { ...initialAuthState, mounted: false };
-  }
-  try {
-    const saved = sessionStorage.getItem('election_auth');
-    if (saved) {
-      // Sync cookie so API requests don't fail on reload
-      document.cookie = `election_auth=${saved}; path=/; max-age=${60 * 60 * 24 * 7}; secure; samesite=strict`;
-      try {
-        const decoded = atob(saved);
-        return { isLoggedIn: true, authToken: saved, isOwner: decoded.startsWith('owner:'), mounted: true };
-      } catch {
-        return { isLoggedIn: true, authToken: saved, isOwner: false, mounted: true };
-      }
-    }
-  } catch (e) {
-    console.error('[Home] Failed to load from sessionStorage:', e);
-  }
-  return { ...initialAuthState, mounted: true };
 }
 
 export default function Home() {
@@ -96,23 +67,32 @@ export default function Home() {
   const [showOwnerPanel, setShowOwnerPanel] = React.useState(false);
   const [authState, dispatch] = useReducer(authReducer, initialAuthState);
 
-  // Debugging log to see state transitions in browser console
-  console.log('[Home] Render - authState:', authState);
-
-  // Hydrate auth state from sessionStorage on mount
+  // Hydrate auth state by checking with the server on mount
   useEffect(() => {
-    try {
-      const state = getHydratedState();
-      console.log('[Home] Hydrating state:', state);
-      dispatch({ type: 'HYDRATE', payload: state });
-    } catch (e) {
-      console.error('[Home] Hydration effect error:', e);
-      // fallback to mount
-      dispatch({ type: 'HYDRATE', payload: { ...initialAuthState, mounted: true } });
-    }
+    const checkAuth = async () => {
+      try {
+        // Try to hit a protected API to see if we have a valid cookie
+        const res = await fetch('/api/dashboard');
+        if (res.ok) {
+          // We have a valid session cookie
+          // Determine role from the cookie - try to parse it
+          const data = await res.json();
+          // If dashboard returns data, we're logged in
+          // Default to observer role unless we can determine otherwise
+          dispatch({ type: 'HYDRATE', payload: { isLoggedIn: true, userRole: 'OBSERVER', isOwner: false, mounted: true } });
+        } else if (res.status === 401) {
+          dispatch({ type: 'HYDRATE', payload: { ...initialAuthState, mounted: true } });
+        } else {
+          dispatch({ type: 'HYDRATE', payload: { ...initialAuthState, mounted: true } });
+        }
+      } catch {
+        dispatch({ type: 'HYDRATE', payload: { ...initialAuthState, mounted: true } });
+      }
+    };
+    checkAuth();
   }, []);
 
-  // Ignore chrome extension errors that crash Next.js dev overlay
+  // Ignore chrome extension errors
   useEffect(() => {
     const handleRejection = (event: PromiseRejectionEvent) => {
       const reason = event.reason;
@@ -142,8 +122,8 @@ export default function Home() {
     };
   }, []);
 
-  const handleLogin = useCallback((token: string) => {
-    dispatch({ type: 'LOGIN', token });
+  const handleLogin = useCallback((role: string) => {
+    dispatch({ type: 'LOGIN', role });
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -151,7 +131,7 @@ export default function Home() {
     setShowOwnerPanel(false);
   }, []);
 
-  // Don't render until mounted to avoid hydration mismatch, show loading
+  // Don't render until mounted
   if (!authState.mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8f9ff]">
@@ -220,7 +200,6 @@ export default function Home() {
       <OwnerPanel
         isOpen={showOwnerPanel}
         onClose={() => setShowOwnerPanel(false)}
-        authToken={authState.authToken}
         onLogout={handleLogout}
       />
       {/* Owner toggle button - only visible to owner */}

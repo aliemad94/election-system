@@ -4,44 +4,45 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 بدء تهيئة قاعدة البيانات بالبيانات الجديدة (عند الحاجة)...');
+  console.log('🌱 بدء تهيئة قاعدة البيانات...');
 
-  // تحقق مما إذا كان هناك أي مستخدم بالفعل
-  const existingUsersCount = await prisma.user.count();
-  if (existingUsersCount > 0) {
-    console.log('⚠️ قاعدة البيانات تحتوي بالفعل على مستخدمين. تم تخطي التهيئة لتجنب الكتابة فوق البيانات.');
-    return;
-  }
+  // Use upsert to avoid wiping existing data
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin2024';
+  const userPassword = process.env.USER_PASSWORD || 'election2024';
 
-  // 2. إنشاء المستخدمين
-  console.log('👤 إنشاء مستخدمي النظام الأساسيين للتجريب...');
-  const adminPassword = await bcrypt.hash('admin2024', 10);
-  const userPassword = await bcrypt.hash('election2024', 10);
-
-  // مدير النظام
-  await prisma.user.create({
-    data: {
+  // Create/Update admin user with mustChangePwd flag
+  await prisma.user.upsert({
+    where: { username: 'admin' },
+    update: {},
+    create: {
       username: 'admin',
-      password: adminPassword,
+      password: await bcrypt.hash(adminPassword, 12),
       role: 'ADMIN',
+      mustChangePwd: true, // Force password change on first login
     },
   });
 
-  // مراقب
-  await prisma.user.create({
-    data: {
+  // Create/Update observer user
+  await prisma.user.upsert({
+    where: { username: 'observer' },
+    update: {},
+    create: {
       username: 'observer',
-      password: userPassword,
+      password: await bcrypt.hash(userPassword, 12),
       role: 'OBSERVER',
+      mustChangePwd: true,
     },
   });
 
-  // مندوب / مفتاح انتخابي
-  await prisma.user.create({
-    data: {
+  // Create/Update key_user
+  await prisma.user.upsert({
+    where: { username: 'key_user' },
+    update: {},
+    create: {
       username: 'key_user',
-      password: userPassword,
+      password: await bcrypt.hash(userPassword, 12),
       role: 'KEY_USER',
+      mustChangePwd: true,
     },
   });
 
@@ -56,4 +57,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

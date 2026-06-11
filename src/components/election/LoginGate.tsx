@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Vote, Lock, Shield, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 interface LoginGateProps {
-  onLogin: (token: string) => void;
+  onLogin: (role: string) => void;
 }
 
 export default function LoginGate({ onLogin }: LoginGateProps) {
@@ -46,7 +46,8 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
       const data = await res.json();
 
       if (data.success) {
-        onLogin(data.token);
+        // Token is now in httpOnly cookie - no need to store it
+        onLogin(data.role || (isOwnerMode ? 'ADMIN' : 'OBSERVER'));
       } else {
         setError(data.message || 'حدث خطأ غير متوقع');
       }
