@@ -3,7 +3,7 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# Install OpenSSL (required by Prisma) and other deps
+# Install OpenSSL (required by Prisma)
 RUN apt-get update -qq && apt-get install -y -qq openssl && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
@@ -13,13 +13,13 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Use PostgreSQL schema for production build
+# Switch to PostgreSQL schema for production
 RUN cp prisma/schema.postgres.prisma prisma/schema.prisma
 
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build Next.js (standalone output)
+# Build Next.js standalone
 RUN npm run build
 
 # ---- Stage 2: Production ----
@@ -37,36 +37,30 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy standalone build output
+# Copy standalone build
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Copy Prisma files for runtime migrations
+# Copy Prisma schema and seed for runtime
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
-# Install only essential production deps (bcryptjs for seed)
+# Install bcryptjs for seed at runtime
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 RUN npm install --omit=dev bcryptjs 2>/dev/null || true
 
 # Create startup script
-RUN cat > /app/start.sh << 'STARTUP'
-#!/bin/sh
-set -e
-
-echo "🔄 Pushing database schema..."
-npx prisma db push --skip-generate 2>/dev/null || echo "⚠️ Schema push had warnings"
-
-echo "🌱 Running database seed..."
-npx prisma db seed 2>/dev/null || echo "⚠️ Seed skipped (may already have data)"
-
-echo "🚀 Starting electoral system server..."
-exec node server.js
-STARTUP
-
-RUN chmod +x /app/start.sh && chown nextjs:nodejs /app/start.sh
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'set -e' >> /app/start.sh && \
+    echo 'echo "Pushing database schema..."' >> /app/start.sh && \
+    echo 'npx prisma db push --skip-generate 2>/dev/null || true' >> /app/start.sh && \
+    echo 'echo "Running database seed..."' >> /app/start.sh && \
+    echo 'npx prisma db seed 2>/dev/null || echo "Seed skipped"' >> /app/start.sh && \
+    echo 'echo "Starting server..."' >> /app/start.sh && \
+    echo 'exec node server.js' >> /app/start.sh && \
+    chmod +x /app/start.sh && chown nextjs:nodejs /app/start.sh
 
 USER nextjs
 
