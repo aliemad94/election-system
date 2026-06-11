@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "./tw-animate.css";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -151,37 +151,72 @@
 }
 
 .dark {
-  --background: #0b1c30;
-  --foreground: #f8f9ff;
-  --card: #1a2b4b;
-  --card-foreground: #f8f9ff;
-  --popover: #1a2b4b;
-  --popover-foreground: #f8f9ff;
-  --primary: #b6c6ef;
+  --background: #050b14;
+  --foreground: #f0f4f8;
+  --card: #0c1424;
+  --card-foreground: #f0f4f8;
+  --popover: #0c1424;
+  --popover-foreground: #f0f4f8;
+  --primary: #fea619;
   --primary-foreground: #031635;
-  --secondary: #ffb95f;
-  --secondary-foreground: #684000;
-  --muted: #1a2b4b;
-  --muted-foreground: #8293b8;
-  --accent: #1a2b4b;
-  --accent-foreground: #f8f9ff;
-  --destructive: #ffdad6;
-  --border: #364768;
-  --input: #364768;
-  --ring: #b6c6ef;
-  --chart-1: #b6c6ef;
-  --chart-2: #fea619;
+  --secondary: #b6c6ef;
+  --secondary-foreground: #0c1424;
+  --muted: #162238;
+  --muted-foreground: #8aa0c2;
+  --accent: #1e2e4a;
+  --accent-foreground: #f0f4f8;
+  --destructive: #ba1a1a;
+  --border: #1e2e4a;
+  --input: #1e2e4a;
+  --ring: #fea619;
+  --chart-1: #fea619;
+  --chart-2: #ffb95f;
   --chart-3: #1a2b4b;
   --chart-4: #d8e2ff;
-  --chart-5: #ffb95f;
-  --sidebar: #1a2b4b;
-  --sidebar-foreground: #f8f9ff;
-  --sidebar-primary: #b6c6ef;
+  --chart-5: #b6c6ef;
+  --sidebar: #090f1a;
+  --sidebar-foreground: #f0f4f8;
+  --sidebar-primary: #fea619;
   --sidebar-primary-foreground: #031635;
-  --sidebar-accent: #fea619;
-  --sidebar-accent-foreground: #684000;
-  --sidebar-border: #364768;
-  --sidebar-ring: #b6c6ef;
+  --sidebar-accent: #1a2b4b;
+  --sidebar-accent-foreground: #fea619;
+  --sidebar-border: #1e2e4a;
+  --sidebar-ring: #fea619;
+
+  /* Election system design tokens in dark mode */
+  --el-primary: #fea619;
+  --el-primary-container: #1e2e4a;
+  --el-on-primary: #031635;
+  --el-on-primary-container: #b6c6ef;
+  --el-secondary: #ffb95f;
+  --el-secondary-container: #fea619;
+  --el-on-secondary: #3e2700;
+  --el-on-secondary-container: #ffddb8;
+  --el-tertiary-container: #ffddb8;
+  --el-surface: #0c1424;
+  --el-surface-container: #111d33;
+  --el-surface-container-low: #090f1a;
+  --el-surface-container-high: #162742;
+  --el-surface-container-highest: #1e3354;
+  --el-surface-variant: #1e2e4a;
+  --el-outline: #8e95a5;
+  --el-outline-variant: #2d3f5d;
+  --el-error: #ffb4ab;
+  --el-background: #050b14;
+  --el-on-background: #f0f4f8;
+  --el-on-surface: #f0f4f8;
+  --el-on-surface-variant: #c2c9d6;
+  --el-primary-fixed: #ffddb8;
+  --el-primary-fixed-dim: #ffb95f;
+  --el-on-primary-fixed: #3e2700;
+  --el-on-primary-fixed-variant: #ffb95f;
+  --el-secondary-fixed: #b6c6ef;
+  --el-inverse-surface: #f0f4f8;
+  --el-inverse-on-surface: #050b14;
+  --el-error-container: #93000a;
+  --el-surface-dim: #090f1a;
+  --el-surface-bright: #162742;
+  --el-surface-container-lowest: #070c17;
 }
 
 @layer base {
@@ -189,7 +224,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
   }
 }
 

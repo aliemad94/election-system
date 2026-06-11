@@ -6,6 +6,7 @@ import {
   Users, Key, BarChart3, Award, Activity, Zap, ChevronDown, ChevronUp,
   Vote, ArrowUp, ArrowDown, Eye, ShieldAlert,
 } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 interface DecisiveData {
   expectedVotesOnDay: number;
@@ -54,10 +55,16 @@ export default function ExecutiveDashboard() {
     async function fetchData() {
       try {
         const res = await fetch('/api/comprehensive-indicators');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          setData({ error: errData.error || `خطأ في الاتصال بالخادم (${res.status})` } as any);
+          return;
+        }
         const d = await res.json();
         setData(d);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching indicators:', err);
+        setData({ error: err?.message || 'خطأ غير متوقع في جلب البيانات' } as any);
       } finally {
         setLoading(false);
       }
@@ -65,11 +72,28 @@ export default function ExecutiveDashboard() {
     fetchData();
   }, []);
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64 gap-3">
         <Activity className="w-6 h-6 text-el-primary animate-pulse" />
         <span className="text-el-on-surface-variant text-[14px]">جاري حساب المؤشرات الحاسمة...</span>
+      </div>
+    );
+  }
+
+  if (!data || 'error' in data) {
+    const errorMsg = data ? (data as any).error : 'تعذر تحميل البيانات';
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-8 text-center max-w-[600px] mx-auto mt-12 shadow-sm">
+        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-el-primary">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <h2 className="text-[18px] font-bold text-el-on-surface">أهلاً بك في الماكينة الانتخابية</h2>
+        <p className="text-[14px] text-el-on-surface-variant leading-relaxed">
+          {errorMsg === 'غير مسموح' 
+            ? 'بصفتك مندوباً ميدانياً، يرجى الانتقال إلى تبويبات "تسجيل الناخبين" أو "بوابة المندوب الميداني" لبدء إدخال وتحديث البيانات.' 
+            : `تعذر جلب بيانات لوحة التحكم: ${errorMsg}`}
+        </p>
       </div>
     );
   }
@@ -159,119 +183,119 @@ export default function ExecutiveDashboard() {
         </div>
 
         {/* 1. الأصوات المطلوبة للفوز */}
-        <div className="bg-el-surface-container-lowest border-2 border-amber-500/20 rounded-lg p-5 flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-el-surface-container-lowest to-el-surface-container/30 dark:from-el-surface-container/30 dark:to-el-surface-container-low/10 border border-amber-500/30 rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:border-amber-500/50 hover:-translate-y-0.5 transition-all duration-300">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-amber-500" />
+              <Award className="w-5 h-5 text-amber-500 animate-pulse" />
               <span className="text-[12px] text-el-on-surface-variant font-semibold">الأصوات المطلوبة للفوز</span>
             </div>
-            <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded font-medium">العتبة المستهدفة للمقعد</span>
+            <span className="text-[10px] text-amber-700 bg-amber-500/10 px-2 py-0.5 rounded font-bold">العتبة المستهدفة للمقعد</span>
           </div>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-[36px] font-bold text-amber-700 leading-none font-mono">{votesNeededToWin.toLocaleString()}</span>
-            <span className="text-[12px] text-el-on-surface-variant">صوت</span>
+            <span className="text-[36px] font-extrabold text-amber-600 leading-none font-mono">{votesNeededToWin.toLocaleString()}</span>
+            <span className="text-[12px] text-el-on-surface-variant font-medium">صوت</span>
           </div>
-          <div className="mt-3 text-[11px] text-el-on-surface-variant leading-relaxed">
+          <div className="mt-3 text-[11px] text-el-on-surface-variant/80 leading-relaxed border-t border-el-outline-variant/20 pt-2">
             الحد الأدنى التقريبي لحسم مقعد في ذي قار
           </div>
         </div>
 
         {/* 2. عدد الأصوات المتوقعة */}
-        <div className="bg-el-surface-container-lowest border-2 border-el-primary/20 rounded-lg p-5 flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-el-surface-container-lowest to-el-surface-container/30 dark:from-el-surface-container/30 dark:to-el-surface-container-low/10 border border-el-outline-variant/60 dark:border-el-outline-variant/30 rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:border-el-primary/50 hover:-translate-y-0.5 transition-all duration-300">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <Vote className="w-5 h-5 text-el-primary" />
               <span className="text-[12px] text-el-on-surface-variant font-semibold">عدد الأصوات المتوقعة</span>
             </div>
-            <span className="text-[10px] text-el-primary bg-el-primary/5 px-2 py-0.5 rounded font-medium">معدل تقديري</span>
+            <span className="text-[10px] text-el-primary bg-el-primary/10 px-2 py-0.5 rounded font-bold">معدل تقديري</span>
           </div>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-[36px] font-bold text-el-primary leading-none font-mono">{expectedVotesOnDay.toLocaleString()}</span>
-            <span className="text-[12px] text-el-on-surface-variant">صوت محتمل</span>
+            <span className="text-[36px] font-extrabold text-el-primary leading-none font-mono">{expectedVotesOnDay.toLocaleString()}</span>
+            <span className="text-[12px] text-el-on-surface-variant font-medium">صوت محتمل</span>
           </div>
-          <div className="mt-3 text-[11px] text-el-on-surface-variant">
+          <div className="mt-3 text-[11px] text-el-on-surface-variant/80 border-t border-el-outline-variant/20 pt-2">
             صافي الأصوات: <span className="font-bold text-el-primary font-mono">{totalNetVotes.toLocaleString()}</span> · المسجلون: <span className="font-mono">{totalRegistered.toLocaleString()}</span>
           </div>
         </div>
 
         {/* 3. مؤشر الفجوة الانتخابية */}
-        <div className={`border-2 rounded-lg p-5 flex flex-col justify-between hover:shadow-md transition-all ${electoralGap > 0 ? 'bg-red-50/50 border-red-500/20' : 'bg-green-50/50 border-green-500/20'}`}>
+        <div className={`border rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-br ${electoralGap > 0 ? 'from-red-500/5 to-red-500/10 border-red-500/30 hover:border-red-500/50' : 'from-green-500/5 to-green-500/10 border-green-500/30 hover:border-green-500/50'}`}>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <AlertTriangle className={`w-5 h-5 ${electoralGap > 0 ? 'text-red-500' : 'text-green-500'}`} />
               <span className="text-[12px] text-el-on-surface-variant font-semibold">مؤشر الفجوة الانتخابية</span>
             </div>
-            <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${electoralGap > 0 ? 'text-red-600 bg-red-100/50' : 'text-green-600 bg-green-100/50'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${electoralGap > 0 ? 'text-red-700 bg-red-500/10' : 'text-green-700 bg-green-500/10'}`}>
               {electoralGap > 0 ? 'تحت المستهدف' : 'تم تخطي المستهدف'}
             </span>
           </div>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className={`text-[36px] font-bold leading-none font-mono ${electoralGap > 0 ? 'text-red-700' : 'text-green-700'}`}>{electoralGap.toLocaleString()}</span>
-            <span className="text-[12px] text-el-on-surface-variant">صوت متبقي</span>
+            <span className={`text-[36px] font-extrabold leading-none font-mono ${electoralGap > 0 ? 'text-red-500' : 'text-green-500'}`}>{electoralGap.toLocaleString()}</span>
+            <span className="text-[12px] text-el-on-surface-variant font-medium">صوت متبقي</span>
           </div>
-          <div className="mt-3 text-[11px] text-el-on-surface-variant">
+          <div className="mt-3 text-[11px] text-el-on-surface-variant/80 border-t border-el-outline-variant/20 pt-2">
             {electoralGap > 0 ? 'الفارق المطلوب تغطيته لحسم الفوز بالمقعد' : 'أصواتنا الحالية تتجاوز عتبة الفوز الآمنة'}
           </div>
         </div>
 
         {/* 4. نسبة المشاركة المتوقعة */}
-        <div className="bg-el-surface-container-lowest border-2 border-el-secondary/20 rounded-lg p-5 flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-el-surface-container-lowest to-el-surface-container/30 dark:from-el-surface-container/30 dark:to-el-surface-container-low/10 border border-el-secondary/30 rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:border-el-secondary/60 hover:-translate-y-0.5 transition-all duration-300">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <Activity className="w-5 h-5 text-el-secondary" />
               <span className="text-[12px] text-el-on-surface-variant font-semibold">نسبة المشاركة المتوقعة</span>
             </div>
-            <span className="text-[10px] text-el-secondary bg-el-secondary/5 px-2 py-0.5 rounded font-medium">تقدير الدائرة الميداني</span>
+            <span className="text-[10px] text-el-secondary bg-el-secondary/15 px-2 py-0.5 rounded font-bold">تقدير الدائرة الميداني</span>
           </div>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-[36px] font-bold text-el-secondary leading-none font-mono">{expectedParticipation}%</span>
+            <span className="text-[36px] font-extrabold text-el-secondary leading-none font-mono">{expectedParticipation}%</span>
           </div>
-          <div className="mt-3 w-full">
-            <div className="h-1.5 w-full bg-el-surface-variant rounded-full overflow-hidden">
-              <div className="h-full bg-el-secondary transition-all" style={{ width: `${expectedParticipation}%` }} />
+          <div className="mt-3 w-full border-t border-el-outline-variant/20 pt-3">
+            <div className="h-2 w-full bg-el-surface-variant rounded-full overflow-hidden">
+              <div className="h-full bg-el-secondary transition-all duration-500" style={{ width: `${expectedParticipation}%` }} />
             </div>
           </div>
         </div>
 
         {/* 5. إمكانية الفوز */}
-        <div className="bg-el-surface-container-lowest border-2 border-purple-500/20 rounded-lg p-5 flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-el-surface-container-lowest to-el-surface-container/30 dark:from-el-surface-container/30 dark:to-el-surface-container-low/10 border border-purple-500/30 rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:border-purple-500/60 hover:-translate-y-0.5 transition-all duration-300">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-purple-500" />
+              <Zap className="w-5 h-5 text-purple-500 animate-pulse" />
               <span className="text-[12px] text-el-on-surface-variant font-semibold">إمكانية الفوز</span>
             </div>
-            <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${winProbability >= 70 ? 'text-green-600 bg-green-50' : winProbability >= 40 ? 'text-purple-600 bg-purple-50' : 'text-red-600 bg-red-50'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${winProbability >= 70 ? 'text-green-700 bg-green-500/10' : winProbability >= 40 ? 'text-purple-700 bg-purple-500/10' : 'text-red-700 bg-red-500/10'}`}>
               {winProbability >= 70 ? 'مرتفعة جداً' : winProbability >= 40 ? 'ممكنة' : 'ضعيفة'}
             </span>
           </div>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-[36px] font-bold text-purple-700 leading-none font-mono">{winProbability}%</span>
-            <span className="text-[12px] text-el-on-surface-variant">جاهزية حصد المقعد</span>
+            <span className="text-[36px] font-extrabold text-purple-500 leading-none font-mono">{winProbability}%</span>
+            <span className="text-[12px] text-el-on-surface-variant font-medium">جاهزية حصد المقعد</span>
           </div>
-          <div className="mt-3 w-full">
-            <div className="h-1.5 w-full bg-el-surface-variant rounded-full overflow-hidden">
-              <div className="h-full bg-purple-600 transition-all" style={{ width: `${winProbability}%` }} />
+          <div className="mt-3 w-full border-t border-el-outline-variant/20 pt-3">
+            <div className="h-2 w-full bg-el-surface-variant rounded-full overflow-hidden">
+              <div className="h-full bg-purple-600 transition-all duration-500" style={{ width: `${winProbability}%` }} />
             </div>
           </div>
         </div>
 
         {/* 6. مؤشر المخاطر الانتخابية الشامل */}
-        <div className={`border-2 rounded-lg p-5 flex flex-col justify-between hover:shadow-md transition-all ${overallRisk > 50 ? 'bg-red-50/50 border-red-500/20' : overallRisk > 25 ? 'bg-yellow-50/50 border-yellow-500/20' : 'bg-green-50/50 border-green-500/20'}`}>
+        <div className={`border rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-br ${overallRisk > 50 ? 'from-red-500/5 to-red-500/10 border-red-500/30 hover:border-red-500/50' : overallRisk > 25 ? 'from-yellow-500/5 to-yellow-500/10 border-yellow-500/30 hover:border-yellow-500/50' : 'from-green-500/5 to-green-500/10 border-green-500/30 hover:border-green-500/50'}`}>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <ShieldAlert className={`w-5 h-5 ${overallRisk > 50 ? 'text-red-500' : overallRisk > 25 ? 'text-yellow-500' : 'text-green-500'}`} />
-              <span className="text-[12px] text-el-on-surface-variant font-semibold">مؤشر المخاطر الانتخابية الشامل</span>
+              <span className="text-[12px] text-el-on-surface-variant font-semibold">مؤشر المخاطر الشامل</span>
             </div>
-            <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${overallRisk > 50 ? 'text-red-600 bg-red-100/50' : overallRisk > 25 ? 'text-yellow-600 bg-yellow-100/50' : 'text-green-600 bg-green-100/50'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${overallRisk > 50 ? 'text-red-700 bg-red-500/10' : overallRisk > 25 ? 'text-yellow-700 bg-yellow-500/10' : 'text-green-700 bg-green-500/10'}`}>
               {overallRisk > 50 ? 'خطر مرتفع' : overallRisk > 25 ? 'خطر متوسط' : 'خطر منخفض'}
             </span>
           </div>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className={`text-[36px] font-bold leading-none font-mono ${overallRisk > 50 ? 'text-red-700' : overallRisk > 25 ? 'text-yellow-700' : 'text-green-700'}`}>{overallRisk}%</span>
+            <span className={`text-[36px] font-extrabold leading-none font-mono ${overallRisk > 50 ? 'text-red-500' : overallRisk > 25 ? 'text-yellow-500' : 'text-green-500'}`}>{overallRisk}%</span>
           </div>
-          <div className="mt-3 w-full">
-            <div className="h-1.5 w-full bg-el-surface-variant rounded-full overflow-hidden">
-              <div className={`h-full transition-all ${overallRisk > 50 ? 'bg-red-600' : overallRisk > 25 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${overallRisk}%` }} />
+          <div className="mt-3 w-full border-t border-el-outline-variant/20 pt-3">
+            <div className="h-2 w-full bg-el-surface-variant rounded-full overflow-hidden">
+              <div className={`h-full transition-all duration-500 ${overallRisk > 50 ? 'bg-red-500' : overallRisk > 25 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${overallRisk}%` }} />
             </div>
           </div>
         </div>
@@ -506,24 +530,54 @@ export default function ExecutiveDashboard() {
       </section>
 
       {/* ═══ توزيع القوة جغرافياً ═══ */}
-      <section className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-        <h3 className="text-[14px] font-bold text-el-on-surface mb-3 flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-el-primary" /> توزيع القوة جغرافياً
+      <section className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-5">
+        <h3 className="text-[14px] font-bold text-el-on-surface mb-4 flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-el-primary" /> توزيع القوة والنتائج جغرافياً عبر الأقضية
         </h3>
-        <div className="space-y-2">
-          {geoDistribution.map((g: any) => (
-            <div key={g?.district || Math.random().toString()}>
-              <div className="flex justify-between text-[12px] mb-1">
-                <span className="font-medium">{g?.district}</span>
-                <span className="font-mono text-el-on-surface-variant">
-                  {g?.netVotes ?? 0} صوت · {g?.percentage ?? 0}% · {g?.keyCount ?? 0} مفتاح
-                </span>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* قائمة الأقضية بالتفاصيل */}
+          <div className="space-y-3">
+            {geoDistribution.map((g: any) => (
+              <div key={g?.district || Math.random().toString()} className="bg-el-surface-container/20 border border-el-outline-variant/30 rounded-lg p-3 hover:bg-el-surface-container/30 transition-all">
+                <div className="flex justify-between text-[12px] mb-1.5">
+                  <span className="font-bold text-el-on-surface">{g?.district}</span>
+                  <span className="font-mono text-el-on-surface-variant font-semibold">
+                    {g?.netVotes ?? 0} صوت صافي · {g?.percentage ?? 0}% تأييد · {g?.keyCount ?? 0} مفتاح
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-el-surface-variant rounded-full overflow-hidden">
+                  <div className="bg-el-primary h-full transition-all duration-500 rounded-full" style={{ width: `${g?.percentage ?? 0}%` }} />
+                </div>
               </div>
-              <div className="h-3 w-full bg-el-surface-variant rounded-full overflow-hidden">
-                <div className="bg-el-primary h-full transition-all rounded-full" style={{ width: `${g?.percentage ?? 0}%` }} />
-              </div>
+            ))}
+          </div>
+
+          {/* مخطط Recharts التفاعلي */}
+          <div className="bg-el-surface-container/10 border border-el-outline-variant/40 rounded-xl p-4 h-72 flex flex-col justify-between">
+            <span className="text-[11px] font-bold text-el-on-surface-variant mb-2">رسم بياني تفاعلي: الأصوات الصافية لكل قضاء</span>
+            <div className="flex-1 w-full h-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={geoDistribution} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--el-outline-variant)" opacity={0.2} vertical={false} />
+                  <XAxis dataKey="district" stroke="var(--el-on-surface-variant)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--el-on-surface-variant)" fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'var(--el-surface-container-lowest)',
+                      borderColor: 'var(--el-outline-variant)',
+                      borderRadius: '8px',
+                      color: 'var(--el-on-surface)',
+                      fontSize: '12px',
+                      fontFamily: 'Inter, sans-serif'
+                    }}
+                    cursor={{ fill: 'var(--el-surface-container-high)', opacity: 0.2 }}
+                  />
+                  <Bar dataKey="netVotes" name="الأصوات الصافية" fill="var(--el-primary)" radius={[4, 4, 0, 0]} barSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          ))}
+          </div>
         </div>
       </section>
 
