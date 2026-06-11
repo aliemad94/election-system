@@ -1,14 +1,21 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { db } from './db';
 
-// JWT Secret - must be set in environment variables
-const getJwtSecret = () => {
+// JWT Secret - MUST be set via environment variable
+// No fallback for security - application will refuse to start without it
+let _cachedSecret: Uint8Array | null = null;
+
+const getJwtSecret = (): Uint8Array => {
+  if (_cachedSecret) return _cachedSecret;
   const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    console.error('⚠️ JWT_SECRET not set! Using fallback - NOT SECURE FOR PRODUCTION');
-    return new TextEncoder().encode('fallback-secret-change-me-in-production-please');
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      'FATAL: JWT_SECRET environment variable must be set and at least 32 characters long. ' +
+      'Generate one with: openssl rand -base64 48'
+    );
   }
-  return new TextEncoder().encode(secret);
+  _cachedSecret = new TextEncoder().encode(secret);
+  return _cachedSecret;
 };
 
 export interface AuthPayload {
@@ -19,6 +26,8 @@ export interface AuthPayload {
 }
 
 const TOKEN_EXPIRY = '7d';
+const ISSUER = 'electoral-system';
+const AUDIENCE = 'electoral-system-users';
 
 /**
  * Create a signed JWT token for an authenticated user
@@ -29,6 +38,8 @@ export async function createToken(payload: AuthPayload): Promise<string> {
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRY)
     .setSubject(payload.userId)
+    .setIssuer(ISSUER)
+    .setAudience(AUDIENCE)
     .sign(getJwtSecret());
 }
 
@@ -40,6 +51,8 @@ export async function verifyToken(token: string): Promise<AuthPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getJwtSecret(), {
       algorithms: ['HS256'],
+      issuer: ISSUER,
+      audience: AUDIENCE,
     });
     
     return {

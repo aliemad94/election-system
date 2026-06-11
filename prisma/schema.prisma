@@ -27,7 +27,7 @@ model AuditLog {
   action    String   // LOGIN, LOGOUT, CREATE, UPDATE, DELETE, CHANGE_PASSWORD
   entity    String?  // Tribe, Voter, ElectionKey, Service, etc.
   entityId  String?
-  details   String?  // JSON string for additional context
+  details   Json?    // Additional context
   ipAddress String?
   createdAt DateTime @default(now())
   

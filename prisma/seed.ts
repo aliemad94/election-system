@@ -6,9 +6,21 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 بدء تهيئة قاعدة البيانات...');
 
-  // Use upsert to avoid wiping existing data
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin2024';
-  const userPassword = process.env.USER_PASSWORD || 'election2024';
+  // Read passwords from environment variables ONLY - no hardcoded defaults
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const userPassword = process.env.USER_PASSWORD;
+
+  if (!adminPassword || adminPassword.length < 8) {
+    console.error('❌ ADMIN_PASSWORD must be set and at least 8 characters long');
+    console.error('   Set it via: export ADMIN_PASSWORD=[REDACTED]"');
+    process.exit(1);
+  }
+
+  if (!userPassword || userPassword.length < 8) {
+    console.error('❌ USER_PASSWORD must be set and at least 8 characters long');
+    console.error('   Set it via: export USER_PASSWORD=[REDACTED]"');
+    process.exit(1);
+  }
 
   // Create/Update admin user with mustChangePwd flag
   await prisma.user.upsert({
@@ -18,7 +30,7 @@ async function main() {
       username: 'admin',
       password: await bcrypt.hash(adminPassword, 12),
       role: 'ADMIN',
-      mustChangePwd: true, // Force password change on first login
+      mustChangePwd: true,
     },
   });
 
@@ -47,6 +59,7 @@ async function main() {
   });
 
   console.log('✅ تم تهيئة قاعدة البيانات بنجاح!');
+  console.log('⚠️  جميع المستخدمين مطالبون بتغيير كلمة المرور عند أول دخول');
 }
 
 main()

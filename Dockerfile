@@ -51,13 +51,31 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 RUN npm install --omit=dev bcryptjs 2>/dev/null || true
 
-# Create startup script
+# Create startup script - with validation for required env vars
 RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'set -e' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Validate required environment variables' >> /app/start.sh && \
+    echo 'if [ -z "$JWT_SECRET" ]; then' >> /app/start.sh && \
+    echo '  echo "FATAL: JWT_SECRET environment variable is required"' >> /app/start.sh && \
+    echo '  echo "Generate one with: openssl rand -base64 48"' >> /app/start.sh && \
+    echo '  exit 1' >> /app/start.sh && \
+    echo 'fi' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo 'if [ -z "$ADMIN_PASSWORD" ]; then' >> /app/start.sh && \
+    echo '  echo "FATAL: ADMIN_PASSWORD environment variable is required"' >> /app/start.sh && \
+    echo '  exit 1' >> /app/start.sh && \
+    echo 'fi' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo 'if [ -z "$USER_PASSWORD" ]; then' >> /app/start.sh && \
+    echo '  echo "FATAL: USER_PASSWORD environment variable is required"' >> /app/start.sh && \
+    echo '  exit 1' >> /app/start.sh && \
+    echo 'fi' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
     echo 'echo "Pushing database schema..."' >> /app/start.sh && \
     echo 'npx prisma db push --skip-generate 2>/dev/null || true' >> /app/start.sh && \
     echo 'echo "Running database seed..."' >> /app/start.sh && \
-    echo 'npx prisma db seed 2>/dev/null || echo "Seed skipped"' >> /app/start.sh && \
+    echo 'npx prisma db seed 2>/dev/null || echo "Seed skipped (may already exist)"' >> /app/start.sh && \
     echo 'echo "Starting server..."' >> /app/start.sh && \
     echo 'exec node server.js' >> /app/start.sh && \
     chmod +x /app/start.sh && chown nextjs:nodejs /app/start.sh

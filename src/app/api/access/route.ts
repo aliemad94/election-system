@@ -3,45 +3,25 @@ import { db } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { createToken, verifyToken } from '@/lib/auth';
 import { z } from 'zod';
+import {
+  checkRateLimit,
+  resetRateLimit,
+  auditLog,
+  validatePassword,
+  getClientIp,
+  handleApiError,
+} from '@/lib/security';
 
 // ---- Zod Input Validation Schemas ----
 const loginSchema = z.object({
   action: z.enum(['login', 'owner-login', 'change-password', 'toggle-access']),
-  password: z.string().optional(),
-  ownerPassword: z.string().optional(),
-  newPassword: z.string().optional(),
-  ownerToken: z.string().optional(),
+  password: z.string().max(128).optional(),
+  ownerPassword: z.string().max(128).optional(),
+  newPassword: z.string().max(128).optional(),
+  ownerToken: z.string().max(500).optional(),
   enabled: z.boolean().optional(),
-  currentPassword: z.string().optional(),
+  currentPassword: z.string().max(128).optional(),
 });
-
-const PASSWORD_MIN_LENGTH = 8;
-
-// Rate limiting: track failed attempts per IP
-const failedAttempts = new Map<string, { count: number; lastAttempt: number }>();
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
-
-function checkRateLimit(ip: string): boolean {
-  const entry = failedAttempts.get(ip);
-  if (!entry) return true;
-  if (Date.now() - entry.lastAttempt > LOCKOUT_MS) {
-    failedAttempts.delete(ip);
-    return true;
-  }
-  return entry.count < MAX_ATTEMPTS;
-}
-
-function recordFailedAttempt(ip: string) {
-  const entry = failedAttempts.get(ip) || { count: 0, lastAttempt: 0 };
-  entry.count += 1;
-  entry.lastAttempt = Date.now();
-  failedAttempts.set(ip, entry);
-}
-
-function clearFailedAttempts(ip: string) {
-  failedAttempts.delete(ip);
-}
 
 // GET: Check if access is enabled + health check
 export async function GET() {
@@ -63,7 +43,7 @@ export async function POST(req: NextRequest) {
     }
     
     const body = parseResult.data;
-    const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const clientIp = getClientIp(req);
 
     // ---- LOGIN ACTION ----
     if (body.action === 'login') {
@@ -72,9 +52,10 @@ export async function POST(req: NextRequest) {
       }
 
       // Rate limiting check
-      if (!checkRateLimit(clientIp)) {
+      const rateLimit = checkRateLimit(`login:${clientIp}`);
+      if (!rateLimit.allowed) {
         return NextResponse.json(
-          { success: false, message: 'تم تجاوز عدد المحاولات. حاول بعد 15 دقيقة' },
+          { success: false, message: `تم تجاوز عدد المحاولات. حاول بعد ${Math.ceil(rateLimit.retryAfterMs / 60000)} دقيقة` },
           { status: 429 }
         );
       }
@@ -92,11 +73,16 @@ export async function POST(req: NextRequest) {
 
       const match = await bcrypt.compare(body.password, user.password);
       if (!match) {
-        recordFailedAttempt(clientIp);
+        await auditLog({ username: 'unknown', action: 'LOGIN', details: { reason: 'wrong_password', ip: clientIp }, ipAddress: clientIp });
         return NextResponse.json(
           { success: false, message: 'كلمة المرور غير صحيحة' },
           { status: 401 }
         );
+      }
+
+      // Check must change password flag
+      if (user.mustChangePwd) {
+        // Still allow login but inform frontend
       }
 
       // Create signed JWT token
@@ -107,8 +93,14 @@ export async function POST(req: NextRequest) {
         isOwner: false,
       });
 
-      clearFailedAttempts(clientIp);
-      const response = NextResponse.json({ success: true, role: user.role });
+      resetRateLimit(`login:${clientIp}`);
+      await auditLog({ userId: user.id, username: user.username, action: 'LOGIN', details: { role: user.role }, ipAddress: clientIp });
+
+      const response = NextResponse.json({ 
+        success: true, 
+        role: user.role,
+        mustChangePwd: user.mustChangePwd,
+      });
       response.cookies.set('election_auth', token, {
         path: '/',
         httpOnly: true,
@@ -125,10 +117,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, message: 'كلمة المرور مطلوبة' }, { status: 400 });
       }
 
-      // Rate limiting check
-      if (!checkRateLimit(clientIp)) {
+      // Rate limiting check (separate limit for owner login)
+      const rateLimit = checkRateLimit(`owner-login:${clientIp}`, 3, 30 * 60 * 1000);
+      if (!rateLimit.allowed) {
         return NextResponse.json(
-          { success: false, message: 'تم تجاوز عدد المحاولات. حاول بعد 15 دقيقة' },
+          { success: false, message: `تم تجاوز عدد المحاولات. حاول بعد ${Math.ceil(rateLimit.retryAfterMs / 60000)} دقيقة` },
           { status: 429 }
         );
       }
@@ -146,7 +139,7 @@ export async function POST(req: NextRequest) {
 
       const match = await bcrypt.compare(body.ownerPassword, user.password);
       if (!match) {
-        recordFailedAttempt(clientIp);
+        await auditLog({ username: 'admin', action: 'LOGIN', details: { reason: 'wrong_owner_password', ip: clientIp }, ipAddress: clientIp });
         return NextResponse.json(
           { success: false, message: 'كلمة مرور المالك غير صحيحة' },
           { status: 401 }
@@ -161,8 +154,10 @@ export async function POST(req: NextRequest) {
         isOwner: true,
       });
 
-      clearFailedAttempts(clientIp);
-      const response = NextResponse.json({ success: true, role: 'ADMIN' });
+      resetRateLimit(`owner-login:${clientIp}`);
+      await auditLog({ userId: user.id, username: user.username, action: 'LOGIN', details: { role: 'ADMIN', isOwner: true }, ipAddress: clientIp });
+
+      const response = NextResponse.json({ success: true, role: 'ADMIN', mustChangePwd: user.mustChangePwd });
       response.cookies.set('election_auth', token, {
         path: '/',
         httpOnly: true,
@@ -201,20 +196,24 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, message: 'كلمة المرور الحالية غير صحيحة' }, { status: 401 });
       }
 
-      // Validate new password strength
-      if (!body.newPassword || body.newPassword.length < PASSWORD_MIN_LENGTH) {
+      // Validate new password strength using security policy
+      if (!body.newPassword) {
+        return NextResponse.json({ success: false, message: 'كلمة المرور الجديدة مطلوبة' }, { status: 400 });
+      }
+
+      const passwordValidation = validatePassword(body.newPassword);
+      if (!passwordValidation.valid) {
         return NextResponse.json(
-          { success: false, message: `كلمة المرور يجب أن تكون ${PASSWORD_MIN_LENGTH} أحرف على الأقل` },
+          { success: false, message: passwordValidation.errors.join('. ') },
           { status: 400 }
         );
       }
 
-      // Password complexity check
-      const hasLetter = /[a-zA-Z]/.test(body.newPassword);
-      const hasNumber = /[0-9]/.test(body.newPassword);
-      if (!hasLetter || !hasNumber) {
+      // Prevent reusing the same password
+      const samePassword = await bcrypt.compare(body.newPassword, adminUser.password);
+      if (samePassword) {
         return NextResponse.json(
-          { success: false, message: 'كلمة المرور يجب أن تحتوي على أحرف وأرقام' },
+          { success: false, message: 'لا يمكن استخدام نفس كلمة المرور الحالية' },
           { status: 400 }
         );
       }
@@ -222,20 +221,45 @@ export async function POST(req: NextRequest) {
       const hashedPassword = await bcrypt.hash(body.newPassword, 12);
       await db.user.update({
         where: { id: adminUser.id },
-        data: { password: hashedPassword }
+        data: { password: hashedPassword, mustChangePwd: false },
       });
 
-      return NextResponse.json({ success: true });
+      await auditLog({ 
+        userId: adminUser.id, 
+        username: adminUser.username, 
+        action: 'CHANGE_PASSWORD', 
+        ipAddress: clientIp 
+      });
+
+      return NextResponse.json({ success: true, message: 'تم تغيير كلمة المرور بنجاح' });
     }
 
     // ---- TOGGLE ACCESS ACTION ----
     if (body.action === 'toggle-access') {
+      // Verify owner token
+      const tokenCookie = req.cookies.get('election_auth');
+      if (!tokenCookie) {
+        return NextResponse.json({ success: false, message: 'غير مصرح' }, { status: 403 });
+      }
+      const payload = await verifyToken(tokenCookie.value);
+      if (!payload || !payload.isOwner) {
+        return NextResponse.json({ success: false, message: 'صلاحيات غير كافية' }, { status: 403 });
+      }
+
+      // For now, always returns enabled (toggle-access feature can be implemented later with DB flag)
+      await auditLog({ 
+        userId: payload.userId, 
+        username: payload.username, 
+        action: 'TOGGLE_ACCESS', 
+        details: { enabled: body.enabled ?? true }, 
+        ipAddress: clientIp 
+      });
+
       return NextResponse.json({ success: true, enabled: true });
     }
 
     return NextResponse.json({ success: false, message: 'إجراء غير معروف' }, { status: 400 });
   } catch (error) {
-    console.error('Auth API Error:', error);
-    return NextResponse.json({ success: false, message: 'حدث خطأ في النظام' }, { status: 500 });
+    return handleApiError(error, 'access-api');
   }
 }

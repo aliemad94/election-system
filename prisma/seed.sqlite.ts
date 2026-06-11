@@ -4,52 +4,56 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 بدء تهيئة قاعدة البيانات بالبيانات الجديدة...');
+  console.log('🌱 بدء تهيئة قاعدة البيانات (SQLite)...');
 
-  // 1. تنظيف البيانات
-  await prisma.sentimentTrend.deleteMany({});
-  await prisma.service.deleteMany({});
-  await prisma.voter.deleteMany({});
-  await prisma.electionKey.deleteMany({});
-  await prisma.subTribe.deleteMany({});
-  await prisma.tribe.deleteMany({});
-  await prisma.commissionData.deleteMany({});
-  await prisma.competitor.deleteMany({});
-  await prisma.user.deleteMany({});
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const userPassword = process.env.USER_PASSWORD;
 
-  // 2. إنشاء المستخدمين
-  console.log('👤 إنشاء مستخدمي النظام الأساسيين للتجريب...');
-  const adminPassword = await bcrypt.hash('admin2024', 10);
-  const userPassword = await bcrypt.hash('election2024', 10);
+  if (!adminPassword || adminPassword.length < 8) {
+    console.error('❌ ADMIN_PASSWORD must be set and at least 8 characters long');
+    process.exit(1);
+  }
 
-  // مدير النظام
-  await prisma.user.create({
-    data: {
+  if (!userPassword || userPassword.length < 8) {
+    console.error('❌ USER_PASSWORD must be set and at least 8 characters long');
+    process.exit(1);
+  }
+
+  // Use upsert - non-destructive
+  await prisma.user.upsert({
+    where: { username: 'admin' },
+    update: {},
+    create: {
       username: 'admin',
-      password: adminPassword,
+      password: await bcrypt.hash(adminPassword, 12),
       role: 'ADMIN',
+      mustChangePwd: true,
     },
   });
 
-  // مراقب
-  await prisma.user.create({
-    data: {
+  await prisma.user.upsert({
+    where: { username: 'observer' },
+    update: {},
+    create: {
       username: 'observer',
-      password: userPassword,
+      password: await bcrypt.hash(userPassword, 12),
       role: 'OBSERVER',
+      mustChangePwd: true,
     },
   });
 
-  // مندوب / مفتاح انتخابي
-  await prisma.user.create({
-    data: {
+  await prisma.user.upsert({
+    where: { username: 'key_user' },
+    update: {},
+    create: {
       username: 'key_user',
-      password: userPassword,
+      password: await bcrypt.hash(userPassword, 12),
       role: 'KEY_USER',
+      mustChangePwd: true,
     },
   });
 
-  console.log('✅ تم تهيئة قاعدة البيانات الخالية من البيانات الوهمية بنجاح!');
+  console.log('✅ تم تهيئة قاعدة البيانات بنجاح!');
 }
 
 main()

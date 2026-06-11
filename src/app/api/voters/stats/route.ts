@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requirePermission, handleApiError } from '@/lib/security';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authResult = requirePermission(request, 'read');
+    if ('error' in authResult) return authResult.error;
+
     const voters = await db.voter.findMany({
       where: { province: 'ذي قار' },
       include: { tribe: true }
@@ -36,7 +40,7 @@ export async function GET() {
     // Group by tribe
     const tribeGroups: Record<string, { count: number; totalSupport: number }> = {};
     voters.forEach(v => {
-      const t = (v as any).tribe?.name || 'غير محدد';
+      const t = v.tribe?.name || 'غير محدد';
       if (!tribeGroups[t]) {
         tribeGroups[t] = { count: 0, totalSupport: 0 };
       }
@@ -73,7 +77,6 @@ export async function GET() {
       confidenceDistribution,
     });
   } catch (error) {
-    console.error('Error fetching voter stats:', error);
-    return NextResponse.json({ error: 'فشل في جلب إحصائيات الناخبين' }, { status: 500 });
+    return handleApiError(error, 'voter-stats-get');
   }
 }

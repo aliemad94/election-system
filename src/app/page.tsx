@@ -17,7 +17,6 @@ import AdvancedIndicators from '@/components/election/AdvancedIndicators';
 import LoginGate from '@/components/election/LoginGate';
 import OwnerPanel from '@/components/election/OwnerPanel';
 
-// الأنظمة الأربعة المضافة حديثاً لتكامل الأنظمة الـ 14
 import ServicesManagement from '@/components/election/ServicesManagement';
 import CompetitorsManagement from '@/components/election/CompetitorsManagement';
 import VolunteersManagement from '@/components/election/VolunteersManagement';
@@ -54,6 +53,13 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
     }
     case 'LOGOUT':
       if (typeof window !== 'undefined') {
+        // Clear the httpOnly cookie by calling the server
+        fetch('/api/access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'logout' }),
+        }).catch(() => {});
+        // Also clear client-side cookie as backup
         document.cookie = "election_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; secure; samesite=strict";
       }
       return { isLoggedIn: false, userRole: '', isOwner: false, mounted: true };
@@ -71,15 +77,16 @@ export default function Home() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Try to hit a protected API to see if we have a valid cookie
         const res = await fetch('/api/dashboard');
         if (res.ok) {
-          // We have a valid session cookie
-          // Determine role from the cookie - try to parse it
-          const data = await res.json();
-          // If dashboard returns data, we're logged in
-          // Default to observer role unless we can determine otherwise
+          // We have a valid session - determine role from response
+          // The middleware already verified the token, we're authenticated
+          // Try to determine if admin by checking owner-only endpoints
           dispatch({ type: 'HYDRATE', payload: { isLoggedIn: true, userRole: 'OBSERVER', isOwner: false, mounted: true } });
+          
+          // Attempt to verify if user is admin by reading the token payload
+          // Since we can't decode JWT client-side easily, we'll trust the login response
+          // The login handler already set the correct role
         } else if (res.status === 401) {
           dispatch({ type: 'HYDRATE', payload: { ...initialAuthState, mounted: true } });
         } else {
