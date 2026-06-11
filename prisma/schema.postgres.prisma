@@ -7,10 +7,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-generator client_postgres {
-  provider = "prisma-client-js"
-}
-
 enum Gender {
   MALE
   FEMALE
@@ -34,31 +30,56 @@ enum Degree {
 }
 
 model User {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  password      String   // Hashed with bcryptjs
+  role          String   // ADMIN, KEY_USER, OBSERVER
+  mustChangePwd Boolean  @default(false) // Force password change on first login
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  auditLogs AuditLog[]
+}
+
+// سجل التدقيق - Audit Logging
+model AuditLog {
   id        String   @id @default(cuid())
-  username  String   @unique
-  password  String   // Hashed with bcryptjs
-  role      String   // ADMIN, KEY_USER, OBSERVER
+  userId    String?
+  username  String
+  action    String   // LOGIN, LOGOUT, CREATE, UPDATE, DELETE, CHANGE_PASSWORD
+  entity    String?  // Tribe, Voter, ElectionKey, Service, etc.
+  entityId  String?
+  details   Json?    // Additional context
+  ipAddress String?
   createdAt DateTime @default(now())
+  
+  user User? @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entity, entityId])
 }
 
 // هيكلة شجرية هرمية لتفكيك النفوذ العشائري بدقة
 model Tribe {
-  id          String     @id @default(cuid())
-  name        String     @unique // اسم العشيرة الرئيسي الموحد
-  subTribes   SubTribe[]
-  voters      Voter[]
-  electionKeys ElectionKey[]
+  id            String        @id @default(cuid())
+  name          String        @unique // اسم العشيرة الرئيسي الموحد
+  subTribes     SubTribe[]
+  voters        Voter[]
+  electionKeys  ElectionKey[]
 }
 
 model SubTribe {
-  id          String      @id @default(cuid())
-  name        String      // اسم الفخذ أو البيت
-  tribeId     String
-  tribe       Tribe       @relation(fields: [tribeId], references: [id])
-  voters      Voter[]
+  id           String       @id @default(cuid())
+  name         String       // اسم الفخذ أو البيت
+  tribeId      String
+  tribe        Tribe        @relation(fields: [tribeId], references: [id])
+  voters       Voter[]
   electionKeys ElectionKey[]
   
   @@unique([name, tribeId])
+  @@index([tribeId])
 }
 
 model ElectionKey {
@@ -68,9 +89,9 @@ model ElectionKey {
   fatherName      String
   grandfatherName String
   fourthName      String
-  gender          Gender
+  gender          String        // ذكر, أنثى (stored as string for compatibility)
   birthDate       DateTime
-  education       Degree
+  education       String        // stored as string for compatibility
   profession      String
   phone           String        @unique
   socialMedia     Json?
@@ -97,6 +118,12 @@ model ElectionKey {
   services        Service[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  
+  @@index([tribeId])
+  @@index([subTribeId])
+  @@index([province])
+  @@index([district])
+  @@index([influenceLevel])
 }
 
 model Voter {
@@ -105,17 +132,17 @@ model Voter {
   fatherName      String
   grandfatherName String
   fourthName      String
-  gender          Gender
+  gender          String        // ذكر, أنثى (stored as string for compatibility)
   birthDate       DateTime
   phone           String?
-  education       Degree?
+  education       String?       // stored as string for compatibility
   profession      String?
   province        String        @default("ذي قار")
   district        String        @default("الغراف")
   subDistrict     String
   pollingCenter   String        // مركز الاقتراع الكلي
   ballotStation   String        // رقم المحطة الانتخابية الدقيق (Micro-Targeting)
-  status          SupportStatus @default(NEUTRAL)
+  status          String        @default("NEUTRAL") // SUPPORTIVE, NEUTRAL, OPPOSED
   supportDegree   Int           @default(3) // (1-5)
   supportReason   String?
   voterCategory   String?
@@ -143,6 +170,14 @@ model Voter {
   followUpDate    DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  
+  @@index([keyId])
+  @@index([tribeId])
+  @@index([subTribeId])
+  @@index([province])
+  @@index([district])
+  @@index([status])
+  @@index([votedOnDay])
 }
 
 model Service {
@@ -156,6 +191,10 @@ model Service {
   electionKey     ElectionKey? @relation(fields: [keyId], references: [id])
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+  
+  @@index([keyId])
+  @@index([category])
+  @@index([status])
 }
 
 model CommissionData {
@@ -170,23 +209,31 @@ model CommissionData {
   expectedTurnout  Float?
   
   @@unique([pollingCenter, ballotStation])
+  @@index([province])
+  @@index([district])
 }
 
 model Competitor {
-  id            String @id @default(cuid())
-  name          String
-  party         String
-  tribe         String
-  baseDistrict  String
-  estimatedVotes Int   @default(0)
+  id             String @id @default(cuid())
+  name           String
+  party          String
+  tribe          String
+  baseDistrict   String
+  estimatedVotes Int    @default(0)
+  
+  @@index([baseDistrict])
 }
 
 model SentimentTrend {
   id          String   @id @default(cuid())
   source      String   // Facebook, Telegram, Local Survey
   sentiment   String   // POSITIVE, NEGATIVE, NEUTRAL
-  keywords    String[]
+  keywords    String   // stored as JSON string for compatibility
   score       Float
   region      String
   createdAt   DateTime @default(now())
+  
+  @@index([source])
+  @@index([region])
+  @@index([createdAt])
 }

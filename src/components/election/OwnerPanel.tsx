@@ -6,15 +6,16 @@ import { X, Shield, Power, Copy, Eye, EyeOff, LogOut, Check, Loader2, Link as Li
 interface OwnerPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  authToken: string;
   onLogout: () => void;
 }
 
-export default function OwnerPanel({ isOpen, onClose, authToken, onLogout }: OwnerPanelProps) {
+const PASSWORD_MIN_LENGTH = 8;
+
+export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProps) {
   const [accessEnabled, setAccessEnabled] = useState(true);
-  const [currentPassword, setCurrentPassword] = useState('election2024');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -30,25 +31,9 @@ export default function OwnerPanel({ isOpen, onClose, authToken, onLogout }: Own
     }
   };
 
-  const fetchCurrentPassword = async () => {
-    try {
-      const res = await fetch('/api/access', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get-password', ownerToken: authToken }),
-      });
-      // The API doesn't have get-password, so we'll just show the default
-      // Actually let me just show the default or fetch it differently
-    } catch {
-      // default
-    }
-  };
-
-  // Fetch current access status and password
   useEffect(() => {
     if (isOpen) {
       fetchAccessStatus();
-      fetchCurrentPassword();
     }
   }, [isOpen]);
 
@@ -66,7 +51,6 @@ export default function OwnerPanel({ isOpen, onClose, authToken, onLogout }: Own
         body: JSON.stringify({
           action: 'toggle-access',
           enabled: !accessEnabled,
-          ownerToken: authToken,
         }),
       });
       const data = await res.json();
@@ -84,14 +68,25 @@ export default function OwnerPanel({ isOpen, onClose, authToken, onLogout }: Own
   };
 
   const handleChangePassword = async () => {
+    if (!currentPassword.trim()) {
+      showMessage('error', 'يرجى إدخال كلمة المرور الحالية');
+      return;
+    }
     if (!newPassword.trim()) {
       showMessage('error', 'يرجى إدخال كلمة المرور الجديدة');
       return;
     }
-    if (newPassword.length < 4) {
-      showMessage('error', 'كلمة المرور يجب أن تكون 4 أحرف على الأقل');
+    if (newPassword.length < PASSWORD_MIN_LENGTH) {
+      showMessage('error', `كلمة المرور يجب أن تكون ${PASSWORD_MIN_LENGTH} أحرف على الأقل`);
       return;
     }
+    const hasLetter = /[a-zA-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    if (!hasLetter || !hasNumber) {
+      showMessage('error', 'كلمة المرور يجب أن تحتوي على أحرف وأرقام');
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await fetch('/api/access', {
@@ -99,13 +94,14 @@ export default function OwnerPanel({ isOpen, onClose, authToken, onLogout }: Own
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'change-password',
+          currentPassword,
           newPassword,
-          ownerToken: authToken,
         }),
+        credentials: 'include', // Send httpOnly cookie
       });
       const data = await res.json();
       if (data.success) {
-        setCurrentPassword(newPassword);
+        setCurrentPassword('');
         setNewPassword('');
         showMessage('success', 'تم تغيير كلمة المرور بنجاح');
       } else {
@@ -124,7 +120,6 @@ export default function OwnerPanel({ isOpen, onClose, authToken, onLogout }: Own
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback
       const textArea = document.createElement('textarea');
       textArea.value = window.location.href;
       document.body.appendChild(textArea);
@@ -146,7 +141,7 @@ export default function OwnerPanel({ isOpen, onClose, authToken, onLogout }: Own
         onClick={onClose}
       />
 
-      {/* Panel - slides from the left (RTL: from right) */}
+      {/* Panel - slides from the right (RTL) */}
       <div
         className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col overflow-hidden"
         style={{ animation: 'slideInRight 0.3s ease-out' }}
@@ -205,53 +200,48 @@ export default function OwnerPanel({ isOpen, onClose, authToken, onLogout }: Own
             </button>
           </div>
 
-          {/* Current Password Section */}
-          <div className="bg-gray-50 rounded-xl p-5 space-y-3">
-            <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
-              <Key className="w-4 h-4 text-blue-700" />
-              كلمة مرور الوصول الحالية
-            </h3>
-            <div className="relative">
-              <input
-                type={showCurrentPassword ? 'text' : 'password'}
-                value={currentPassword}
-                readOnly
-                className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-lg bg-white text-gray-900 text-sm"
-                dir="ltr"
-              />
-              <button
-                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-                tabIndex={-1}
-              >
-                {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
           {/* Change Password Section */}
           <div className="bg-gray-50 rounded-xl p-5 space-y-3">
-            <h3 className="font-semibold text-gray-900 text-sm">تغيير كلمة مرور الوصول</h3>
-            <div className="relative">
-              <input
-                type={showNewPassword ? 'text' : 'password'}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="أدخل كلمة المرور الجديدة"
-                className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
-                dir="ltr"
-              />
-              <button
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-                tabIndex={-1}
-              >
-                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+            <h3 className="font-semibold text-gray-900 text-sm">تغيير كلمة مرور المالك</h3>
+            <div className="space-y-2">
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="كلمة المرور الحالية"
+                  className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  dir="ltr"
+                />
+                <button
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={`كلمة المرور الجديدة (${PASSWORD_MIN_LENGTH} أحرف على الأقل)`}
+                  className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  dir="ltr"
+                />
+                <button
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <button
               onClick={handleChangePassword}
-              disabled={loading || !newPassword}
+              disabled={loading || !newPassword || !currentPassword}
               className="w-full py-2.5 px-4 rounded-lg bg-blue-700 text-white font-semibold text-sm disabled:opacity-50 hover:bg-blue-800 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}

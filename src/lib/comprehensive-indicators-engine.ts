@@ -375,7 +375,7 @@ export async function calculateComprehensiveIndicators() {
   // 5. influence Tab
   // ═══════════════════════════════════════════════════════════════
   const tribalInfluence = keys.length > 0
-    ? Math.round(keys.reduce((sum, k) => sum + (k.tribe?.influence || 3), 0) / keys.length * 20)
+    ? Math.round(keys.reduce((sum, k) => sum + (k.influenceLevel || 3), 0) / keys.length * 20)
     : 50;
 
   const digitalInfluence = votersRaw.length > 0
@@ -557,7 +557,7 @@ export async function calculateComprehensiveIndicators() {
   const observerCoverage = 85;
 
   const voteProtection = keys.length > 0
-    ? Math.round(keys.reduce((sum, k) => sum + k.voteProtection, 0) / keys.length * 20)
+    ? Math.round(keys.reduce((sum, k) => sum + (k.vpsScore || k.loyaltyScore || 3), 0) / keys.length * 20)
     : 0;
 
   const protectedVotes = 80;

@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { verifyToken, validateTokenAgainstDB } from '@/lib/auth';
 
-export function middleware(request: NextRequest) {
+// Cache for DB validation (avoid hitting DB on every request)
+// Refresh every 5 minutes
+interface CacheEntry {
+  valid: boolean;
+  timestamp: number;
+}
+const validationCache = new Map<string, CacheEntry>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protect all /api/ routes EXCEPT /api/access
-  if (pathname.startsWith('/api') && !pathname.startsWith('/api/access')) {
+  // Protect all /api/ routes EXCEPT /api/access and /api/health
+  if (pathname.startsWith('/api') && !pathname.startsWith('/api/access') && !pathname.startsWith('/api/health')) {
     const tokenCookie = request.cookies.get('election_auth');
     if (!tokenCookie) {
       return NextResponse.json(
@@ -16,37 +26,46 @@ export function middleware(request: NextRequest) {
 
     try {
       const token = tokenCookie.value;
-      // Use standard web API atob() instead of Node's Buffer for edge compatibility
-      const decoded = atob(token);
       
-      // Decoded token format is "username:timestamp" or "owner:username:timestamp"
-      const parts = decoded.split(':');
+      // Verify JWT signature and expiration
+      const payload = await verifyToken(token);
+      if (!payload) {
+        return NextResponse.json(
+          { error: 'غير مصرح - جلسة غير صالحة أو منتهية' },
+          { status: 401 }
+        );
+      }
+
+      // Check cache for DB validation
+      const cacheKey = payload.userId;
+      const cached = validationCache.get(cacheKey);
+      const now = Date.now();
       
-      let username = '';
-      if (parts[0] === 'owner') {
-        username = parts[1];
+      let isValid: boolean;
+      if (cached && (now - cached.timestamp) < CACHE_TTL) {
+        isValid = cached.valid;
       } else {
-        username = parts[0];
+        isValid = await validateTokenAgainstDB(payload);
+        validationCache.set(cacheKey, { valid: isValid, timestamp: now });
       }
 
-      const validUsernames = ['admin', 'observer', 'key_user'];
-      if (!username || !validUsernames.includes(username)) {
+      if (!isValid) {
         return NextResponse.json(
-          { error: 'غير مصرح - توكن غير صالح' },
+          { error: 'غير مصرح - الحساب غير صالح' },
           { status: 401 }
         );
       }
 
-      // Check if session timestamp is older than 7 days
-      const timestampStr = parts[parts.length - 1];
-      const timestamp = parseInt(timestampStr, 10);
-      if (isNaN(timestamp) || Date.now() - timestamp > 7 * 24 * 60 * 60 * 1000) {
-        return NextResponse.json(
-          { error: 'غير مصرح - انتهت صلاحية الجلسة' },
-          { status: 401 }
-        );
-      }
-    } catch (e) {
+      // Add user info to request headers for downstream use
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-user-id', payload.userId);
+      requestHeaders.set('x-user-role', payload.role);
+      requestHeaders.set('x-user-name', payload.username);
+
+      return NextResponse.next({
+        request: { headers: requestHeaders },
+      });
+    } catch {
       return NextResponse.json(
         { error: 'غير مصرح - توكن تالف أو غير صالح' },
         { status: 401 }
