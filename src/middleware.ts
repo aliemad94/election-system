@@ -62,9 +62,19 @@ export async function middleware(request: NextRequest) {
       requestHeaders.set('x-user-role', payload.role);
       requestHeaders.set('x-user-name', payload.username);
 
-      return NextResponse.next({
+      const response = NextResponse.next({
         request: { headers: requestHeaders },
       });
+
+      // Add security headers to all API responses
+      response.headers.set('X-Content-Type-Options', 'nosniff');
+      response.headers.set('X-Frame-Options', 'DENY');
+      response.headers.set('X-XSS-Protection', '1; mode=block');
+      response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+
+      return response;
     } catch {
       return NextResponse.json(
         { error: 'غير مصرح - توكن تالف أو غير صالح' },
@@ -73,9 +83,16 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  // For non-API routes, add security headers
+  const response = NextResponse.next();
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  return response;
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: '/:path*',
 };

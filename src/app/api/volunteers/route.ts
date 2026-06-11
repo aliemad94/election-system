@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requirePermission, handleApiError, getClientIp, auditLog } from '@/lib/security';
 
+// In-memory data (will be replaced with DB in future)
 let mockVolunteers = [
   {
     id: 'vol-1',
@@ -35,67 +38,116 @@ let mockVolunteers = [
   }
 ];
 
-export async function GET(request: Request) {
-  return NextResponse.json(mockVolunteers);
+const volunteerCreateSchema = z.object({
+  fullName: z.string().min(1).max(200),
+  phone: z.string().max(20).optional(),
+  email: z.string().max(200).optional(),
+  role: z.enum(['FIELD_AGENT', 'COORDINATOR', 'SUPERVISOR']).optional(),
+  district: z.string().max(100).optional(),
+  area: z.string().max(100).optional(),
+  pollingCenterId: z.string().max(200).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).optional(),
+  efficiencyScore: z.number().min(0).max(100).optional(),
+  notes: z.string().max(1000).optional(),
+});
+
+const volunteerUpdateSchema = z.object({
+  id: z.string().min(1),
+  fullName: z.string().max(200).optional(),
+  phone: z.string().max(20).optional(),
+  email: z.string().max(200).optional(),
+  role: z.enum(['FIELD_AGENT', 'COORDINATOR', 'SUPERVISOR']).optional(),
+  district: z.string().max(100).optional(),
+  area: z.string().max(100).optional(),
+  pollingCenterId: z.string().max(200).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).optional(),
+  efficiencyScore: z.number().min(0).max(100).optional(),
+  notes: z.string().max(1000).optional(),
+});
+
+export async function GET(request: NextRequest) {
+  try {
+    const authResult = requirePermission(request, 'read');
+    if ('error' in authResult) return authResult.error;
+    return NextResponse.json(mockVolunteers);
+  } catch (error) {
+    return handleApiError(error, 'volunteers-get');
+  }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { fullName, phone, email, role, district, area, pollingCenterId, status, efficiencyScore, notes } = body;
+    const authResult = requirePermission(request, 'write');
+    if ('error' in authResult) return authResult.error;
 
+    const rawBody = await request.json();
+    const bodyResult = volunteerCreateSchema.safeParse(rawBody);
+    if (!bodyResult.success) {
+      return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
+    }
+
+    const body = bodyResult.data;
     const newVol = {
       id: `vol-${Date.now()}`,
-      fullName,
-      phone,
-      email: email || '',
-      role: role || 'FIELD_AGENT',
-      district: district || '',
-      area: area || '',
-      pollingCenterId: pollingCenterId || '',
-      status: status || 'ACTIVE',
-      efficiencyScore: efficiencyScore ? parseFloat(efficiencyScore) : 80.0,
+      fullName: body.fullName,
+      phone: body.phone || '',
+      email: body.email || '',
+      role: body.role || 'FIELD_AGENT',
+      district: body.district || '',
+      area: body.area || '',
+      pollingCenterId: body.pollingCenterId || '',
+      status: body.status || 'ACTIVE',
+      efficiencyScore: body.efficiencyScore ?? 80.0,
       totalAssignedTasks: 0,
       totalCompletedTasks: 0,
-      notes: notes || '',
+      notes: body.notes || '',
       createdAt: new Date().toISOString(),
     };
 
     mockVolunteers.push(newVol);
     return NextResponse.json(newVol, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error, 'volunteers-post');
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id, ...data } = body;
+    const authResult = requirePermission(request, 'write');
+    if ('error' in authResult) return authResult.error;
 
+    const rawBody = await request.json();
+    const bodyResult = volunteerUpdateSchema.safeParse(rawBody);
+    if (!bodyResult.success) {
+      return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
+    }
+
+    const { id, ...data } = bodyResult.data;
     const idx = mockVolunteers.findIndex(v => v.id === id);
     if (idx === -1) {
       return NextResponse.json({ error: 'المتطوع غير موجود' }, { status: 404 });
     }
 
-    mockVolunteers[idx] = {
-      ...mockVolunteers[idx],
-      ...data,
-    };
-
+    mockVolunteers[idx] = { ...mockVolunteers[idx], ...data };
     return NextResponse.json(mockVolunteers[idx]);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error, 'volunteers-put');
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
+    const authResult = requirePermission(request, 'delete');
+    if ('error' in authResult) return authResult.error;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'المعرف مطلوب' }, { status: 400 });
+    }
     mockVolunteers = mockVolunteers.filter(v => v.id !== id);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error, 'volunteers-delete');
   }
 }

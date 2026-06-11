@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { z } from 'zod';
+import { requirePermission, auditLog, handleApiError, isValidCuid, getClientIp } from '@/lib/security';
+
+const taskCreateSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  taskType: z.string().max(50).optional(),
+  targetVoterId: z.string().max(50).optional(),
+});
 
 export async function GET(request: NextRequest) {
   try {
+    const authResult = requirePermission(request, 'read');
+    if ('error' in authResult) return authResult.error;
+
     const services = await db.service.findMany({
       include: {
         electionKey: true
@@ -10,7 +22,6 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Map Service to Task structure
     const mappedTasks = services.map(s => {
       let status = 'PENDING';
       if (s.status === 'منجزة') status = 'COMPLETED';
@@ -39,7 +50,6 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Group counts
     const statusCounts = [
       { status: 'COMPLETED', _count: { id: mappedTasks.filter(t => t.status === 'COMPLETED').length } },
       { status: 'IN_PROGRESS', _count: { id: mappedTasks.filter(t => t.status === 'IN_PROGRESS').length } },
@@ -49,17 +59,23 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ tasks: mappedTasks, statusCounts });
   } catch (error) {
-    console.error('Error fetching tasks:', error);
-    return NextResponse.json({ error: 'فشل في جلب المهام' }, { status: 500 });
+    return handleApiError(error, 'tasks-get');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { title, description, taskType, targetVoterId } = body;
+    const authResult = requirePermission(request, 'write');
+    if ('error' in authResult) return authResult.error;
 
-    // Create a service instead
+    const rawBody = await request.json();
+    const bodyResult = taskCreateSchema.safeParse(rawBody);
+    if (!bodyResult.success) {
+      return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
+    }
+
+    const { title, description, taskType, targetVoterId } = bodyResult.data;
+
     const service = await db.service.create({
       data: {
         title,
@@ -67,8 +83,17 @@ export async function POST(request: NextRequest) {
         category: taskType || 'بلدية',
         status: 'قيد المتابعة',
         cost: 0.0,
-        keyId: targetVoterId || null, // Map targetVoterId to keyId
+        keyId: targetVoterId || null,
       },
+    });
+
+    await auditLog({
+      userId: authResult.user.userId,
+      username: authResult.user.username,
+      action: 'CREATE',
+      entity: 'Task',
+      entityId: service.id,
+      ipAddress: getClientIp(request),
     });
 
     return NextResponse.json({
@@ -81,7 +106,6 @@ export async function POST(request: NextRequest) {
       createdAt: service.createdAt,
     }, { status: 201 });
   } catch (error) {
-    console.error('Error creating task:', error);
-    return NextResponse.json({ error: 'فشل في إنشاء المهمة' }, { status: 500 });
+    return handleApiError(error, 'tasks-post');
   }
 }

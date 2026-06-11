@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { enrichElectoralKey } from '@/lib/indicators-helper';
+import { requirePermission, handleApiError } from '@/lib/security';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authResult = requirePermission(request, 'read');
+    if ('error' in authResult) return authResult.error;
+
     const [keysRaw, votersRaw, commissionRaw] = await Promise.all([
       db.electionKey.findMany({
         include: {
@@ -23,7 +27,6 @@ export async function GET() {
     const totalNeutralVotes = keys.reduce((sum, k) => sum + k.neutralVotes, 0);
     const totalWeakVotes = keys.reduce((sum, k) => sum + k.weakVotes, 0);
 
-    // Classification based on weightedScore
     const classificationStats = {
       strong: keys.filter(k => k.weightedScore >= 75).length,
       good: keys.filter(k => k.weightedScore >= 50 && k.weightedScore < 75).length,
@@ -48,7 +51,6 @@ export async function GET() {
         voterCount: k.voters.length,
       }));
 
-    // Group keys by district
     const keysByDistrict: Record<string, { count: number; netVotes: number; totalVotes: number }> = {};
     keys.forEach(k => {
       const d = k.district || 'غير محدد';
@@ -69,30 +71,6 @@ export async function GET() {
       supportedVoters * 0.8 + neutralVoters * 0.5 + weakVoters * 0.3
     );
 
-    // Mock early warnings to keep frontend happy
-    const mockWarnings = [
-      {
-        id: 'w-1',
-        areaType: 'قضاء',
-        areaName: 'الغراف',
-        warningType: 'مشاركة_منخفضة',
-        severity: 'مرتفع',
-        description: 'تراجع الحضور والمشاركة المتوقعة في مناطق الغراف الطرفية.',
-        estimatedVotesAtRisk: 250,
-        recommendedAction: 'تنسيق مع الدوائر البلدية لحل المشاكل الخدمية فوراً.',
-        isActive: true,
-      }
-    ];
-
-    const warningStats = {
-      atRisk: 1,
-      penetrable: 0,
-      safe: 0,
-      swing: 0,
-      lowParticipation: 1,
-      highCompetition: 0,
-    };
-
     return NextResponse.json({
       summary: {
         totalKeys,
@@ -104,13 +82,20 @@ export async function GET() {
         votedVoters,
         totalVoterNetVotes,
         totalRegistered,
-        totalVotesAtRisk: 250,
+        totalVotesAtRisk: 0,
       },
       classificationStats,
       topKeys,
       keysByDistrict,
-      warningStats,
-      warnings: mockWarnings,
+      warningStats: {
+        atRisk: 0,
+        penetrable: 0,
+        safe: 0,
+        swing: 0,
+        lowParticipation: 0,
+        highCompetition: 0,
+      },
+      warnings: [],
       latestIndicators: [],
       voterCategoryStats: {
         supported: supportedVoters,
@@ -121,7 +106,6 @@ export async function GET() {
       ihecData: commissionRaw,
     });
   } catch (error) {
-    console.error('Error in analysis API:', error);
-    return NextResponse.json({ error: 'فشل في جلب التحليل' }, { status: 500 });
+    return handleApiError(error, 'analysis-get');
   }
 }

@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requirePermission, handleApiError } from '@/lib/security';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authResult = requirePermission(request, 'read');
+    if ('error' in authResult) return authResult.error;
+
     const voters = await db.voter.findMany({
       where: { province: 'ذي قار' },
       include: { tribe: true },
@@ -12,7 +16,6 @@ export async function GET() {
     const votedCount = voters.filter(v => v.votedOnDay).length;
     const votedPercentage = totalVoters > 0 ? Math.round((votedCount / totalVoters) * 100) : 0;
     
-    // High support: supportDegree >= 4
     const highConfidenceCount = voters.filter(v => v.supportDegree >= 4).length;
 
     // Group by district
@@ -67,7 +70,7 @@ export async function GET() {
 
     const totalTribes = Object.keys(tribeGroups).length;
 
-    // Confidence / Support degree distribution (1-5)
+    // Confidence distribution
     const confidenceDistMap: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     voters.forEach(v => {
       const score = v.supportDegree || 3;
@@ -80,7 +83,7 @@ export async function GET() {
       percentage: totalVoters > 0 ? Math.round((count / totalVoters) * 100) : 0,
     }));
 
-    // Services (substituting tasks)
+    // Services
     const services = await db.service.findMany({});
     const serviceMap: Record<string, number> = { PENDING: 0, IN_PROGRESS: 0, COMPLETED: 0, CANCELLED: 0 };
     services.forEach(s => {
@@ -88,7 +91,6 @@ export async function GET() {
       if (s.status === 'منجزة') status = 'COMPLETED';
       else if (s.status === 'قيد المتابعة') status = 'IN_PROGRESS';
       else if (s.status === 'مرفوضة') status = 'CANCELLED';
-      
       serviceMap[status] = (serviceMap[status] || 0) + 1;
     });
 
@@ -105,14 +107,13 @@ export async function GET() {
       recentAlerts: [],
       taskStatus: serviceMap,
       smsStats: {
-        totalTarget: 1200,
-        totalSent: 1200,
-        totalDelivered: 1150,
-        totalFailed: 50,
+        totalTarget: 0,
+        totalSent: 0,
+        totalDelivered: 0,
+        totalFailed: 0,
       },
     });
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    return NextResponse.json({ error: 'فشل في جلب بيانات لوحة التحكم' }, { status: 500 });
+    return handleApiError(error, 'dashboard-get');
   }
 }

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requirePermission, handleApiError } from '@/lib/security';
 
 let mockWarnings = [
   {
@@ -21,19 +23,44 @@ let mockWarnings = [
     severity: 'حرج',
     description: 'تحرك كثيف لماكينة ائتلاف دولة القانون المنافسة في قاطع آل سهلان.',
     estimatedVotesAtRisk: 180,
-    recommendedAction: 'زيادة عدد اللقاءات الميدانية للمفاتيح (سعدون الركابي) وتوزيع منشورات الدعم المركزة.',
+    recommendedAction: 'زيادة عدد اللقاءات الميدانية للمفاتيح وتوزيع منشورات الدعم المركزة.',
     isActive: true,
     createdAt: new Date().toISOString(),
   }
 ];
 
+const warningCreateSchema = z.object({
+  areaType: z.string().max(50).optional(),
+  areaName: z.string().max(100).optional(),
+  warningType: z.string().max(100).optional(),
+  severity: z.enum(['منخفض', 'متوسط', 'مرتفع', 'حرج']).optional(),
+  description: z.string().max(1000).optional(),
+  estimatedVotesAtRisk: z.number().int().min(0).optional(),
+  recommendedAction: z.string().max(500).optional(),
+});
+
 export async function GET(request: NextRequest) {
-  return NextResponse.json(mockWarnings);
+  try {
+    const authResult = requirePermission(request, 'read');
+    if ('error' in authResult) return authResult.error;
+    return NextResponse.json(mockWarnings);
+  } catch (error) {
+    return handleApiError(error, 'early-warnings-get');
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const authResult = requirePermission(request, 'write');
+    if ('error' in authResult) return authResult.error;
+
+    const rawBody = await request.json();
+    const bodyResult = warningCreateSchema.safeParse(rawBody);
+    if (!bodyResult.success) {
+      return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
+    }
+
+    const body = bodyResult.data;
     const newWarn = {
       id: `warn-${Date.now()}`,
       areaType: body.areaType || 'قضاء',
@@ -48,7 +75,7 @@ export async function POST(request: NextRequest) {
     };
     mockWarnings.push(newWarn);
     return NextResponse.json(newWarn, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error, 'early-warnings-post');
   }
 }

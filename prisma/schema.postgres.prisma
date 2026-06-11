@@ -7,28 +7,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum Gender {
-  MALE
-  FEMALE
-}
-
-enum SupportStatus {
-  SUPPORTIVE
-  NEUTRAL
-  OPPOSED
-}
-
-enum Degree {
-  ILLITERATE
-  PRIMARY
-  INTERMEDIATE
-  HIGH_SCHOOL
-  DIPLOMA
-  BACHELOR
-  MASTER
-  PHD
-}
-
 model User {
   id            String   @id @default(cuid())
   username      String   @unique
@@ -39,6 +17,8 @@ model User {
   updatedAt     DateTime @updatedAt
   
   auditLogs AuditLog[]
+
+  @@index([role])
 }
 
 // سجل التدقيق - Audit Logging
@@ -54,7 +34,7 @@ model AuditLog {
   createdAt DateTime @default(now())
   
   user User? @relation(fields: [userId], references: [id])
-  
+
   @@index([userId])
   @@index([action])
   @@index([createdAt])
@@ -89,9 +69,9 @@ model ElectionKey {
   fatherName      String
   grandfatherName String
   fourthName      String
-  gender          String        // ذكر, أنثى (stored as string for compatibility)
+  gender          String        // ذكر, أنثى
   birthDate       DateTime
-  education       String        // stored as string for compatibility
+  education       String
   profession      String
   phone           String        @unique
   socialMedia     Json?
@@ -118,7 +98,7 @@ model ElectionKey {
   services        Service[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  
+
   @@index([tribeId])
   @@index([subTribeId])
   @@index([province])
@@ -132,17 +112,23 @@ model Voter {
   fatherName      String
   grandfatherName String
   fourthName      String
-  gender          String        // ذكر, أنثى (stored as string for compatibility)
+  gender          String        // ذكر, أنثى
   birthDate       DateTime
   phone           String?
-  education       String?       // stored as string for compatibility
+  education       String?
   profession      String?
+  maritalStatus   String?
+  familySize      Int?
+  nationalId      String?
+  area            String?
+  socialMedia     Json?
+  firstContactDate DateTime?
   province        String        @default("ذي قار")
   district        String        @default("الغراف")
   subDistrict     String
   pollingCenter   String        // مركز الاقتراع الكلي
   ballotStation   String        // رقم المحطة الانتخابية الدقيق (Micro-Targeting)
-  status          String        @default("NEUTRAL") // SUPPORTIVE, NEUTRAL, OPPOSED
+  status          String        @default("NEUTRAL")
   supportDegree   Int           @default(3) // (1-5)
   supportReason   String?
   voterCategory   String?
@@ -168,9 +154,18 @@ model Voter {
   contactResult   String?
   nextAction      String?
   followUpDate    DateTime?
+  
+  // حقول التدقيق والتحقق المتقدمة
+  latitude        Float?
+  longitude       Float?
+  gpsVerified     Boolean       @default(false)
+  isRegistryVerified Boolean    @default(false)
+  registryVoterId String?
+  services        Service[]
+  
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  
+
   @@index([keyId])
   @@index([tribeId])
   @@index([subTribeId])
@@ -189,6 +184,8 @@ model Service {
   cost            Float        @default(0.0)
   keyId           String?
   electionKey     ElectionKey? @relation(fields: [keyId], references: [id])
+  voterId         String?
+  voter           Voter?       @relation(fields: [voterId], references: [id])
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   

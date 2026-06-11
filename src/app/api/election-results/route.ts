@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePermission, handleApiError } from '@/lib/security';
 
-const mockResults = [
+// Static historical data - read-only reference
+const historicalResults = [
   {
     id: 'res-1',
     electionYear: '2023',
@@ -32,9 +34,23 @@ const mockResults = [
 ];
 
 export async function GET(request: NextRequest) {
-  return NextResponse.json(mockResults);
+  try {
+    const authResult = requirePermission(request, 'read');
+    if ('error' in authResult) return authResult.error;
+    return NextResponse.json(historicalResults);
+  } catch (error) {
+    return handleApiError(error, 'election-results-get');
+  }
 }
 
+// POST disabled for historical data
 export async function POST(request: NextRequest) {
-  return NextResponse.json(mockResults[0], { status: 201 });
+  try {
+    const authResult = requirePermission(request, 'manage_system');
+    if ('error' in authResult) return authResult.error;
+    // Historical election results should not be added via API
+    return NextResponse.json({ error: 'لا يمكن إضافة نتائج انتخابية عبر API' }, { status: 403 });
+  } catch (error) {
+    return handleApiError(error, 'election-results-post');
+  }
 }
