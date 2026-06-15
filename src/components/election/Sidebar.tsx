@@ -19,6 +19,7 @@ import {
   Brain,
   Wrench,
   ShieldAlert,
+  FileText,
   Users2
 } from 'lucide-react';
 
@@ -38,6 +39,7 @@ export type PageId =
   | 'fieldagent'
   | 'comms'
   | 'warroom'
+  | 'commission'
   | 'sms';
 
 interface SidebarProps {
@@ -61,6 +63,7 @@ const navItems: { id: PageId; label: string; description: string; icon: React.El
   { id: 'competitors', label: 'نظام المنافسين والخصوم', description: 'تتبع الخصوم والخطط المضادة', icon: ShieldAlert, section: 'التحليل والذكاء' },
   { id: 'advanced-indicators', label: 'التنبؤ والذكاء الاصطناعي', description: '70 مؤشر تحليلي ذكي للتوقع', icon: Brain, section: 'التحليل والذكاء' },
   { id: 'data-analysis', label: 'تحليل البيانات الشامل', description: 'منظومة تحليل متكاملة', icon: BarChart3, section: 'التحليل والذكاء' },
+  { id: 'commission', label: 'بيانات المفوضية', description: 'السجلات الانتخابية وتوزيع الأقضية', icon: FileText, section: 'التحليل والذكاء' },
   { id: 'early-warnings', label: 'مراقب الإنذار المبكر', description: 'مؤشرات التهديدات والفرص', icon: AlertTriangle, section: 'التحليل والذكاء' },
   
   { id: 'fieldagent', label: 'بوابة المندوب الميداني', description: 'تأكيد الحضور وتحديث الميدان', icon: Network, section: 'الاتصال السياسي' },

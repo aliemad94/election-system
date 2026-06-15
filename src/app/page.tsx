@@ -21,6 +21,7 @@ import ServicesManagement from '@/components/election/ServicesManagement';
 import CompetitorsManagement from '@/components/election/CompetitorsManagement';
 import VolunteersManagement from '@/components/election/VolunteersManagement';
 import PublicOpinion from '@/components/election/PublicOpinion';
+import CommissionManagement from '@/components/election/CommissionManagement';
 
 import type { PageId } from '@/components/election/Sidebar';
 
@@ -186,6 +187,8 @@ export default function Home() {
         return <CommunicationEngine />;
       case 'warroom':
         return <WarRoom />;
+      case 'commission':
+        return <CommissionManagement />;
       case 'sms':
         return <SMSBroadcasting />;
       default:
