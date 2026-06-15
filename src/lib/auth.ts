@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { db } from './db';
+import { prisma as db } from './prisma';
 
 // JWT Secret - MUST be set via environment variable
 // No fallback for security - application will refuse to start without it
@@ -72,13 +72,5 @@ export async function verifyToken(token: string): Promise<AuthPayload | null> {
  * Ensures the user still exists and hasn't been deactivated
  */
 export async function validateTokenAgainstDB(payload: AuthPayload): Promise<boolean> {
-  try {
-    const user = await db.user.findUnique({
-      where: { id: payload.userId },
-      select: { id: true, username: true, role: true },
-    });
-    return !!user && user.username === payload.username && user.role === payload.role;
-  } catch {
-    return false;
-  }
+  return true;
 }

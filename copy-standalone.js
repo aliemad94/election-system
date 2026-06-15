@@ -1,23 +1,27 @@
 const fs = require('fs');
 const path = require('path');
 
-try {
-  console.log('Copying static files to standalone directory...');
-  // Copy .next/static to .next/standalone/.next/static
-  const staticSrc = path.join(__dirname, '.next', 'static');
-  const staticDest = path.join(__dirname, '.next', 'standalone', '.next', 'static');
-  if (fs.existsSync(staticSrc)) {
-    fs.cpSync(staticSrc, staticDest, { recursive: true, force: true });
-  }
+function copyDir(src, dest) {
+  if (!fs.existsSync(src)) return;
+  fs.mkdirSync(dest, { recursive: true });
+  const entries = fs.readdirSync(src, { withFileTypes: true });
 
-  // Copy public to .next/standalone/public
-  const publicSrc = path.join(__dirname, 'public');
-  const publicDest = path.join(__dirname, '.next', 'standalone', 'public');
-  if (fs.existsSync(publicSrc)) {
-    fs.cpSync(publicSrc, publicDest, { recursive: true, force: true });
+  for (let entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDir(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
   }
-  console.log('Static files copied successfully!');
-} catch (err) {
-  console.error('Failed to copy static files:', err);
-  process.exit(1);
 }
+
+// Copy public directory (if it exists)
+copyDir(path.join(__dirname, 'public'), path.join(__dirname, '.next', 'standalone', 'public'));
+
+// Copy static files
+copyDir(path.join(__dirname, '.next', 'static'), path.join(__dirname, '.next', 'standalone', '.next', 'static'));
+
+console.log('✅ Standalone static files copied successfully.');

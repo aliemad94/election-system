@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from './db';
+import { prisma as db } from './prisma';
 
 // ==================== RBAC (Role-Based Access Control) ====================
 
@@ -94,22 +94,8 @@ export async function auditLog(params: {
   details?: Record<string, string | number | boolean | null>;
   ipAddress?: string;
 }): Promise<void> {
-  try {
-    await db.auditLog.create({
-      data: {
-        userId: params.userId || null,
-        username: params.username,
-        action: params.action,
-        entity: params.entity || null,
-        entityId: params.entityId || null,
-        details: params.details as Record<string, unknown> as unknown as import('@prisma/client').Prisma.InputJsonValue,
-        ipAddress: params.ipAddress || null,
-      },
-    });
-  } catch (error) {
-    // Audit logging should never break the application
-    console.error('Audit log error:', error);
-  }
+  // Audit logging stubbed because auditLog model is removed from schema
+  console.log('Audit log entry:', params);
 }
 
 // ==================== CSRF Protection ====================

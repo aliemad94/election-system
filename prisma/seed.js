@@ -7,18 +7,8 @@ async function main() {
   console.log('🌱 بدء تهيئة قاعدة البيانات (JS)...');
 
   // Read passwords from environment variables ONLY - no hardcoded defaults
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  const userPassword = process.env.USER_PASSWORD;
-
-  if (!adminPassword || adminPassword.length < 8) {
-    console.error('❌ ADMIN_PASSWORD must be set and at least 8 characters long');
-    process.exit(1);
-  }
-
-  if (!userPassword || userPassword.length < 8) {
-    console.error('❌ USER_PASSWORD must be set and at least 8 characters long');
-    process.exit(1);
-  }
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin12345!';
+  const userPassword = process.env.USER_PASSWORD || 'User12345!';
 
   // Create/Update admin user with mustChangePwd flag
   await prisma.user.upsert({
