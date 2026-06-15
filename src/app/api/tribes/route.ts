@@ -12,7 +12,7 @@ async function getHandler(request: NextRequest, { user }: { user: AuthenticatedU
 
     const mapped = tribes.map((t) => {
       const voterCount = t.voters.length;
-      const checkedInCount = t.voters.filter((v) => v.checkedIn).length;
+      const checkedInCount = t.voters.filter((v) => v.votedOnDay).length;
       const votedPercentage = voterCount > 0 ? Math.round((checkedInCount / voterCount) * 100) : 0;
 
       return {
