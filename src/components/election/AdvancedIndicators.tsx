@@ -253,8 +253,11 @@ export default function AdvancedIndicators() {
                 <span className="text-[11px] font-bold text-el-on-surface">{ind.abbr}</span>
                 <Info className="w-3 h-3 text-el-on-surface-variant opacity-50" />
               </div>
-              <div className={`text-[28px] font-bold leading-none mb-1 ${getScoreColor(score, isInverted)}`} style={{ fontFamily: 'var(--font-geist-mono)' }}>
-                {score.toFixed(1)}
+              <div
+                className={`${ind.key === 'campaignROI' && score === 0 ? 'text-[14px]' : 'text-[28px]'} font-bold leading-none mb-1 ${getScoreColor(score, isInverted)}`}
+                style={{ fontFamily: ind.key === 'campaignROI' && score === 0 ? undefined : 'var(--font-geist-mono)' }}
+              >
+                {ind.key === 'campaignROI' && score === 0 ? "لا توجد بيانات إنفاق" : score.toFixed(1)}
               </div>
               <div className="text-[10px] text-el-on-surface-variant leading-tight">{ind.name}</div>
               <div className="h-1.5 w-full bg-black/10 rounded-full overflow-hidden mt-2">

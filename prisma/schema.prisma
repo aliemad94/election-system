@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -17,6 +17,8 @@ model User {
   updatedAt     DateTime @updatedAt
   
   auditLogs AuditLog[]
+
+  @@index([role])
 }
 
 // سجل التدقيق - Audit Logging
@@ -32,6 +34,11 @@ model AuditLog {
   createdAt DateTime @default(now())
   
   user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entity, entityId])
 }
 
 // هيكلة شجرية هرمية لتفكيك النفوذ العشائري بدقة
@@ -52,6 +59,7 @@ model SubTribe {
   electionKeys ElectionKey[]
   
   @@unique([name, tribeId])
+  @@index([tribeId])
 }
 
 model ElectionKey {
@@ -61,7 +69,7 @@ model ElectionKey {
   fatherName      String
   grandfatherName String
   fourthName      String
-  gender          String
+  gender          String        // ذكر, أنثى
   birthDate       DateTime
   education       String
   profession      String
@@ -90,6 +98,12 @@ model ElectionKey {
   services        Service[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  @@index([tribeId])
+  @@index([subTribeId])
+  @@index([province])
+  @@index([district])
+  @@index([influenceLevel])
 }
 
 model Voter {
@@ -98,7 +112,7 @@ model Voter {
   fatherName      String
   grandfatherName String
   fourthName      String
-  gender          String
+  gender          String        // ذكر, أنثى
   birthDate       DateTime
   phone           String?
   education       String?
@@ -151,6 +165,14 @@ model Voter {
   
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  @@index([keyId])
+  @@index([tribeId])
+  @@index([subTribeId])
+  @@index([province])
+  @@index([district])
+  @@index([status])
+  @@index([votedOnDay])
 }
 
 model Service {
@@ -166,6 +188,10 @@ model Service {
   voter           Voter?       @relation(fields: [voterId], references: [id])
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+  
+  @@index([keyId])
+  @@index([category])
+  @@index([status])
 }
 
 model CommissionData {
@@ -180,6 +206,8 @@ model CommissionData {
   expectedTurnout  Float?
   
   @@unique([pollingCenter, ballotStation])
+  @@index([province])
+  @@index([district])
 }
 
 model Competitor {
@@ -189,14 +217,20 @@ model Competitor {
   tribe          String
   baseDistrict   String
   estimatedVotes Int    @default(0)
+  
+  @@index([baseDistrict])
 }
 
 model SentimentTrend {
   id          String   @id @default(cuid())
   source      String   // Facebook, Telegram, Local Survey
   sentiment   String   // POSITIVE, NEGATIVE, NEUTRAL
-  keywords    String
+  keywords    String   // stored as JSON string for compatibility
   score       Float
   region      String
   createdAt   DateTime @default(now())
+  
+  @@index([source])
+  @@index([region])
+  @@index([createdAt])
 }
