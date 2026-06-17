@@ -60,7 +60,7 @@ async function putHandler(
       ((updated.mobilizationCap || 3) - 1) * 15 +
       30; // offset placeholder
 
-    const score = Math.round(rawScore / 2);
+    const score = Math.min(100, Math.round(rawScore / 2.5));
     let classf = "مقبول";
     if (score < 20) classf = "ضعيف";
     else if (score <= 50) classf = "مقبول";
