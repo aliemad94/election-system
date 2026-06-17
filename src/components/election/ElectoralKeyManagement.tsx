@@ -307,43 +307,53 @@ export default function ElectoralKeyManagement() {
   return (
     <div className="flex flex-col gap-4 max-w-[1440px] mx-auto w-full">
       {/* رأس الصفحة */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-6">
         <div>
-          <h1 className="text-[24px] leading-[32px] font-bold text-el-primary flex items-center gap-2">
-            <Key className="w-6 h-6" /> المفاتيح الانتخابية
+          <h1 className="text-[26px] leading-[36px] font-bold text-el-primary flex items-center gap-2.5">
+            <Key className="w-6 h-6 text-el-primary" /> المفاتيح الانتخابية
           </h1>
-          <p className="text-[12px] leading-[16px] text-el-on-surface-variant mt-1">
+          <p className="text-[12.5px] leading-[18px] text-el-on-surface-variant mt-1.5">
             إدارة وتقييم المفاتيح الانتخابية - نظام التقييم الموزون والتصنيف حسب القوة
           </p>
         </div>
         <button
           onClick={() => setShowAddDialog(true)}
-          className="bg-el-primary text-el-on-primary px-4 py-2 rounded flex items-center gap-2 hover:opacity-90 transition-all shadow-sm"
+          className="bg-el-primary text-el-on-primary px-5 py-2.5 rounded-full flex items-center gap-2.5 hover:shadow-lg hover:shadow-el-primary/20 active:scale-[0.98] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group"
         >
-          <Plus className="w-[18px] h-[18px]" />
-          <span className="text-[14px] leading-[20px] font-medium">إضافة مفتاح جديد</span>
+          <span className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-500 group-hover:rotate-90">
+            <Plus className="w-[16px] h-[16px]" />
+          </span>
+          <span className="text-[14px] leading-[20px] font-semibold">إضافة مفتاح جديد</span>
         </button>
       </div>
 
-      {/* بطاقات الإحصائيات */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-sm p-3">
-          <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider">إجمالي المفاتيح</div>
-          <div className="text-[28px] font-bold text-el-primary" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.total}</div>
+      {/* بطاقات الإحصائيات - Double-Bezel Architecture */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 py-2">
+        <div className="bg-el-outline-variant/10 border border-el-outline-variant/30 p-1 rounded-[1.25rem] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5">
+          <div className="bg-el-surface-container-lowest rounded-[calc(1.25rem-0.25rem)] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">إجمالي المفاتيح</div>
+            <div className="text-[32px] font-bold text-el-primary mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.total}</div>
+          </div>
         </div>
-        <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-sm p-3">
-          <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider">الأصوات الصافية</div>
-          <div className="text-[28px] font-bold text-el-secondary" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.totalNetVotes.toLocaleString()}</div>
-          <div className="text-[10px] text-el-on-surface-variant">(مؤيد 80% + محايد 50% + ضعيف 30%)</div>
+        <div className="bg-el-outline-variant/10 border border-el-outline-variant/30 p-1 rounded-[1.25rem] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5">
+          <div className="bg-el-surface-container-lowest rounded-[calc(1.25rem-0.25rem)] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">الأصوات الصافية</div>
+            <div className="text-[32px] font-bold text-el-secondary mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.totalNetVotes.toLocaleString()}</div>
+            <div className="text-[10px] text-el-on-surface-variant mt-1">(مؤيد 80% + محايد 50% + ضعيف 30%)</div>
+          </div>
         </div>
-        <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-sm p-3">
-          <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider">متوسط التقييم</div>
-          <div className="text-[28px] font-bold text-el-on-surface" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.avgScore}<span className="text-[14px] text-el-on-surface-variant">/100</span></div>
+        <div className="bg-el-outline-variant/10 border border-el-outline-variant/30 p-1 rounded-[1.25rem] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5">
+          <div className="bg-el-surface-container-lowest rounded-[calc(1.25rem-0.25rem)] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">متوسط التقييم</div>
+            <div className="text-[32px] font-bold text-el-on-surface mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.avgScore}<span className="text-[16px] text-el-on-surface-variant">/100</span></div>
+          </div>
         </div>
-        <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-sm p-3">
-          <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider">مفاتيح قوية</div>
-          <div className="text-[28px] font-bold text-green-600" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.strongCount}</div>
-          <div className="text-[10px] text-el-on-surface-variant">من إجمالي {stats.total}</div>
+        <div className="bg-el-outline-variant/10 border border-el-outline-variant/30 p-1 rounded-[1.25rem] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5">
+          <div className="bg-el-surface-container-lowest rounded-[calc(1.25rem-0.25rem)] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">مفاتيح قوية</div>
+            <div className="text-[32px] font-bold text-green-600 mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.strongCount}</div>
+            <div className="text-[10px] text-el-on-surface-variant mt-1">من إجمالي {stats.total}</div>
+          </div>
         </div>
       </section>
 
