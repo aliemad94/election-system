@@ -128,7 +128,10 @@ export async function calculateComprehensiveIndicators() {
 
   const totalCommissionRegistered = commissionData.reduce((sum, c) => sum + (c.registeredVoters || 0), 0) || 50000;
   const expectedTurnout = commissionData.length > 0
-    ? Math.round(commissionData.reduce((sum, c) => sum + (c.historicalTurnout || 0.5), 0) / commissionData.length * 100)
+    ? Math.round(commissionData.reduce((sum, c) => {
+        const val = c.historicalTurnout || 50;
+        return sum + (val > 1 ? val : val * 100);
+      }, 0) / commissionData.length)
     : 50;
 
   const avgKRI = gov.kriScore;

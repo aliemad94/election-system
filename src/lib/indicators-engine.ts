@@ -205,6 +205,7 @@ export async function calculateAllCompositeIndicators() {
     return {
       id: `dist-${dName}`,
       name: dName,
+      district: dName,
       ...metrics,
       calculatedAt: new Date().toISOString(),
     };

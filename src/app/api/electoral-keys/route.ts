@@ -57,7 +57,7 @@ async function getHandler(request: NextRequest, { user }: { user: AuthenticatedU
         2 * 5 + 
         2 * 5;
 
-      const score = Math.round(rawScore / 2);
+      const score = Math.min(100, Math.round(rawScore / 3.4));
       let classf = "مقبول";
       if (score < 20) classf = "ضعيف";
       else if (score <= 50) classf = "مقبول";
