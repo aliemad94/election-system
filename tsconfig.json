@@ -38,6 +38,8 @@
   ],
   "exclude": [
     "node_modules",
-    "upgrade-temp"
+    "upgrade-temp",
+    "prisma",
+    "scenarios"
   ]
 }
