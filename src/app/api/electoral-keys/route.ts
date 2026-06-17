@@ -145,15 +145,29 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
       socialMedia,
     } = body;
 
-    if (!code || !firstName || !phone) {
-      return NextResponse.json({ error: "الكود، الاسم الأول، ورقم الهاتف حقول مطلوبة" }, { status: 400 });
+    const keys = await prisma.electionKey.findMany({
+      select: { keyCode: true }
+    });
+    let maxSeq = 0;
+    for (const k of keys) {
+      const num = parseInt(k.keyCode, 10);
+      if (!isNaN(num)) {
+        if (num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+    }
+    const generatedCode = String(maxSeq + 1);
+
+    if (!firstName || !phone) {
+      return NextResponse.json({ error: "الاسم الأول ورقم الهاتف حقول مطلوبة" }, { status: 400 });
     }
 
     const birthDate = dateOfBirth ? new Date(dateOfBirth) : new Date("1980-01-01");
 
     const key = await prisma.electionKey.create({
       data: {
-        keyCode: code,
+        keyCode: generatedCode,
         firstName,
         fatherName: fatherName || "",
         grandfatherName: grandfatherName || "",

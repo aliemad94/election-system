@@ -489,9 +489,9 @@ export default function ElectoralKeyManagement() {
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">كود المفتاح *</label>
-                      <input className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono" placeholder="MK-001"
-                        value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} />
+                      <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">كود المفتاح (توليد تلقائي)</label>
+                      <input className="w-full bg-el-surface-container border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none font-mono opacity-70 cursor-not-allowed" disabled={true}
+                        value={editMode ? form.code : 'توليد تلقائي'} onChange={e => setForm({ ...form, code: e.target.value })} />
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">الاسم المجرد *</label>
@@ -753,7 +753,7 @@ export default function ElectoralKeyManagement() {
             <div className="flex gap-2 p-4 border-t border-el-outline-variant sticky bottom-0 bg-el-surface-container-lowest">
               <button
                 onClick={handleSaveKey}
-                disabled={!form.code || !form.firstName || (form.phone ? form.phone.length !== 11 : false)}
+                disabled={((editMode && !form.code) || !form.firstName || (form.phone ? form.phone.length !== 11 : false))}
                 className="flex-1 bg-el-primary text-el-on-primary py-2 rounded text-[14px] font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editMode ? 'حفظ التعديلات' : 'إضافة المفتاح'}
