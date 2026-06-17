@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     });
 
     const totalVoters = voters.length;
-    const checkedInCount = voters.filter((v) => v.checkedIn).length;
+    const checkedInCount = voters.filter((v) => v.votedOnDay).length;
     const votedPercentage = totalVoters > 0 ? Math.round((checkedInCount / totalVoters) * 100) : 0;
 
     const districtStats = [
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     const tribeRanking = Object.values(tribeGroups).map((tg, idx) => {
       const voterCount = tg.voters.length;
-      const checkedInInTribe = tg.voters.filter((v) => v.checkedIn).length;
+      const checkedInInTribe = tg.voters.filter((v) => v.votedOnDay).length;
 
       return {
         id: `tribe-${idx}`,

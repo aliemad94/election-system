@@ -20,14 +20,36 @@ async function searchHandler(req: NextRequest): Promise<NextResponse> {
 
     if (entity === "voters" || entity === "all") {
       const voters = await prisma.voter.findMany({
-        where: { OR: [{ name: { contains: query } }, { nationalId: { contains: query } }] },
+        where: {
+          OR: [
+            { firstName: { contains: query, mode: "insensitive" } },
+            { fatherName: { contains: query, mode: "insensitive" } },
+            { grandfatherName: { contains: query, mode: "insensitive" } },
+            { fourthName: { contains: query, mode: "insensitive" } },
+            { nationalId: { contains: query } }
+          ]
+        },
         take: perEntity,
-        select: { id: true, name: true, nationalId: true, checkedIn: true, tribe: { select: { name: true } } },
+        select: {
+          id: true,
+          firstName: true,
+          fatherName: true,
+          grandfatherName: true,
+          fourthName: true,
+          nationalId: true,
+          votedOnDay: true,
+          tribe: { select: { name: true } }
+        },
       });
-      results.push(...voters.map((v) => ({
-        entity: "voters", id: v.id, label: v.name,
-        sublabel: `${v.nationalId} — ${v.tribe?.name ?? ""}${v.checkedIn ? " ✓" : ""}`,
-      })));
+      results.push(...voters.map((v) => {
+        const fullName = `${v.firstName} ${v.fatherName} ${v.grandfatherName} ${v.fourthName}`.trim().replace(/\s+/g, " ");
+        return {
+          entity: "voters",
+          id: v.id,
+          label: fullName,
+          sublabel: `${v.nationalId || ""} — ${v.tribe?.name ?? ""}${v.votedOnDay ? " ✓" : ""}`,
+        };
+      }));
     }
 
     if (entity === "tribes" || entity === "all") {

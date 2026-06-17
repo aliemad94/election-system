@@ -18,14 +18,14 @@ async function checkinHandler(req: NextRequest): Promise<NextResponse> {
 
   try {
     const result = await prisma.voter.updateMany({
-      where: { id: voterId, checkedIn: false },
-      data: { checkedIn: true, checkedInAt: new Date() },
+      where: { id: voterId, votedOnDay: false },
+      data: { votedOnDay: true },
     });
 
     if (result.count === 0) {
       const voter = await prisma.voter.findUnique({
         where: { id: voterId },
-        select: { id: true, checkedIn: true },
+        select: { id: true, votedOnDay: true },
       });
       if (!voter) {
         return NextResponse.json({ error: "Voter not found" }, { status: 404 });

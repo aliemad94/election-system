@@ -2,7 +2,7 @@ import { prisma } from "./prisma";
 
 export async function computeAllIndicators() {
   const totalVoters = await prisma.voter.count();
-  const checkedIn = await prisma.voter.count({ where: { checkedIn: true } });
+  const checkedIn = await prisma.voter.count({ where: { votedOnDay: true } });
 
   // GSI = Checked-In percentage (checkedIn / totalVoters * 100) or default to 0 if totalVoters is 0
   const gsiVal = totalVoters > 0 ? (checkedIn / totalVoters) * 100 : 0;
@@ -20,7 +20,7 @@ export async function computeAllIndicators() {
         },
       },
       voters: {
-        where: { checkedIn: true },
+        where: { votedOnDay: true },
         select: { id: true },
       },
     },
