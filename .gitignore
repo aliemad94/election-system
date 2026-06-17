@@ -22,6 +22,8 @@ yarn-error.log*
 # Local env files
 .env
 .env.local
+.env.production
+.env.sqlite
 .env.development.local
 .env.test.local
 .env.production.local
