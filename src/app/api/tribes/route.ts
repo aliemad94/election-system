@@ -5,14 +5,25 @@ import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
 async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const tribes = await prisma.tribe.findMany({
-      include: {
-        voters: true,
-      },
+      select: {
+        id: true,
+        name: true,
+        _count: {
+          select: { voters: true }
+        }
+      }
     });
 
+    const tribeVotedCounts = await prisma.voter.groupBy({
+      by: ['tribeId'],
+      where: { votedOnDay: true },
+      _count: { id: true }
+    });
+    const votedMap = new Map(tribeVotedCounts.map(g => [g.tribeId, g._count.id]));
+
     const mapped = tribes.map((t) => {
-      const voterCount = t.voters.length;
-      const checkedInCount = t.voters.filter((v) => v.votedOnDay).length;
+      const voterCount = t._count.voters;
+      const checkedInCount = votedMap.get(t.id) || 0;
       const votedPercentage = voterCount > 0 ? Math.round((checkedInCount / voterCount) * 100) : 0;
 
       return {

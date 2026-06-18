@@ -72,5 +72,15 @@ export async function verifyToken(token: string): Promise<AuthPayload | null> {
  * Ensures the user still exists and hasn't been deactivated
  */
 export async function validateTokenAgainstDB(payload: AuthPayload): Promise<boolean> {
-  return true;
+  try {
+    const user = await db.user.findUnique({
+      where: { id: payload.userId },
+      select: { username: true, role: true }
+    });
+    if (!user) return false;
+    return user.username === payload.username && user.role === payload.role;
+  } catch (error) {
+    console.error('Error validating token against DB:', error);
+    return false;
+  }
 }

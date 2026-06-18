@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
+import { isValidCuid } from "@/lib/security";
+
+function safeJsonParse(val: any) {
+  if (!val) return null;
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return { text: val };
+    }
+  }
+  return val;
+}
 
 // PUT /api/electoral-keys/[id] - Updates electoral key fields
 async function putHandler(
@@ -9,6 +22,9 @@ async function putHandler(
 ) {
   try {
     const keyId = params.id;
+    if (!isValidCuid(keyId)) {
+      return NextResponse.json({ error: "معرف المفتاح الانتخابي غير صالح" }, { status: 400 });
+    }
     const body = await request.json();
 
     const updateData: Record<string, any> = {};
@@ -40,7 +56,7 @@ async function putHandler(
     if (body.tribeId !== undefined) updateData.tribeId = body.tribeId || null;
 
     if (body.socialMedia !== undefined) {
-      updateData.socialMedia = body.socialMedia ? (typeof body.socialMedia === "string" ? JSON.parse(body.socialMedia) : body.socialMedia) : null;
+      updateData.socialMedia = safeJsonParse(body.socialMedia);
     }
 
     const updated = await prisma.electionKey.update({
@@ -120,6 +136,9 @@ async function deleteHandler(
 ) {
   try {
     const keyId = params.id;
+    if (!isValidCuid(keyId)) {
+      return NextResponse.json({ error: "معرف المفتاح الانتخابي غير صالح" }, { status: 400 });
+    }
     await prisma.electionKey.delete({ where: { id: keyId } });
     return NextResponse.json({ success: true, message: "Electoral key deleted successfully" });
   } catch (error) {

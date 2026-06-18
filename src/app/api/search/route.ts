@@ -54,14 +54,18 @@ async function searchHandler(req: NextRequest): Promise<NextResponse> {
 
     if (entity === "tribes" || entity === "all") {
       const tribes = await prisma.tribe.findMany({
-        where: { name: { contains: query } },
+        where: { name: { contains: query, mode: "insensitive" } },
         take: perEntity,
-        include: {
-          voters: true,
+        select: {
+          id: true,
+          name: true,
+          _count: {
+            select: { voters: true }
+          }
         },
       });
       results.push(...tribes.map((t) => ({
-        entity: "tribes", id: t.id, label: t.name, sublabel: `${t.voters.length} ناخب`,
+        entity: "tribes", id: t.id, label: t.name, sublabel: `${t._count.voters} ناخب`,
       })));
     }
 

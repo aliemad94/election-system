@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
 
+function safeJsonParse(val: any) {
+  if (!val) return null;
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return { text: val };
+    }
+  }
+  return val;
+}
+
 // GET /api/voters - Handles pagination, search, and filters matching the full Postgres schema
 async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
@@ -181,7 +193,7 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
         gpsVerified: gpsVerified !== undefined ? Boolean(gpsVerified) : false,
         isRegistryVerified: isRegistryVerified !== undefined ? Boolean(isRegistryVerified) : false,
         registryVoterId: registryVoterId || null,
-        socialMedia: socialMedia ? (typeof socialMedia === "string" ? JSON.parse(socialMedia) : socialMedia) : null,
+        socialMedia: safeJsonParse(socialMedia),
       },
       include: {
         tribe: true,

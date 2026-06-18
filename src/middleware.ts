@@ -18,7 +18,7 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/api') && !pathname.startsWith('/api/access') && !pathname.startsWith('/api/health')) {
     const tokenCookie = request.cookies.get('election_auth');
     if (!tokenCookie) {
-      if (process.env.NODE_ENV === "development" || true) {
+      if (process.env.NODE_ENV === "development" && process.env.BYPASS_AUTH === "true") {
         const requestHeaders = new Headers(request.headers);
         requestHeaders.set('x-user-id', 'dummy-admin-id');
         requestHeaders.set('x-user-role', 'ADMIN');
@@ -113,5 +113,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/:path*',
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)']
 };

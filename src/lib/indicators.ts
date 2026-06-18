@@ -19,16 +19,27 @@ export async function computeAllIndicators() {
           voters: true,
         },
       },
-      voters: {
-        where: { votedOnDay: true },
-        select: { id: true },
-      },
     },
+  });
+
+  const checkedInPerTribe = await prisma.voter.groupBy({
+    by: ["tribeId"],
+    where: { votedOnDay: true },
+    _count: {
+      id: true,
+    },
+  });
+
+  const checkedInDict = new Map<string, number>();
+  checkedInPerTribe.forEach((g) => {
+    if (g.tribeId) {
+      checkedInDict.set(g.tribeId, g._count.id);
+    }
   });
 
   const byTribe = tribes.map((t) => {
     const total = t._count.voters;
-    const checked = t.voters.length;
+    const checked = checkedInDict.get(t.id) || 0;
     return {
       tribeId: t.id,
       name: t.name,
@@ -46,11 +57,10 @@ export async function computeAllIndicators() {
   let dominantShare = 0;
   let maxChecked = 0;
 
-  tribes.forEach((t) => {
-    const checked = t.voters.length;
-    if (checked > maxChecked) {
-      maxChecked = checked;
-      dominantTribe = t.name;
+  byTribe.forEach((bt) => {
+    if (bt.checkedIn > maxChecked) {
+      maxChecked = bt.checkedIn;
+      dominantTribe = bt.name;
     }
   });
 
@@ -62,8 +72,8 @@ export async function computeAllIndicators() {
   let entropyScore = 0;
   if (checkedIn > 0) {
     let sum = 0;
-    tribes.forEach((t) => {
-      const p = t.voters.length / checkedIn;
+    byTribe.forEach((bt) => {
+      const p = bt.checkedIn / checkedIn;
       if (p > 0) {
         sum -= p * Math.log2(p);
       }
