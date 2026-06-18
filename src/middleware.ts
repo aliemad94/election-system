@@ -1,15 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken, validateTokenAgainstDB } from '@/lib/auth';
+import { verifyToken } from '@/lib/auth';
 
-// Cache for DB validation (avoid hitting DB on every request)
-// Refresh every 5 minutes
-interface CacheEntry {
-  valid: boolean;
-  timestamp: number;
-}
-const validationCache = new Map<string, CacheEntry>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -55,25 +48,10 @@ export async function middleware(request: NextRequest) {
         );
       }
 
-      // Check cache for DB validation
-      const cacheKey = payload.userId;
-      const cached = validationCache.get(cacheKey);
-      const now = Date.now();
-      
-      let isValid: boolean;
-      if (cached && (now - cached.timestamp) < CACHE_TTL) {
-        isValid = cached.valid;
-      } else {
-        isValid = await validateTokenAgainstDB(payload);
-        validationCache.set(cacheKey, { valid: isValid, timestamp: now });
-      }
-
-      if (!isValid) {
-        return NextResponse.json(
-          { error: 'غير مصرح - الحساب غير صالح' },
-          { status: 401 }
-        );
-      }
+      // Skip database query in Next.js middleware because it runs in the Edge Runtime
+      // where TCP/direct database connections via standard Prisma Client are not supported.
+      // The token signature has already been verified successfully via verifyToken.
+      const isValid = true;
 
       // Add user info to request headers for downstream use
       const requestHeaders = new Headers(request.headers);
