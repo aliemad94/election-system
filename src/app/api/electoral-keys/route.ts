@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
 
+function safeJsonParse(val: any) {
+  if (!val) return null;
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return { text: val };
+    }
+  }
+  return val;
+}
+
 // GET /api/electoral-keys - Handles querying electoral keys with matching fields
 async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
@@ -145,53 +157,74 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
       socialMedia,
     } = body;
 
-    const keys = await prisma.electionKey.findMany({
-      select: { keyCode: true }
-    });
-    let maxSeq = 0;
-    for (const k of keys) {
-      const num = parseInt(k.keyCode, 10);
-      if (!isNaN(num)) {
-        if (num > maxSeq) {
-          maxSeq = num;
-        }
-      }
-    }
-    const generatedCode = String(maxSeq + 1);
-
     if (!firstName || !phone) {
       return NextResponse.json({ error: "الاسم الأول ورقم الهاتف حقول مطلوبة" }, { status: 400 });
     }
 
     const birthDate = dateOfBirth ? new Date(dateOfBirth) : new Date("1980-01-01");
 
-    const key = await prisma.electionKey.create({
-      data: {
-        keyCode: generatedCode,
-        firstName,
-        fatherName: fatherName || "",
-        grandfatherName: grandfatherName || "",
-        fourthName: fourthName || "",
-        gender: gender || "ذكر",
-        birthDate,
-        phone,
-        education: educationLevel || "",
-        profession: profession || "",
-        province: governorate || "ذي قار",
-        district: district || "الناصرية",
-        subDistrict: area || "",
-        pollingCenter: pollingCenter || "",
-        expectedVotes: parseInt(totalVotes) || 0,
-        loyaltyScore: parseInt(loyaltyLevel) || 3,
-        influenceLevel: parseInt(influenceLevel) || 3,
-        mobilizationCap: parseInt(mobilizationAbility) || 3,
-        tribeId: tribeId || null,
-        socialMedia: socialMedia ? (typeof socialMedia === "string" ? JSON.parse(socialMedia) : socialMedia) : null,
-      },
-      include: {
-        tribe: true,
+    let generatedCode = "";
+    let attempts = 0;
+    const maxAttempts = 5;
+    let key = null;
+
+    while (attempts < maxAttempts) {
+      const maxKey = await prisma.electionKey.aggregate({
+        _max: {
+          keyCode: true
+        }
+      });
+      const maxCodeStr = maxKey._max.keyCode;
+      let maxSeq = 0;
+      if (maxCodeStr) {
+        const num = parseInt(maxCodeStr, 10);
+        if (!isNaN(num)) {
+          maxSeq = num;
+        }
       }
-    });
+      generatedCode = String(maxSeq + 1);
+
+      try {
+        key = await prisma.electionKey.create({
+          data: {
+            keyCode: generatedCode,
+            firstName,
+            fatherName: fatherName || "",
+            grandfatherName: grandfatherName || "",
+            fourthName: fourthName || "",
+            gender: gender || "ذكر",
+            birthDate,
+            phone,
+            education: educationLevel || "",
+            profession: profession || "",
+            province: governorate || "ذي قار",
+            district: district || "الناصرية",
+            subDistrict: area || "",
+            pollingCenter: pollingCenter || "",
+            expectedVotes: parseInt(totalVotes) || 0,
+            loyaltyScore: parseInt(loyaltyLevel) || 3,
+            influenceLevel: parseInt(influenceLevel) || 3,
+            mobilizationCap: parseInt(mobilizationAbility) || 3,
+            tribeId: tribeId || null,
+            socialMedia: safeJsonParse(socialMedia),
+          },
+          include: {
+            tribe: true,
+          }
+        });
+        break; // Success!
+      } catch (error: any) {
+        if (error.code === 'P2002' && (error.meta?.target?.includes('keyCode') || error.message?.includes('keyCode'))) {
+          attempts++;
+          continue; // Retry with a new generated code
+        }
+        throw error; // Propagate other errors
+      }
+    }
+
+    if (!key) {
+      return NextResponse.json({ error: "فشل توليد كود المفتاح الانتخابي بسبب التزامن، يرجى المحاولة مرة أخرى" }, { status: 500 });
+    }
 
     return NextResponse.json({
       id: key.id,

@@ -94,8 +94,21 @@ export async function auditLog(params: {
   details?: Record<string, string | number | boolean | null>;
   ipAddress?: string;
 }): Promise<void> {
-  // Audit logging stubbed because auditLog model is removed from schema
-  console.log('Audit log entry:', params);
+  try {
+    await db.auditLog.create({
+      data: {
+        userId: params.userId || null,
+        username: params.username,
+        action: params.action,
+        entity: params.entity || null,
+        entityId: params.entityId || null,
+        details: params.details ? (params.details as any) : null,
+        ipAddress: params.ipAddress || null,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to save audit log to DB:', error);
+  }
 }
 
 // ==================== CSRF Protection ====================

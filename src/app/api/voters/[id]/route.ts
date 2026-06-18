@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
+import { isValidCuid } from "@/lib/security";
+
+function safeJsonParse(val: any) {
+  if (!val) return null;
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return { text: val };
+    }
+  }
+  return val;
+}
 
 // PUT /api/voters/[id] - Updates a voter with the full set of fields
 async function putHandler(
@@ -9,6 +22,9 @@ async function putHandler(
 ) {
   try {
     const voterId = params.id;
+    if (!isValidCuid(voterId)) {
+      return NextResponse.json({ error: "معرف الناخب غير صالح" }, { status: 400 });
+    }
     const body = await request.json();
 
     // Map field updates (only update fields if they are sent in body)
@@ -86,7 +102,7 @@ async function putHandler(
     if (body.registryVoterId !== undefined) updateData.registryVoterId = body.registryVoterId || null;
 
     if (body.socialMedia !== undefined) {
-      updateData.socialMedia = body.socialMedia ? (typeof body.socialMedia === "string" ? JSON.parse(body.socialMedia) : body.socialMedia) : null;
+      updateData.socialMedia = safeJsonParse(body.socialMedia);
     }
 
     // day of day actual voting
@@ -121,6 +137,9 @@ async function deleteHandler(
 ) {
   try {
     const voterId = params.id;
+    if (!isValidCuid(voterId)) {
+      return NextResponse.json({ error: "معرف الناخب غير صالح" }, { status: 400 });
+    }
     await prisma.voter.delete({ where: { id: voterId } });
     return NextResponse.json({ success: true, message: "voter deleted successfully" });
   } catch (error) {

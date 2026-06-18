@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
+import { isValidCuid } from "@/lib/security";
 
 // PUT /api/commission/[id] - Updates a commission data record
 async function putHandler(
@@ -9,6 +10,9 @@ async function putHandler(
 ) {
   try {
     const commissionId = params.id;
+    if (!isValidCuid(commissionId)) {
+      return NextResponse.json({ error: "معرف سجل المفوضية غير صالح" }, { status: 400 });
+    }
     const body = await request.json();
 
     const updateData: Record<string, any> = {};
@@ -48,6 +52,9 @@ async function deleteHandler(
 ) {
   try {
     const commissionId = params.id;
+    if (!isValidCuid(commissionId)) {
+      return NextResponse.json({ error: "معرف سجل المفوضية غير صالح" }, { status: 400 });
+    }
     await prisma.commissionData.delete({ where: { id: commissionId } });
     return NextResponse.json({ success: true, message: "Commission record deleted successfully" });
   } catch (error) {
