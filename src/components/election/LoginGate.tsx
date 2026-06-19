@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Vote, Lock, Shield, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Vote, Lock, Shield, Eye, EyeOff, Loader2, User } from 'lucide-react';
 
 interface LoginGateProps {
   onLogin: (role: string) => void;
@@ -9,7 +9,8 @@ interface LoginGateProps {
 
 export default function LoginGate({ onLogin }: LoginGateProps) {
   const [accessEnabled, setAccessEnabled] = useState<boolean | null>(null);
-  const [isOwnerMode, setIsOwnerMode] = useState(false);
+  const [loginMode, setLoginMode] = useState<'visitor' | 'key' | 'owner'>('visitor');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -34,20 +35,25 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
     setLoading(true);
 
     try {
+      let bodyData = {};
+      if (loginMode === 'owner') {
+        bodyData = { action: 'owner-login', ownerPassword: password };
+      } else if (loginMode === 'key') {
+        bodyData = { action: 'login', username, password };
+      } else {
+        bodyData = { action: 'login', password };
+      }
+
       const res = await fetch('/api/access', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          isOwnerMode
-            ? { action: 'owner-login', ownerPassword: password }
-            : { action: 'login', password }
-        ),
+        body: JSON.stringify(bodyData),
       });
       const data = await res.json();
 
       if (data.success) {
         // Token is now in httpOnly cookie - no need to store it
-        onLogin(data.role || (isOwnerMode ? 'ADMIN' : 'OBSERVER'));
+        onLogin(data.role || (loginMode === 'owner' ? 'ADMIN' : loginMode === 'key' ? 'KEY_USER' : 'OBSERVER'));
       } else {
         setError(data.message || 'حدث خطأ غير متوقع');
       }
@@ -68,7 +74,7 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
   }
 
   // Access disabled state
-  if (!accessEnabled) {
+  if (!accessEnabled && loginMode === 'visitor') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center px-6 max-w-sm">
@@ -78,6 +84,14 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
           <h1 className="text-2xl font-bold text-foreground mb-3">النظام معطل حالياً</h1>
           <p className="text-muted-foreground text-base">تم إيقاف الوصول من قبل المالك</p>
           <p className="text-muted-foreground/60 text-sm mt-2 font-mono">يرجى المحاولة لاحقاً</p>
+          <div className="mt-6">
+            <button
+              onClick={() => { setLoginMode('owner'); setAccessEnabled(true); }}
+              className="text-xs text-primary hover:underline font-bold"
+            >
+              الولوج كمالك النظام
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -105,33 +119,81 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
 
         {/* Card Body */}
         <div className="px-8 pb-8 pt-6">
-          {/* Mode indicator */}
-          <div className="flex items-center justify-center gap-2 mb-5">
-            {isOwnerMode ? (
-              <Shield className="w-4 h-4 text-primary" />
-            ) : (
-              <Lock className="w-4 h-4 text-secondary" />
-            )}
-            <span className="text-sm font-medium text-foreground">
-              {isOwnerMode ? 'دخول المالك' : 'دخول الزائر'}
-            </span>
+          {/* Mode Switch Tabs */}
+          <div className="flex bg-muted/60 p-1 rounded-xl mb-6">
+            <button
+              type="button"
+              onClick={() => { setLoginMode('visitor'); setError(''); setPassword(''); setUsername(''); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                loginMode === 'visitor'
+                  ? 'bg-card text-foreground shadow'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              دخول الزائر
+            </button>
+            <button
+              type="button"
+              onClick={() => { setLoginMode('key'); setError(''); setPassword(''); setUsername(''); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                loginMode === 'key'
+                  ? 'bg-card text-foreground shadow'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              دخول الكوادر
+            </button>
+            <button
+              type="button"
+              onClick={() => { setLoginMode('owner'); setError(''); setPassword(''); setUsername(''); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                loginMode === 'owner'
+                  ? 'bg-card text-foreground shadow'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              دخول المالك
+            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Username Input - for staff custom login */}
+            {loginMode === 'key' && (
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1.5">
+                  اسم المستخدم
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => { setUsername(e.target.value); setError(''); }}
+                    placeholder="أدخل اسم المستخدم الخاص بك"
+                    className="w-full px-4 py-3 pr-11 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm font-mono text-right"
+                    dir="rtl"
+                    required
+                    autoFocus
+                  />
+                  <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                </div>
+              </div>
+            )}
+
             {/* Password Input */}
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">
-                {isOwnerMode ? 'كلمة مرور المالك' : 'كلمة المرور'}
+                {loginMode === 'owner' ? 'كلمة مرور المالك' : loginMode === 'key' ? 'كلمة المرور للكوادر' : 'كلمة المرور للزائر'}
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                  placeholder={isOwnerMode ? 'أدخل كلمة مرور المالك' : 'أدخل كلمة المرور'}
+                  placeholder={loginMode === 'owner' ? 'أدخل كلمة مرور المالك' : 'أدخل كلمة المرور'}
                   className="w-full px-4 py-3 pr-11 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm font-mono"
                   dir="ltr"
-                  autoFocus
+                  required
+                  autoFocus={loginMode !== 'key'}
                 />
                 <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <button
@@ -158,7 +220,7 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || !password}
+              disabled={loading || !password || (loginMode === 'key' && !username)}
               className="w-full py-3 px-4 bg-primary text-primary-foreground font-bold text-sm rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg hover:shadow-xl cursor-pointer"
             >
               {loading ? (
@@ -167,30 +229,10 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
                   جاري التحقق...
                 </span>
               ) : (
-                isOwnerMode ? 'دخول كمالك' : 'دخول'
+                loginMode === 'owner' ? 'دخول كمالك' : 'دخول'
               )}
             </button>
           </form>
-
-          {/* Mode Switch */}
-          <div className="mt-6 text-center border-t border-border pt-5">
-            {isOwnerMode ? (
-              <button
-                onClick={() => { setIsOwnerMode(false); setError(''); setPassword(''); }}
-                className="text-sm text-primary hover:underline font-semibold transition-colors cursor-pointer"
-              >
-                دخول الزائر
-              </button>
-            ) : (
-              <button
-                onClick={() => { setIsOwnerMode(true); setError(''); setPassword(''); }}
-                className="text-sm text-muted-foreground hover:text-foreground font-semibold transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                دخول المالك
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>

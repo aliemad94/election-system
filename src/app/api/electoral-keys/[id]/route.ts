@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
 import { isValidCuid } from "@/lib/security";
+import { calculateKeyScore } from "@/lib/indicators-helper";
 
 function safeJsonParse(val: any) {
   if (!val) return null;
@@ -49,9 +50,49 @@ async function putHandler(
     if (body.pollingCenter !== undefined) updateData.pollingCenter = body.pollingCenter;
 
     if (body.totalVotes !== undefined) updateData.expectedVotes = parseInt(body.totalVotes) || 0;
-    if (body.loyaltyLevel !== undefined) updateData.loyaltyScore = parseInt(body.loyaltyLevel) || 3;
-    if (body.influenceLevel !== undefined) updateData.influenceLevel = parseInt(body.influenceLevel) || 3;
-    if (body.mobilizationAbility !== undefined) updateData.mobilizationCap = parseInt(body.mobilizationAbility) || 3;
+
+    // Retrieve existing key ratings to overlay updates securely
+    const existing = await prisma.electionKey.findUnique({
+      where: { id: keyId },
+      select: { reliabilityLogs: true, loyaltyScore: true, influenceLevel: true, mobilizationCap: true, riskLevel: true }
+    });
+
+    let currentRatings = {
+      loyaltyLevel: existing?.loyaltyScore ?? 3,
+      influenceLevel: existing?.influenceLevel ?? 3,
+      mobilizationAbility: existing?.mobilizationCap ?? 3,
+      riskLevel: existing?.riskLevel ?? 3,
+      voteProtection: 3,
+      supportReason: 3,
+      needsLevel: 3,
+      politicalNote: 3,
+      organizationalNote: 3,
+      generalNote: 3,
+    };
+
+    if (existing?.reliabilityLogs && typeof existing.reliabilityLogs === "object") {
+      currentRatings = { ...currentRatings, ...(existing.reliabilityLogs as any) };
+    }
+
+    if (body.loyaltyLevel !== undefined) currentRatings.loyaltyLevel = parseInt(body.loyaltyLevel) || 3;
+    if (body.influenceLevel !== undefined) currentRatings.influenceLevel = parseInt(body.influenceLevel) || 3;
+    if (body.mobilizationAbility !== undefined) currentRatings.mobilizationAbility = parseInt(body.mobilizationAbility) || 3;
+    if (body.riskLevel !== undefined) currentRatings.riskLevel = parseInt(body.riskLevel) || 3;
+    if (body.needsLevel !== undefined) {
+      currentRatings.needsLevel = parseInt(body.needsLevel) || 3;
+      if (body.riskLevel === undefined) currentRatings.riskLevel = currentRatings.needsLevel; // map needsLevel to riskLevel index
+    }
+    if (body.voteProtection !== undefined) currentRatings.voteProtection = parseInt(body.voteProtection) || 3;
+    if (body.supportReason !== undefined) currentRatings.supportReason = parseInt(body.supportReason) || 3;
+    if (body.politicalNote !== undefined) currentRatings.politicalNote = parseInt(body.politicalNote) || 3;
+    if (body.organizationalNote !== undefined) currentRatings.organizationalNote = parseInt(body.organizationalNote) || 3;
+    if (body.generalNote !== undefined) currentRatings.generalNote = parseInt(body.generalNote) || 3;
+
+    updateData.loyaltyScore = currentRatings.loyaltyLevel;
+    updateData.influenceLevel = currentRatings.influenceLevel;
+    updateData.mobilizationCap = currentRatings.mobilizationAbility;
+    updateData.riskLevel = currentRatings.riskLevel;
+    updateData.reliabilityLogs = currentRatings;
 
     if (body.tribeId !== undefined) updateData.tribeId = body.tribeId || null;
 
@@ -70,18 +111,7 @@ async function putHandler(
       }
     });
 
-    const rawScore =
-      ((updated.loyaltyScore || 3) - 1) * 20 +
-      ((updated.influenceLevel || 3) - 1) * 20 +
-      ((updated.mobilizationCap || 3) - 1) * 15 +
-      30; // offset placeholder
-
-    const score = Math.min(100, Math.round(rawScore / 2.5));
-    let classf = "مقبول";
-    if (score < 20) classf = "ضعيف";
-    else if (score <= 50) classf = "مقبول";
-    else if (score <= 100) classf = "جيد";
-    else classf = "قوي";
+    const { score, classification, ratings } = calculateKeyScore(updated);
 
     return NextResponse.json({
       id: updated.id,
@@ -104,17 +134,17 @@ async function putHandler(
       neutralVotes: Math.round(updated.expectedVotes * 0.3),
       weakVotes: Math.round(updated.expectedVotes * 0.1),
       netVotes: updated.expectedVotes,
-      loyaltyLevel: updated.loyaltyScore,
-      influenceLevel: updated.influenceLevel,
-      mobilizationAbility: updated.mobilizationCap,
-      voteProtection: 3,
-      supportReason: 3,
-      needsLevel: 3,
-      politicalNote: 3,
-      organizationalNote: 3,
-      generalNote: 3,
+      loyaltyLevel: ratings.loyaltyLevel,
+      influenceLevel: ratings.influenceLevel,
+      mobilizationAbility: ratings.mobilizationAbility,
+      voteProtection: ratings.voteProtection,
+      supportReason: ratings.supportReason,
+      needsLevel: ratings.needsLevel,
+      politicalNote: ratings.politicalNote,
+      organizationalNote: ratings.organizationalNote,
+      generalNote: ratings.generalNote,
       weightedScore: score,
-      classification: classf,
+      classification: classification,
       tribeId: updated.tribeId,
       tribe: updated.tribe,
       voterCount: updated._count?.voters || 0,

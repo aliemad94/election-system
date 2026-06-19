@@ -148,12 +148,12 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
     } = body;
 
     // Check required fields
-    if (!firstName || !gender || (!keyId && !electoralKeyId)) {
-      return NextResponse.json({ error: "الاسم الأول والجنس والمفتاح الانتخابي حقول مطلوبة" }, { status: 400 });
+    if (!firstName || !gender) {
+      return NextResponse.json({ error: "الاسم الأول والجنس حقول مطلوبة" }, { status: 400 });
     }
 
     const birthDate = dateOfBirth ? new Date(dateOfBirth) : new Date("1980-01-01");
-    const activeKeyId = keyId || electoralKeyId;
+    const activeKeyId = keyId || electoralKeyId || null;
 
     const voter = await prisma.voter.create({
       data: {

@@ -63,6 +63,7 @@ export function withAuth(
     const allowed = allowedRoles.map(r => {
       const u = r.toUpperCase();
       if (u === 'VIEWER') return 'OBSERVER';
+      if (u === 'OPERATOR') return 'KEY_USER';
       return u;
     });
 

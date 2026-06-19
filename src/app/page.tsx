@@ -78,18 +78,22 @@ export default function Home() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch('/api/dashboard');
+        const res = await fetch('/api/access');
         if (res.ok) {
-          // We have a valid session - determine role from response
-          // The middleware already verified the token, we're authenticated
-          // Try to determine if admin by checking owner-only endpoints
-          dispatch({ type: 'HYDRATE', payload: { isLoggedIn: true, userRole: 'OBSERVER', isOwner: false, mounted: true } });
-          
-          // Attempt to verify if user is admin by reading the token payload
-          // Since we can't decode JWT client-side easily, we'll trust the login response
-          // The login handler already set the correct role
-        } else if (res.status === 401) {
-          dispatch({ type: 'HYDRATE', payload: { ...initialAuthState, mounted: true } });
+          const data = await res.json();
+          if (data.user) {
+            dispatch({
+              type: 'HYDRATE',
+              payload: {
+                isLoggedIn: true,
+                userRole: data.user.role,
+                isOwner: data.user.role === 'ADMIN',
+                mounted: true
+              }
+            });
+          } else {
+            dispatch({ type: 'HYDRATE', payload: { ...initialAuthState, mounted: true } });
+          }
         } else {
           dispatch({ type: 'HYDRATE', payload: { ...initialAuthState, mounted: true } });
         }

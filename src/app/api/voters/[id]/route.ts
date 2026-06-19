@@ -56,7 +56,9 @@ async function putHandler(
     if (body.ballotStation !== undefined) updateData.ballotStation = body.ballotStation;
 
     const activeKeyId = body.keyId || body.electoralKeyId;
-    if (activeKeyId !== undefined) updateData.keyId = activeKeyId;
+    if (activeKeyId !== undefined) {
+      updateData.keyId = activeKeyId || null;
+    }
 
     if (body.tribeId !== undefined) updateData.tribeId = body.tribeId || null;
     if (body.subTribeId !== undefined) updateData.subTribeId = body.subTribeId || null;

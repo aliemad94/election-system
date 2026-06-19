@@ -139,8 +139,8 @@ model Voter {
   predictedClusterId String?    // رقم المجموعة الديمغرافية للتنبؤ باتجاه المترددين
   imputationWeights  Json?      // أوزان احتمالية التصويت البديلة
   
-  keyId           String
-  electionKey     ElectionKey   @relation(fields: [keyId], references: [id])
+  keyId           String?
+  electionKey     ElectionKey?   @relation(fields: [keyId], references: [id])
   
   tribeId         String?
   tribe           Tribe?        @relation(fields: [tribeId], references: [id])

@@ -20,6 +20,54 @@ export interface EnrichedKey {
   subTribeId: string | null;
 }
 
+export function calculateKeyScore(key: any) {
+  let ratings = {
+    loyaltyLevel: key.loyaltyScore ?? key.loyaltyLevel ?? 3,
+    influenceLevel: key.influenceLevel ?? 3,
+    mobilizationAbility: key.mobilizationCap ?? key.mobilizationAbility ?? 3,
+    voteProtection: 3,
+    supportReason: 3,
+    needsLevel: 3,
+    politicalNote: 3,
+    organizationalNote: 3,
+    generalNote: 3,
+    riskLevel: key.riskLevel ?? 3,
+  };
+  
+  if (key.reliabilityLogs) {
+    let parsedLogs = key.reliabilityLogs;
+    if (typeof parsedLogs === "string") {
+      try {
+        parsedLogs = JSON.parse(parsedLogs);
+      } catch (e) {}
+    }
+    if (parsedLogs && typeof parsedLogs === "object") {
+      ratings = { ...ratings, ...parsedLogs };
+    }
+  }
+
+  const rawScore =
+    ((ratings.loyaltyLevel || 3) - 1) * 20 +
+    ((ratings.influenceLevel || 3) - 1) * 20 +
+    ((ratings.mobilizationAbility || 3) - 1) * 15 +
+    ((ratings.voteProtection || 3) - 1) * 15 +
+    ((ratings.supportReason || 3) - 1) * 10 +
+    ((ratings.needsLevel || 3) - 1) * 5 +
+    ((ratings.politicalNote || 3) - 1) * 5 +
+    ((ratings.organizationalNote || 3) - 1) * 5 +
+    ((ratings.generalNote || 3) - 1) * 5;
+
+  const score = Math.min(100, Math.max(0, Math.round(rawScore / 4)));
+  
+  let classification = "مقبول";
+  if (score < 20) classification = "ضعيف";
+  else if (score <= 50) classification = "مقبول";
+  else if (score <= 80) classification = "جيد";
+  else classification = "قوي";
+
+  return { score, classification, ratings };
+}
+
 export function enrichElectoralKey(key: any, allVoters: any[] = [], sentimentTrends: any[] = []): any {
   // Filter voters belonging to this key
   const voters = allVoters.filter(v => v.keyId === key.id);
@@ -53,17 +101,7 @@ export function enrichElectoralKey(key: any, allVoters: any[] = [], sentimentTre
   const netVotes = Math.max(0, supportedVotes - weakVotes);
 
   // 1. Calculate Weighted Score
-  const rawScore =
-    ((key.loyaltyScore || 3) - 1) * 20 +
-    ((key.influenceLevel || 3) - 1) * 20 +
-    ((key.mobilizationCap || 3) - 1) * 15 +
-    ((key.riskLevel || 3) - 1) * 15 +
-    20 + // placeholder default weight
-    10 +
-    10 +
-    10 +
-    10;
-  const weightedScore = Math.min(100, Math.max(0, Math.round(rawScore / 2)));
+  const { score: weightedScore } = calculateKeyScore(key);
 
   // 2. EII (Electoral Influence Index)
   const netVotesRatio = totalVotes > 0 ? (netVotes / totalVotes) * 100 : 0;
