@@ -264,6 +264,23 @@ model Volunteer {
   tasks               Task[]
 }
 
+// إعدادات النظام العامة (تحل محل config.json)
+model SystemConfig {
+  id        String   @id @default("system")
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+// تحديد معدل الطلبات المحدود (Rate Limiting) — يعمل في بيئات متعددة النسخ
+model RateLimit {
+  key           String    @id
+  count         Int       @default(0)
+  lastAttemptAt DateTime  @default(now())
+  blockedUntil  DateTime?
+
+  @@index([lastAttemptAt])
+}
+
 model Task {
   id             String     @id @default(cuid())
   title          String

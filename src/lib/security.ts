@@ -29,7 +29,7 @@ export function getUserFromHeaders(request: NextRequest): {
   const userId = request.headers.get('x-user-id');
   const role = request.headers.get('x-user-role');
   const username = request.headers.get('x-user-name');
-  
+
   if (!userId || !role || !username) return null;
   return { userId, role, username };
 }
@@ -38,7 +38,7 @@ export function getUserFromHeaders(request: NextRequest): {
  * Require specific permission - returns error response if not authorized
  */
 export function requirePermission(
-  request: NextRequest, 
+  request: NextRequest,
   permission: string
 ): { user: { userId: string; role: string; username: string } } | { error: NextResponse } {
   const user = getUserFromHeaders(request);
@@ -59,10 +59,10 @@ export function requirePermission(
 export function sanitizeString(input: unknown): string {
   if (typeof input !== 'string') return '';
   return input
-    .replace(/[<>]/g, '') // Remove potential HTML tags
-    .replace(/['";\\]/g, '') // Remove SQL injection chars
+    .replace(/[<>]/g, '')
+    .replace(/['";\\]/g, '')
     .trim()
-    .slice(0, 1000); // Limit length
+    .slice(0, 1000);
 }
 
 /**
@@ -123,10 +123,10 @@ interface CsrfToken {
 const csrfTokens = new Map<string, CsrfToken>();
 
 /**
- * Generate a CSRF token for a session
+ * Generate a cryptographically secure CSRF token for a session
  */
 export function generateCsrfToken(sessionId: string): string {
-  // Clean up expired tokens
+  // Purge expired tokens
   const now = Date.now();
   for (const [key, value] of csrfTokens.entries()) {
     if (now - value.createdAt > CSRF_TOKEN_EXPIRY) {
@@ -134,77 +134,112 @@ export function generateCsrfToken(sessionId: string): string {
     }
   }
 
-  const token = `csrf_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  // Use Web Crypto API (available in both Node.js 19+ and Edge Runtime)
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  const token = Array.from(array)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
   csrfTokens.set(sessionId, { token, createdAt: now });
   return token;
 }
 
 /**
- * Verify a CSRF token
+ * Verify a CSRF token (constant-time comparison to prevent timing attacks)
  */
 export function verifyCsrfToken(sessionId: string, token: string): boolean {
   const stored = csrfTokens.get(sessionId);
   if (!stored) return false;
-  
+
   const now = Date.now();
   if (now - stored.createdAt > CSRF_TOKEN_EXPIRY) {
     csrfTokens.delete(sessionId);
     return false;
   }
-  
-  return stored.token === token;
+
+  // Constant-time comparison
+  if (stored.token.length !== token.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < stored.token.length; i++) {
+    mismatch |= stored.token.charCodeAt(i) ^ token.charCodeAt(i);
+  }
+  return mismatch === 0;
 }
 
-// ==================== Rate Limiting (Enhanced) ====================
-
-interface RateLimitEntry {
-  count: number;
-  lastAttempt: number;
-  blocked: boolean;
-}
-
-const rateLimitStore = new Map<string, RateLimitEntry>();
+// ==================== Rate Limiting (DB-backed, multi-instance safe) ====================
 
 /**
- * Check rate limit for a given key
+ * Check rate limit using the database — works across multiple server instances
+ * and survives restarts.
  */
-export function checkRateLimit(
-  key: string, 
-  maxAttempts: number = 5, 
+export async function checkRateLimit(
+  key: string,
+  maxAttempts: number = 5,
   windowMs: number = 15 * 60 * 1000
-): { allowed: boolean; remainingAttempts: number; retryAfterMs: number } {
-  const now = Date.now();
-  const entry = rateLimitStore.get(key);
+): Promise<{ allowed: boolean; remainingAttempts: number; retryAfterMs: number }> {
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - windowMs);
 
-  // Clean up old entries periodically
-  if (rateLimitStore.size > 10000) {
-    for (const [k, v] of rateLimitStore.entries()) {
-      if (now - v.lastAttempt > windowMs) {
-        rateLimitStore.delete(k);
-      }
+  try {
+    const entry = await db.rateLimit.findUnique({ where: { key } });
+
+    if (!entry || entry.lastAttemptAt < windowStart) {
+      // First attempt or window expired — reset counter
+      await db.rateLimit.upsert({
+        where: { key },
+        update: { count: 1, lastAttemptAt: now, blockedUntil: null },
+        create: { key, count: 1, lastAttemptAt: now },
+      });
+      return { allowed: true, remainingAttempts: maxAttempts - 1, retryAfterMs: 0 };
     }
-  }
 
-  if (!entry || now - entry.lastAttempt > windowMs) {
-    rateLimitStore.set(key, { count: 1, lastAttempt: now, blocked: false });
-    return { allowed: true, remainingAttempts: maxAttempts - 1, retryAfterMs: 0 };
-  }
+    // Still blocked?
+    if (entry.blockedUntil && entry.blockedUntil > now) {
+      return {
+        allowed: false,
+        remainingAttempts: 0,
+        retryAfterMs: entry.blockedUntil.getTime() - now.getTime(),
+      };
+    }
 
-  if (entry.count >= maxAttempts) {
-    const retryAfterMs = windowMs - (now - entry.lastAttempt);
-    return { allowed: false, remainingAttempts: 0, retryAfterMs };
-  }
+    if (entry.count >= maxAttempts) {
+      const blockedUntil = new Date(entry.lastAttemptAt.getTime() + windowMs);
+      await db.rateLimit.update({ where: { key }, data: { blockedUntil } });
+      return {
+        allowed: false,
+        remainingAttempts: 0,
+        retryAfterMs: blockedUntil.getTime() - now.getTime(),
+      };
+    }
 
-  entry.count += 1;
-  entry.lastAttempt = now;
-  return { allowed: true, remainingAttempts: maxAttempts - entry.count, retryAfterMs: 0 };
+    await db.rateLimit.update({
+      where: { key },
+      data: { count: { increment: 1 }, lastAttemptAt: now },
+    });
+
+    return {
+      allowed: true,
+      remainingAttempts: maxAttempts - (entry.count + 1),
+      retryAfterMs: 0,
+    };
+  } catch (error) {
+    // If DB is temporarily unavailable, fall back to allowing the request
+    // rather than locking everyone out
+    console.error('Rate limit DB check failed, allowing request:', error);
+    return { allowed: true, remainingAttempts: maxAttempts, retryAfterMs: 0 };
+  }
 }
 
 /**
- * Reset rate limit for a given key
+ * Reset rate limit for a given key (call after successful authentication)
  */
-export function resetRateLimit(key: string): void {
-  rateLimitStore.delete(key);
+export async function resetRateLimit(key: string): Promise<void> {
+  try {
+    await db.rateLimit.deleteMany({ where: { key } });
+  } catch {
+    // non-critical
+  }
 }
 
 // ==================== Secure Error Handler ====================
@@ -213,13 +248,11 @@ export function resetRateLimit(key: string): void {
  * Handle errors securely - never expose internal details to clients
  */
 export function handleApiError(error: unknown, context?: string): NextResponse {
-  // Log the full error server-side for debugging
   console.error(`API Error${context ? ` (${context})` : ''}:`, error);
-  
-  // Check for known Prisma errors
+
   if (error && typeof error === 'object' && 'code' in error) {
     const prismaError = error as { code: string; meta?: { target?: string[] } };
-    
+
     switch (prismaError.code) {
       case 'P2002':
         return NextResponse.json(
@@ -240,8 +273,7 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
         break;
     }
   }
-  
-  // Generic error - never expose stack traces or internal messages
+
   return NextResponse.json(
     { error: 'حدث خطأ في النظام. يرجى المحاولة لاحقاً' },
     { status: 500 }
@@ -260,24 +292,23 @@ export interface PasswordValidation {
  */
 export function validatePassword(password: string): PasswordValidation {
   const errors: string[] = [];
-  
+
   if (password.length < 8) {
     errors.push('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
   }
-  
+
   if (password.length > 128) {
     errors.push('كلمة المرور يجب ألا تتجاوز 128 حرف');
   }
-  
+
   if (!/[a-zA-Z]/.test(password)) {
     errors.push('كلمة المرور يجب أن تحتوي على أحرف إنجليزية');
   }
-  
+
   if (!/[0-9]/.test(password)) {
     errors.push('كلمة المرور يجب أن تحتوي على أرقام');
   }
-  
-  // Check for common weak passwords
+
   const weakPasswords = [
     'password', '12345678', 'qwerty12', 'abc12345',
     'admin2024', 'election2024', 'admin123', 'password1',
@@ -285,7 +316,7 @@ export function validatePassword(password: string): PasswordValidation {
   if (weakPasswords.some(wp => password.toLowerCase().includes(wp))) {
     errors.push('كلمة المرور ضعيفة جداً - يرجى اختيار كلمة مرور أكثر تعقيداً');
   }
-  
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -293,7 +324,7 @@ export function validatePassword(password: string): PasswordValidation {
  * Get client IP address from request
  */
 export function getClientIp(request: NextRequest): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
-    || request.headers.get('x-real-ip') 
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')
     || 'unknown';
 }

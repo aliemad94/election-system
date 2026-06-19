@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from './prisma';
 
 export interface AuthenticatedUser {
   userId: string;
@@ -36,12 +37,32 @@ export function withAuth(
       );
     }
 
-    // Normalizing role comparisons to uppercase
-    const normalizedRole = role.toUpperCase(); // e.g. "ADMIN", "KEY_USER", "OBSERVER"
-    
+    // Verify the user still exists in DB with matching role/username.
+    // This catches: deleted users, role changes, and revoked access — all
+    // scenarios the JWT alone cannot detect.
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true, role: true },
+      });
+
+      if (!dbUser || dbUser.username !== username || dbUser.role !== role.toUpperCase()) {
+        return NextResponse.json(
+          { error: 'غير مصرح - جلسة منتهية أو صلاحيات تغيرت، يرجى تسجيل الدخول مجدداً' },
+          { status: 401 }
+        );
+      }
+    } catch {
+      // If DB is temporarily unreachable, fall through — the JWT was already
+      // verified cryptographically by middleware. Log the miss for visibility.
+      console.warn('[auth-guard] DB user validation skipped (DB unreachable)');
+    }
+
+    const normalizedRole = role.toUpperCase();
+
     const allowed = allowedRoles.map(r => {
       const u = r.toUpperCase();
-      if (u === 'VIEWER') return 'OBSERVER'; // map viewer to observer
+      if (u === 'VIEWER') return 'OBSERVER';
       return u;
     });
 
@@ -55,10 +76,9 @@ export function withAuth(
     const user: AuthenticatedUser = {
       userId,
       role: normalizedRole,
-      username
+      username,
     };
 
-    // Await params if it is a promise (Next.js 15+ compatible)
     let resolvedParams = {};
     if (context && context.params) {
       resolvedParams = context.params instanceof Promise ? await context.params : context.params;
