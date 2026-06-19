@@ -189,7 +189,6 @@ export default function DataAnalysis() {
       </div>
 
       <div className="text-[12px] text-el-on-surface-variant bg-el-surface-container p-3 rounded-lg border border-el-outline-variant flex items-center gap-2">
-        <span className="font-bold text-el-primary">💡 دليل المشتري لتجربة النظام:</span>
         <span>جميع البيانات تم تصفيرها لتجربة إدخال نظيفة 100%. انقر على أيقونة المساعدة <HelpCircle className="w-3.5 h-3.5 inline text-el-primary" /> بجوار أي مؤشر تظهر قيمته كـ (0) لمعرفة نوع البيانات المطلوب إدخالها ميدانياً لتفعيله.</span>
       </div>
 
