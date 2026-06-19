@@ -8369,8 +8369,8 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
   // Loading state while checking access
   if (accessEnabled === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%)' }}>
-        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
       </div>
     );
   }
@@ -8378,49 +8378,49 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
   // Access disabled state
   if (!accessEnabled) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%)' }}>
-        <div className="text-center px-6">
-          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-white/10 flex items-center justify-center">
-            <Lock className="w-14 h-14 text-white/70" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center px-6 max-w-sm">
+          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-card border border-border flex items-center justify-center shadow-lg">
+            <Lock className="w-14 h-14 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-3">النظام معطل حالياً</h1>
-          <p className="text-white/60 text-base">تم إيقاف الوصول من قبل المالك</p>
-          <p className="text-white/40 text-sm mt-2">يرجى المحاولة لاحقاً</p>
+          <h1 className="text-2xl font-bold text-foreground mb-3">النظام معطل حالياً</h1>
+          <p className="text-muted-foreground text-base">تم إيقاف الوصول من قبل المالك</p>
+          <p className="text-muted-foreground/60 text-sm mt-2 font-mono">يرجى المحاولة لاحقاً</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%)' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-white/3 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-secondary/5 rounded-full blur-3xl" />
       </div>
 
       {/* Login Card */}
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-        {/* Card Header with gradient */}
-        <div className="px-8 pt-10 pb-6 text-center" style={{ background: 'linear-gradient(180deg, #f5f5ff 0%, #ffffff 100%)' }}>
+      <div className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden z-10">
+        {/* Card Header with subtle background */}
+        <div className="px-8 pt-10 pb-6 text-center bg-muted/20 border-b border-border/40">
           {/* Logo */}
-          <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)' }}>
-            <Vote className="w-10 h-10 text-white" />
+          <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center shadow-lg border border-primary/20 bg-primary/5 text-primary">
+            <Vote className="w-10 h-10" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-1">منصة إدارة الماكينة الانتخابية</h1>
-          <p className="text-sm text-gray-500 font-medium">محافظة ذي قار</p>
+          <h1 className="text-xl font-bold text-foreground mb-1">منصة إدارة الماكينة الانتخابية</h1>
+          <p className="text-sm text-muted-foreground font-medium">محافظة ذي قار</p>
         </div>
 
         {/* Card Body */}
-        <div className="px-8 pb-8">
+        <div className="px-8 pb-8 pt-6">
           {/* Mode indicator */}
           <div className="flex items-center justify-center gap-2 mb-5">
             {isOwnerMode ? (
-              <Shield className="w-4 h-4 text-amber-600" />
+              <Shield className="w-4 h-4 text-primary" />
             ) : (
-              <Lock className="w-4 h-4 text-blue-700" />
+              <Lock className="w-4 h-4 text-secondary" />
             )}
-            <span className="text-sm font-medium text-gray-600">
+            <span className="text-sm font-medium text-foreground">
               {isOwnerMode ? 'دخول المالك' : 'دخول الزائر'}
             </span>
           </div>
@@ -8428,7 +8428,7 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Password Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">
                 {isOwnerMode ? 'كلمة مرور المالك' : 'كلمة المرور'}
               </label>
               <div className="relative">
@@ -8437,15 +8437,15 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(''); }}
                   placeholder={isOwnerMode ? 'أدخل كلمة مرور المالك' : 'أدخل كلمة المرور'}
-                  className="w-full px-4 py-3 pr-11 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-sm"
+                  className="w-full px-4 py-3 pr-11 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm font-mono"
                   dir="ltr"
                   autoFocus
                 />
-                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -8455,7 +8455,7 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-red-600 text-sm flex items-center gap-2">
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-2.5 text-destructive text-sm flex items-center gap-2">
                 <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
@@ -8467,8 +8467,7 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full py-3 px-4 rounded-xl text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg hover:shadow-xl cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)' }}
+              className="w-full py-3 px-4 bg-primary text-primary-foreground font-bold text-sm rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg hover:shadow-xl cursor-pointer"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -8482,18 +8481,18 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
           </form>
 
           {/* Mode Switch */}
-          <div className="mt-6 text-center border-t border-gray-100 pt-5">
+          <div className="mt-6 text-center border-t border-border pt-5">
             {isOwnerMode ? (
               <button
                 onClick={() => { setIsOwnerMode(false); setError(''); setPassword(''); }}
-                className="text-sm text-blue-700 hover:text-blue-800 font-medium transition-colors cursor-pointer"
+                className="text-sm text-primary hover:underline font-semibold transition-colors cursor-pointer"
               >
                 دخول الزائر
               </button>
             ) : (
               <button
                 onClick={() => { setIsOwnerMode(true); setError(''); setPassword(''); }}
-                className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
+                className="text-sm text-muted-foreground hover:text-foreground font-semibold transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
               >
                 <Shield className="w-3.5 h-3.5" />
                 دخول المالك
@@ -8656,18 +8655,18 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
 
       {/* Panel - slides from the right (RTL) */}
       <div
-        className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col overflow-hidden"
+        className="fixed top-0 right-0 h-full w-full max-w-md bg-card border-l border-border z-50 shadow-2xl flex flex-col overflow-hidden"
         style={{ animation: 'slideInRight 0.3s ease-out' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)' }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/20">
           <div className="flex items-center gap-3">
-            <Shield className="w-5 h-5 text-white" />
-            <h2 className="text-lg font-bold text-white">لوحة تحكم المالك</h2>
+            <Shield className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-bold text-foreground">لوحة تحكم المالك</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-white/70 hover:text-white transition-colors p-1 rounded cursor-pointer"
+            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -8677,10 +8676,10 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {/* Message Toast */}
           {message && (
-            <div className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 ${
+            <div className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 border ${
               message.type === 'success'
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-red-50 text-red-600 border border-red-200'
+                ? 'bg-secondary/10 text-secondary border-secondary/20'
+                : 'bg-destructive/10 text-destructive border-destructive/20'
             }`}>
               {message.type === 'success' ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
               {message.text}
@@ -8688,24 +8687,24 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           )}
 
           {/* Access Toggle Section */}
-          <div className="bg-gray-50 rounded-xl p-5 space-y-4">
+          <div className="bg-muted/30 border border-border/50 rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-gray-900 text-sm">حالة الوصول</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <h3 className="font-semibold text-foreground text-sm">حالة الوصول</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {accessEnabled ? 'النظام متاح للزوار' : 'النظام معطل عن الزوار'}
                 </p>
               </div>
-              <div className={`w-3 h-3 rounded-full ${accessEnabled ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+              <div className={`w-3 h-3 rounded-full ${accessEnabled ? 'bg-secondary' : 'bg-destructive'} animate-pulse`} />
             </div>
 
             <button
               onClick={handleToggleAccess}
               disabled={loading}
-              className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 ${
+              className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 border ${
                 accessEnabled
-                  ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
-                  : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
+                  ? 'bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20'
+                  : 'bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20'
               }`}
             >
               <Power className="w-4 h-4" />
@@ -8714,8 +8713,8 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           </div>
 
           {/* Change Password Section */}
-          <div className="bg-gray-50 rounded-xl p-5 space-y-3">
-            <h3 className="font-semibold text-gray-900 text-sm">تغيير كلمة مرور المالك</h3>
+          <div className="bg-muted/30 border border-border/50 rounded-xl p-5 space-y-3">
+            <h3 className="font-semibold text-foreground text-sm">تغيير كلمة مرور المالك</h3>
             <div className="space-y-2">
               <div className="relative">
                 <input
@@ -8723,12 +8722,12 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="كلمة المرور الحالية"
-                  className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="w-full px-4 py-2.5 pr-10 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono"
                   dir="ltr"
                 />
                 <button
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                   tabIndex={-1}
                 >
                   {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -8740,12 +8739,12 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder={`كلمة المرور الجديدة (${PASSWORD_MIN_LENGTH} أحرف على الأقل)`}
-                  className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="w-full px-4 py-2.5 pr-10 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono"
                   dir="ltr"
                 />
                 <button
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                   tabIndex={-1}
                 >
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -8755,7 +8754,7 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
             <button
               onClick={handleChangePassword}
               disabled={loading || !newPassword || !currentPassword}
-              className="w-full py-2.5 px-4 rounded-lg bg-blue-700 text-white font-semibold text-sm disabled:opacity-50 hover:bg-blue-800 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50 hover:opacity-95 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
               تغيير كلمة المرور
@@ -8763,26 +8762,26 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           </div>
 
           {/* Share Link Section */}
-          <div className="bg-gray-50 rounded-xl p-5 space-y-3">
-            <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
-              <LinkIcon className="w-4 h-4 text-blue-700" />
+          <div className="bg-muted/30 border border-border/50 rounded-xl p-5 space-y-3">
+            <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-primary" />
               رابط المشاركة
             </h3>
-            <p className="text-xs text-gray-500">شارك هذا الرابط مع الأشخاص الذين تريد منحهم الوصول بعد إعطائهم كلمة المرور</p>
+            <p className="text-xs text-muted-foreground">شارك هذا الرابط مع الأشخاص الذين تريد منحهم الوصول بعد إعطائهم كلمة المرور</p>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={typeof window !== 'undefined' ? window.location.href : ''}
                 readOnly
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-600 text-xs truncate"
+                className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs truncate font-mono"
                 dir="ltr"
               />
               <button
                 onClick={handleCopyLink}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
                   copied
-                    ? 'bg-green-100 text-green-700 border border-green-200'
-                    : 'bg-blue-700 text-white hover:bg-blue-800'
+                    ? 'bg-secondary/10 text-secondary border border-secondary/20'
+                    : 'bg-primary text-primary-foreground hover:opacity-95'
                 }`}
               >
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -8793,10 +8792,10 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100">
+        <div className="px-6 py-4 border-t border-border bg-muted/10">
           <button
             onClick={onLogout}
-            className="w-full py-3 px-4 rounded-xl bg-red-50 text-red-700 font-semibold text-sm border border-red-200 hover:bg-red-100 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 rounded-xl bg-destructive/10 text-destructive font-semibold text-sm border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
           >
             <LogOut className="w-4 h-4" />
             تسجيل خروج
