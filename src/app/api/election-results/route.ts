@@ -73,7 +73,7 @@ async function getHandler(_req: NextRequest, { user: _user }: { user: Authentica
         take: 10,
       }).then(async rows => {
         if (rows.length === 0) return [];
-        const keyIds = rows.map(r => r.keyId);
+        const keyIds = rows.map(r => r.keyId).filter((id): id is string => id !== null);
         const keys = await prisma.electionKey.findMany({
           where: { id: { in: keyIds } },
           select: {
@@ -86,7 +86,7 @@ async function getHandler(_req: NextRequest, { user: _user }: { user: Authentica
         });
         const keyMap = new Map(keys.map(k => [k.id, k]));
         return rows.map(r => {
-          const key = keyMap.get(r.keyId);
+          const key = r.keyId ? keyMap.get(r.keyId) : undefined;
           return {
             keyId: r.keyId,
             keyName: key ? `${key.firstName} ${key.fatherName}` : 'غير معروف',

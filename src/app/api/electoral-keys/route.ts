@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
+import { calculateKeyScore } from "@/lib/indicators-helper";
 
 function safeJsonParse(val: any) {
   if (!val) return null;
@@ -57,24 +58,7 @@ async function getHandler(request: NextRequest, { user }: { user: AuthenticatedU
     });
 
     const mappedKeys = keys.map((key) => {
-      // Calculate weighted score & classification
-      const rawScore =
-        ((key.loyaltyScore || 3) - 1) * 20 +
-        ((key.influenceLevel || 3) - 1) * 20 +
-        ((key.mobilizationCap || 3) - 1) * 15 +
-        ((key.riskLevel || 3) - 1) * 15 + // Mapping riskLevel or similar fields
-        2 * 10 + // default weight placeholder
-        2 * 5 + 
-        2 * 5 + 
-        2 * 5 + 
-        2 * 5;
-
-      const score = Math.min(100, Math.round(rawScore / 3.4));
-      let classf = "مقبول";
-      if (score < 20) classf = "ضعيف";
-      else if (score <= 50) classf = "مقبول";
-      else if (score <= 100) classf = "جيد";
-      else classf = "قوي";
+      const { score, classification, ratings } = calculateKeyScore(key);
 
       return {
         id: key.id,
@@ -97,17 +81,17 @@ async function getHandler(request: NextRequest, { user }: { user: AuthenticatedU
         neutralVotes: Math.round(key.expectedVotes * 0.3),
         weakVotes: Math.round(key.expectedVotes * 0.1),
         netVotes: key.expectedVotes,
-        loyaltyLevel: key.loyaltyScore,
-        influenceLevel: key.influenceLevel,
-        mobilizationAbility: key.mobilizationCap,
-        voteProtection: 3,
-        supportReason: 3,
-        needsLevel: 3,
-        politicalNote: 3,
-        organizationalNote: 3,
-        generalNote: 3,
+        loyaltyLevel: ratings.loyaltyLevel,
+        influenceLevel: ratings.influenceLevel,
+        mobilizationAbility: ratings.mobilizationAbility,
+        voteProtection: ratings.voteProtection,
+        supportReason: ratings.supportReason,
+        needsLevel: ratings.needsLevel,
+        politicalNote: ratings.politicalNote,
+        organizationalNote: ratings.organizationalNote,
+        generalNote: ratings.generalNote,
         weightedScore: score,
-        classification: classf,
+        classification: classification,
         tribeId: key.tribeId,
         tribe: key.tribe,
         voterCount: key._count?.voters || 0,
@@ -153,6 +137,13 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
       loyaltyLevel,
       influenceLevel,
       mobilizationAbility,
+      riskLevel,
+      voteProtection,
+      supportReason,
+      needsLevel,
+      politicalNote,
+      organizationalNote,
+      generalNote,
       tribeId,
       socialMedia,
     } = body;
@@ -162,6 +153,19 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
     }
 
     const birthDate = dateOfBirth ? new Date(dateOfBirth) : new Date("1980-01-01");
+
+    const relLogs = {
+      loyaltyLevel: parseInt(loyaltyLevel) || 3,
+      influenceLevel: parseInt(influenceLevel) || 3,
+      mobilizationAbility: parseInt(mobilizationAbility) || 3,
+      riskLevel: parseInt(riskLevel) || parseInt(needsLevel) || 3,
+      voteProtection: parseInt(voteProtection) || 3,
+      supportReason: parseInt(supportReason) || 3,
+      needsLevel: parseInt(needsLevel) || 3,
+      politicalNote: parseInt(politicalNote) || 3,
+      organizationalNote: parseInt(organizationalNote) || 3,
+      generalNote: parseInt(generalNote) || 3,
+    };
 
     let generatedCode = "";
     let attempts = 0;
@@ -202,9 +206,11 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
             subDistrict: area || "",
             pollingCenter: pollingCenter || "",
             expectedVotes: parseInt(totalVotes) || 0,
-            loyaltyScore: parseInt(loyaltyLevel) || 3,
-            influenceLevel: parseInt(influenceLevel) || 3,
-            mobilizationCap: parseInt(mobilizationAbility) || 3,
+            loyaltyScore: relLogs.loyaltyLevel,
+            influenceLevel: relLogs.influenceLevel,
+            mobilizationCap: relLogs.mobilizationAbility,
+            riskLevel: relLogs.riskLevel,
+            reliabilityLogs: relLogs,
             tribeId: tribeId || null,
             socialMedia: safeJsonParse(socialMedia),
           },
@@ -225,6 +231,8 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
     if (!key) {
       return NextResponse.json({ error: "فشل توليد كود المفتاح الانتخابي بسبب التزامن، يرجى المحاولة مرة أخرى" }, { status: 500 });
     }
+
+    const { score, classification, ratings } = calculateKeyScore(key);
 
     return NextResponse.json({
       id: key.id,
@@ -247,17 +255,17 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
       neutralVotes: Math.round(key.expectedVotes * 0.3),
       weakVotes: Math.round(key.expectedVotes * 0.1),
       netVotes: key.expectedVotes,
-      loyaltyLevel: key.loyaltyScore,
-      influenceLevel: key.influenceLevel,
-      mobilizationAbility: key.mobilizationCap,
-      voteProtection: 3,
-      supportReason: 3,
-      needsLevel: 3,
-      politicalNote: 3,
-      organizationalNote: 3,
-      generalNote: 3,
-      weightedScore: 60,
-      classification: "جيد",
+      loyaltyLevel: ratings.loyaltyLevel,
+      influenceLevel: ratings.influenceLevel,
+      mobilizationAbility: ratings.mobilizationAbility,
+      voteProtection: ratings.voteProtection,
+      supportReason: ratings.supportReason,
+      needsLevel: ratings.needsLevel,
+      politicalNote: ratings.politicalNote,
+      organizationalNote: ratings.organizationalNote,
+      generalNote: ratings.generalNote,
+      weightedScore: score,
+      classification: classification,
       tribeId: key.tribeId,
       tribe: key.tribe,
       voterCount: 0,

@@ -5,17 +5,32 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { getSystemConfig, setSystemConfig } from "@/lib/config-store";
 
-// GET /api/access - Checks whether visitor access is enabled
-export async function GET() {
+// GET /api/access - Checks whether visitor access is enabled and returns current user if authenticated
+export async function GET(req: NextRequest) {
   const config = await getSystemConfig();
-  return NextResponse.json({ enabled: config.enabled });
+  const tokenCookie = req.cookies.get("election_auth");
+  let user = null;
+
+  if (tokenCookie) {
+    const payload = await verifyToken(tokenCookie.value);
+    if (payload) {
+      user = {
+        userId: payload.userId,
+        username: payload.username,
+        role: payload.role,
+        isOwner: payload.isOwner,
+      };
+    }
+  }
+
+  return NextResponse.json({ enabled: config.enabled, user });
 }
 
 // POST /api/access - Handles login, logout, password change, and visitor access toggles
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.json();
-    const { action, password, ownerPassword, currentPassword, newPassword, enabled } = rawBody;
+    const { action, password, ownerPassword, currentPassword, newPassword, enabled, username } = rawBody;
     const clientIp = getClientIp(req);
 
     // Apply Rate Limiting for Login/Sensitive actions to prevent brute forcing
@@ -35,10 +50,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // --- Action: Visitor/Observer Login ---
+    // --- Action: Visitor/Observer/KeyUser Login ---
     if (action === "login") {
+      const usernameInput = username || "observer"; // default to observer if username not provided
       const systemConfig = await getSystemConfig();
-      if (!systemConfig.enabled) {
+      
+      // If observer, enforce visitor access gate toggle
+      if (usernameInput === "observer" && !systemConfig.enabled) {
         return NextResponse.json(
           { success: false, message: "الدخول معطل حالياً من قبل المالك" },
           { status: 403 }
@@ -46,7 +64,7 @@ export async function POST(req: NextRequest) {
       }
 
       const user = await prisma.user.findUnique({
-        where: { username: "observer" },
+        where: { username: usernameInput },
       });
 
       if (!user || !password) {
@@ -59,9 +77,9 @@ export async function POST(req: NextRequest) {
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         await auditLog({
-          username: "observer",
+          username: usernameInput,
           action: "LOGIN",
-          details: { success: false, error: "كلمة مرور خاطئة للزائر" },
+          details: { success: false, error: "كلمة مرور خاطئة" },
           ipAddress: clientIp,
         });
         return NextResponse.json(
@@ -77,7 +95,7 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         username: user.username,
         role: user.role,
-        isOwner: false,
+        isOwner: user.role === "ADMIN",
       });
 
       await auditLog({
@@ -99,7 +117,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 60 * 60 * 8, // 8 hours (reduced from 7 days)
+        maxAge: 60 * 60 * 8, // 8 hours
       });
 
       return response;
