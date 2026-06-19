@@ -419,6 +419,9 @@ export const config = {
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@source "../**/*.{js,ts,jsx,tsx,mdx}";
+@source "../../src/**/*.{js,ts,jsx,tsx,mdx}";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
