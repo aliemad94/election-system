@@ -45,4 +45,5 @@ yarn-error.log*
 # Large source dump and configuration files
 /project_full_source.md
 /src/lib/config.json
+/election-system.zip
 
