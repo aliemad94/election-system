@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createToken, verifyToken } from "@/lib/auth";
-import { checkRateLimit, auditLog, getClientIp, validatePassword } from "@/lib/security";
+import { checkRateLimit, resetRateLimit, auditLog, getClientIp, validatePassword } from "@/lib/security";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { getSystemConfig, setSystemConfig } from "@/lib/config-store";
 
 // GET /api/access - Checks whether visitor access is enabled
 export async function GET() {
-  const config = getSystemConfig();
+  const config = await getSystemConfig();
   return NextResponse.json({ enabled: config.enabled });
 }
 
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     // Apply Rate Limiting for Login/Sensitive actions to prevent brute forcing
     if (action === "login" || action === "owner-login" || action === "change-password") {
       const limitKey = `rate_limit_${action}_${clientIp}`;
-      const limit = checkRateLimit(limitKey, 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
+      const limit = await checkRateLimit(limitKey, 5, 15 * 60 * 1000);
       if (!limit.allowed) {
         return NextResponse.json(
           {
@@ -37,8 +37,7 @@ export async function POST(req: NextRequest) {
 
     // --- Action: Visitor/Observer Login ---
     if (action === "login") {
-      // Check if visitor access is globally disabled
-      const systemConfig = getSystemConfig();
+      const systemConfig = await getSystemConfig();
       if (!systemConfig.enabled) {
         return NextResponse.json(
           { success: false, message: "الدخول معطل حالياً من قبل المالك" },
@@ -46,7 +45,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Query default observer user
       const user = await prisma.user.findUnique({
         where: { username: "observer" },
       });
@@ -58,7 +56,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Verify password
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         await auditLog({
@@ -73,7 +70,9 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Create Session JWT
+      // Reset rate limit on success
+      await resetRateLimit(`rate_limit_login_${clientIp}`);
+
       const token = await createToken({
         userId: user.id,
         username: user.username,
@@ -81,7 +80,6 @@ export async function POST(req: NextRequest) {
         isOwner: false,
       });
 
-      // Write Audit Log
       await auditLog({
         userId: user.id,
         username: user.username,
@@ -101,7 +99,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 60 * 60 * 8, // 8 hours (reduced from 7 days)
       });
 
       return response;
@@ -120,7 +118,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Verify password
       const isMatch = await bcrypt.compare(ownerPassword, user.password);
       if (!isMatch) {
         await auditLog({
@@ -135,7 +132,9 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Create Session JWT
+      // Reset rate limit on success
+      await resetRateLimit(`rate_limit_owner-login_${clientIp}`);
+
       const token = await createToken({
         userId: user.id,
         username: user.username,
@@ -143,7 +142,6 @@ export async function POST(req: NextRequest) {
         isOwner: true,
       });
 
-      // Write Audit Log
       await auditLog({
         userId: user.id,
         username: user.username,
@@ -163,7 +161,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 60 * 60 * 8, // 8 hours
       });
 
       return response;
@@ -197,7 +195,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, message: "حقل enabled مطلوب" }, { status: 400 });
       }
 
-      setSystemConfig({ enabled: Boolean(enabled) });
+      await setSystemConfig({ enabled: Boolean(enabled) });
 
       await auditLog({
         userId: payload.userId,
@@ -227,19 +225,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, message: "المستخدم غير موجود" }, { status: 404 });
       }
 
-      // Check current password
       const isMatch = await bcrypt.compare(currentPassword, user.password);
       if (!isMatch) {
         return NextResponse.json({ success: false, message: "كلمة المرور الحالية غير صحيحة" }, { status: 400 });
       }
 
-      // Validate new password policy
       const validation = validatePassword(newPassword);
       if (!validation.valid) {
         return NextResponse.json({ success: false, message: validation.errors.join("، ") }, { status: 400 });
       }
 
-      // Hash and update password
       const hashedPassword = await bcrypt.hash(newPassword, 12);
       await prisma.user.update({
         where: { id: user.id },
@@ -249,13 +244,15 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Write Audit Log
       await auditLog({
         userId: user.id,
         username: user.username,
         action: "CHANGE_PASSWORD",
         ipAddress: clientIp,
       });
+
+      // Reset rate limit after successful password change
+      await resetRateLimit(`rate_limit_change-password_${clientIp}`);
 
       return NextResponse.json({ success: true });
     }

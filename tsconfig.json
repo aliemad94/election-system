@@ -41,6 +41,7 @@
     "upgrade-temp",
     "prisma",
     "scenarios",
-    "temp-skills"
+    "temp-skills",
+    "election-system"
   ]
 }
