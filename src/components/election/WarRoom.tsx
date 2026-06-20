@@ -1,172 +1,237 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+// ====================================================================
+// WarRoom — غرفة العمليات اللحظية (Command Deck)
+// palette موحّد مع Command Deck بدل الألوان الثابتة
+// ====================================================================
+
+import { useEffect, useState } from "react";
 import {
   Star,
   Phone,
   AlertTriangle,
   ShieldCheck,
   AlertCircle,
-  UserCheck,
   BarChart3,
-} from 'lucide-react';
+  Activity,
+  Users,
+  Trophy,
+  RefreshCw,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-interface DashboardData {
-  totalVoters: number;
-  votedCount: number;
-  votedPercentage: number;
-  districtStats: {
-    district: string;
-    totalVoters: number;
-    votedCount: number;
-    votedPercentage: number;
-  }[];
-  recentAlerts: {
-    id: string;
-    type: string;
-    title: string;
-    description: string | null;
-    district: string | null;
-    createdAt: string;
-  }[];
+interface VoterItem {
+  id: string;
+  fullName: string;
+  phone: string;
+  district: string;
+  supportDegree: number;
+  votedOnDay: boolean;
+  tribeName: string;
 }
 
-interface VoterData {
-  voters: {
-    id: string;
-    fullName: string;
-    phoneNumber: string;
-    district: string;
-    confidenceScore: number;
-    votedStatus: boolean;
-    tribe: { name: string; influence: number } | null;
-    _count: { recruits: number };
-  }[];
-  total: number;
+interface AlertItem {
+  id: string;
+  type: "CRITICAL" | "WARNING" | "INFO";
+  title: string;
+  description: string;
+  district: string | null;
+  createdAt: string;
+}
+
+interface StatsData {
+  totalVoters: number;
+  checkedInCount: number;
+  votedPercentage: number;
+  districts: { district: string; count: number }[];
 }
 
 export default function WarRoom() {
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [highValueVoters, setHighValueVoters] = useState<VoterData['voters']>([]);
+  const [voters, setVoters] = useState<VoterItem[]>([]);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [stats, setStats] = useState<StatsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = async () => {
+    setRefreshing(true);
+    try {
+      const [votersRes, alertsRes, statsRes] = await Promise.all([
+        fetch("/api/voters?votedStatus=not_voted&limit=10"),
+        fetch("/api/alerts"),
+        fetch("/api/voters/stats"),
+      ]);
+      if (votersRes.ok) {
+        const data = await votersRes.json();
+        setVoters(data.voters || []);
+      }
+      if (alertsRes.ok) setAlerts(await alertsRes.json());
+      if (statsRes.ok) setStats(await statsRes.json());
+    } catch {
+      // تجاهل
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [dashRes, voterRes] = await Promise.all([
-          fetch('/api/dashboard'),
-          fetch('/api/voters?votedStatus=false&minConfidence=3&limit=10'),
-        ]);
-        const dashData = await dashRes.json();
-        const voterData = await voterRes.json();
-        setDashboardData(dashData);
-        setHighValueVoters(Array.isArray(voterData?.voters) ? voterData.voters : []);
-      } catch (err) {
-        console.error('Error fetching war room data:', err);
-      }
-    }
-    fetchData();
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const votedPercentage = dashboardData?.votedPercentage || 0;
-  const districts = dashboardData?.districtStats || [];
-  const alerts = dashboardData?.recentAlerts || [];
+  const votedPercentage = stats?.votedPercentage || 0;
+  const districts = stats?.districts || [];
+  const sortedDistricts = [...districts].sort((a, b) => b.count - a.count);
+  const maxCount = sortedDistricts[0]?.count || 1;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[500px]">
+        <div className="w-7 h-7 border-[3px] border-[var(--el-primary)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="min-h-[calc(100vh-6rem)] -m-4 rounded-sm overflow-hidden"
-      style={{ backgroundColor: '#0b1c30', color: '#ffffff' }}
-    >
-      {/* War Room Header */}
-      <div
-        className="flex justify-between items-center px-4 h-12"
-        style={{ backgroundColor: '#1a2b4b', borderBottom: '1px solid #364768' }}
-      >
-        <div className="flex items-center gap-4 w-full">
-          <h1
-            className="text-[20px] leading-[28px] font-semibold whitespace-nowrap"
-            style={{ color: '#d8e2ff' }}
-          >
-            غرفة العمليات - ذي قار
-          </h1>
+    <div className="p-4 sm:p-5 space-y-3 max-w-7xl mx-auto">
+      {/* ===== رأس غرفة العمليات ===== */}
+      <div className="flex items-center justify-between px-4 h-14 rounded-lg bg-[var(--el-surface)] border border-[var(--el-line)]">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <h2 className="text-base sm:text-lg font-bold text-[var(--el-text)] whitespace-nowrap">
+            غرفة العمليات — ذي قار
+          </h2>
 
-          {/* Massive Horizontal Progress Bar */}
-          <div className="flex-grow mx-8 flex flex-col justify-center hidden md:flex">
+          {/* شريط التقدّم الأفقي الضخم */}
+          <div className="flex-grow mx-4 hidden md:flex flex-col justify-center min-w-0">
             <div className="flex justify-between items-end mb-1">
-              <span className="text-[11px] leading-[16px] font-bold tracking-[0.05em]" style={{ color: '#d3e4fe' }}>
+              <span className="text-[10.5px] font-bold tracking-wide text-[var(--el-muted)]">
                 نسبة الاقتراع العامة
               </span>
-              <span className="text-[12px] leading-[16px] font-bold" style={{ color: '#F59E0B', fontFamily: 'var(--font-geist-mono)' }}>
+              <span className="text-sm font-bold tnum text-[var(--el-primary)]">
                 {votedPercentage}%
               </span>
             </div>
-            <div className="h-4 w-full rounded-full overflow-hidden relative" style={{ backgroundColor: '#4e5e81' }}>
-              <div className="h-full transition-all duration-1000 relative" style={{ width: `${votedPercentage}%`, backgroundColor: '#F59E0B' }}>
-                <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse" />
+            <div className="h-3 w-full rounded-full overflow-hidden relative bg-[var(--el-surface-container)]">
+              <div
+                className="h-full transition-all duration-1000 relative bg-[var(--el-primary)]"
+                style={{ width: `${votedPercentage}%` }}
+              >
+                <div className="absolute inset-0 bg-white/10 animate-pulse" />
               </div>
             </div>
           </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={load}
+            disabled={refreshing}
+            className="h-8 text-[var(--el-muted)] hover:text-[var(--el-text)] hover:bg-[var(--el-surface-container)] shrink-0"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 ml-1 ${refreshing ? "animate-spin" : ""}`}
+            />
+            <span className="hidden sm:inline text-xs">تحديث</span>
+          </Button>
         </div>
       </div>
 
-      {/* Main Content Grid */}
-      <main className="p-2 grid grid-cols-12 gap-2 h-full">
-        {/* Left Column: High-Value Targets */}
-        <div className="col-span-12 lg:col-span-7 flex flex-col rounded-sm overflow-hidden" style={{ backgroundColor: '#1a2b4b', border: '1px solid #364768' }}>
-          <div className="p-3 flex justify-between items-center" style={{ backgroundColor: 'rgba(11,28,48,0.5)', borderBottom: '1px solid #364768' }}>
-            <h2 className="text-[18px] leading-[24px] font-semibold text-white flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" style={{ color: '#F59E0B' }} />
-              أهداف عالية القيمة (لم يصوتوا)
-            </h2>
-            <span className="text-[11px] leading-[16px] font-bold tracking-[0.05em] px-2 py-1 rounded" style={{ backgroundColor: '#ffdad6', color: '#93000a' }}>فرز مباشر</span>
+      {/* ===== الشبكة الرئيسية ===== */}
+      <div className="grid grid-cols-12 gap-3">
+        {/* العمود الأيسر: أهداف عالية القيمة */}
+        <div className="col-span-12 lg:col-span-7 flex flex-col rounded-lg bg-[var(--el-surface)] border border-[var(--el-line)] overflow-hidden">
+          <div className="px-4 py-2.5 flex justify-between items-center bg-[var(--el-surface-container)] border-b border-[var(--el-line)]">
+            <h3 className="text-sm font-semibold text-[var(--el-text)] flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-[var(--el-primary)]" />
+              أهداف عالية القيمة (لم تصوّت)
+            </h3>
+            <span className="chip chip-alert text-[10px]">فرز مباشر</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-1">
+          <div className="flex-1 overflow-y-auto max-h-[380px] custom-scroll">
             <table className="w-full text-right">
-              <thead className="sticky top-0 z-10" style={{ backgroundColor: '#1a2b4b', borderBottom: '1px solid #364768' }}>
+              <thead className="sticky top-0 z-10 bg-[var(--el-surface-container)] border-b border-[var(--el-line)]">
                 <tr>
-                  <th className="text-[11px] leading-[16px] font-bold tracking-[0.05em] p-2 w-10" style={{ color: '#d3e4fe' }}>الثقة</th>
-                  <th className="text-[11px] leading-[16px] font-bold tracking-[0.05em] p-2" style={{ color: '#d3e4fe' }}>الاسم</th>
-                  <th className="text-[11px] leading-[16px] font-bold tracking-[0.05em] p-2 text-center w-24" style={{ color: '#d3e4fe' }}>القضاء / العشيرة</th>
-                  <th className="text-[11px] leading-[16px] font-bold tracking-[0.05em] p-2 text-center w-32" style={{ color: '#d3e4fe' }}>إجراء</th>
+                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 text-[var(--el-muted)] w-20">
+                    الثقة
+                  </th>
+                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 text-[var(--el-muted)]">
+                    الاسم
+                  </th>
+                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 text-center text-[var(--el-muted)] hidden sm:table-cell">
+                    القضاء / العشيرة
+                  </th>
+                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 text-center text-[var(--el-muted)]">
+                    إجراء
+                  </th>
                 </tr>
               </thead>
-              <tbody style={{ color: '#ffffff' }}>
-                {highValueVoters.slice(0, 5).map((voter, index) => (
+              <tbody>
+                {voters.slice(0, 8).map((voter, index) => (
                   <tr
                     key={voter.id}
-                    className="transition-colors h-9"
-                    style={{ borderBottom: '1px solid rgba(54,71,104,0.5)', backgroundColor: index % 2 === 1 ? 'rgba(11,28,48,0.3)' : 'transparent' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(11,28,48,0.3)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = index % 2 === 1 ? 'rgba(11,28,48,0.3)' : 'transparent'; }}
+                    className="transition-colors h-9 border-b border-[var(--el-line)] row-fade-in hover:bg-[var(--el-surface-container)]"
+                    style={{ animationDelay: `${index * 30}ms` }}
                   >
-                    <td className="p-2 text-center">
+                    <td className="px-3 py-1.5">
                       <div className="flex gap-0.5">
                         {Array.from({ length: 5 }).map((_, i) => (
-                          <Star key={i} className={`w-3.5 h-3.5 ${i < voter.confidenceScore ? 'fill-current' : ''}`} style={{ color: i < voter.confidenceScore ? '#F59E0B' : '#d3e4fe' }} />
+                          <Star
+                            key={i}
+                            className={`w-3 h-3 ${i < voter.supportDegree ? "fill-current" : ""}`}
+                            style={{
+                              color:
+                                i < voter.supportDegree
+                                  ? "var(--el-primary)"
+                                  : "var(--el-line)",
+                            }}
+                          />
                         ))}
                       </div>
                     </td>
-                    <td className="p-2">
-                      <div className="text-[14px] leading-[20px] font-semibold">{voter.fullName}</div>
-                      <div className="text-[12px] leading-[16px] font-medium" style={{ color: '#d3e4fe', fontFamily: 'var(--font-geist-mono)' }}>
-                        {voter.phoneNumber.replace(/(\+964)(\d{3})(\d{3})(\d{4})/, '$1 $2 *** $4')}
+                    <td className="px-3 py-1.5">
+                      <div className="text-[12.5px] font-semibold text-[var(--el-text)]">
+                        {voter.fullName}
+                      </div>
+                      <div
+                        className="text-[10.5px] text-[var(--el-muted)] tnum"
+                        dir="ltr"
+                      >
+                        {voter.phone
+                          ? voter.phone.replace(
+                              /(\d{4})(\d{3})(\d{3})/,
+                              "$1 *** $3"
+                            )
+                          : "—"}
                       </div>
                     </td>
-                    <td className="p-2 text-center">
-                      <span className="text-[12px] leading-[16px] font-medium px-2 py-0.5 rounded" style={{ backgroundColor: voter.tribe ? '#3e2700' : 'rgba(11,28,48)', color: voter.tribe ? '#F59E0B' : '#d3e4fe', border: voter.tribe ? '1px solid rgba(245,158,11,0.3)' : '1px solid rgba(117,119,127,0.3)', fontFamily: 'var(--font-geist-mono)' }}>
-                        {voter.tribe ? voter.tribe.name : voter.district}
+                    <td className="px-3 py-1.5 text-center hidden sm:table-cell">
+                      <span
+                        className="chip chip-primary text-[10px]"
+                      >
+                        {voter.tribeName !== "غير محدد"
+                          ? voter.tribeName
+                          : voter.district}
                       </span>
                     </td>
-                    <td className="p-2 text-center">
-                      <button className="text-white border px-3 py-1 rounded text-[12px] leading-[16px] flex items-center gap-1 w-full justify-center hover:opacity-90 transition-colors" style={{ backgroundColor: '#031635', borderColor: '#b6c6ef' }}>
-                        <Phone className="w-4 h-4" />
+                    <td className="px-3 py-1.5 text-center">
+                      <button className="text-[var(--el-text)] border border-[var(--el-line)] px-2.5 py-1 rounded-md text-[11px] flex items-center gap-1 w-full justify-center hover:bg-[var(--el-surface-container)] hover:border-[var(--el-primary)] transition-colors cursor-pointer">
+                        <Phone className="w-3 h-3" />
                         اتصل
                       </button>
                     </td>
                   </tr>
                 ))}
-                {highValueVoters.length === 0 && (
+                {voters.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="p-4 text-center" style={{ color: '#d3e4fe' }}>لا توجد أهداف عالية القيمة</td>
+                    <td
+                      colSpan={4}
+                      className="p-8 text-center text-[var(--el-muted)] text-sm"
+                    >
+                      <Users className="w-7 h-7 mx-auto mb-2 opacity-50" />
+                      لا توجد أهداف عالية القيمة
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -174,109 +239,194 @@ export default function WarRoom() {
           </div>
         </div>
 
-        {/* Right Column */}
-        <div className="col-span-12 lg:col-span-5 flex flex-col gap-2 h-full">
-          {/* District Turnout Leaderboard */}
-          <div className="flex-1 rounded-sm overflow-hidden flex flex-col max-h-[60%]" style={{ backgroundColor: '#1a2b4b', border: '1px solid #364768' }}>
-            <div className="p-3 flex justify-between items-center" style={{ backgroundColor: 'rgba(11,28,48,0.5)', borderBottom: '1px solid #364768' }}>
-              <h2 className="text-[18px] leading-[24px] font-semibold text-white flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" style={{ color: '#10B981' }} />
-                تصدر الأقضية
-              </h2>
+        {/* العمود الأيمن */}
+        <div className="col-span-12 lg:col-span-5 flex flex-col gap-3">
+          {/* تصدّر الأقضية */}
+          <div className="rounded-lg bg-[var(--el-surface)] border border-[var(--el-line)] overflow-hidden">
+            <div className="px-4 py-2.5 flex justify-between items-center bg-[var(--el-surface-container)] border-b border-[var(--el-line)]">
+              <h3 className="text-sm font-semibold text-[var(--el-text)] flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-[var(--el-secondary)]" />
+                تصدّر الأقضية
+              </h3>
+              <span className="text-[10.5px] text-[var(--el-muted)] tnum">
+                {sortedDistricts.length} قضاء
+              </span>
             </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
-              {districts
-                .sort((a, b) => b.votedPercentage - a.votedPercentage)
-                .map((ds, index) => (
+            <div className="p-2 space-y-1 max-h-[180px] overflow-y-auto custom-scroll">
+              {sortedDistricts.slice(0, 10).map((ds, index) => {
+                const pct = Math.round((ds.count / maxCount) * 100);
+                const isLow = ds.count < 3;
+                const color =
+                  index === 0
+                    ? "var(--el-secondary)"
+                    : isLow
+                    ? "var(--el-alert)"
+                    : "var(--el-text)";
+                return (
                   <div
                     key={ds.district}
-                    className="p-2 rounded flex items-center justify-between"
+                    className="p-1.5 rounded flex items-center justify-between"
                     style={{
-                      border: ds.votedPercentage < 30 ? '1px solid rgba(245,158,11,0.3)' : '1px solid #364768',
-                      backgroundColor: ds.votedPercentage < 30 ? 'rgba(62,39,0,0.2)' : 'rgba(11,28,48,0.3)',
+                      border: `1px solid ${isLow ? "rgba(229,72,77,0.25)" : "var(--el-line)"}`,
+                      backgroundColor: isLow
+                        ? "rgba(229,72,77,0.06)"
+                        : "transparent",
                     }}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span
-                        className="text-[12px] leading-[16px] font-bold w-6 text-center"
-                        style={{
-                          color: index === 0 ? '#10B981' : ds.votedPercentage < 30 ? '#F59E0B' : '#d3e4fe',
-                          fontFamily: 'var(--font-geist-mono)',
-                        }}
+                        className="text-[11px] font-bold w-5 text-center tnum"
+                        style={{ color }}
                       >
                         {index + 1}
                       </span>
-                      <div
-                        className="text-[14px] leading-[20px] font-semibold"
-                        style={{ color: ds.votedPercentage < 30 ? '#F59E0B' : '#ffffff' }}
+                      <span
+                        className="text-[12px] font-semibold truncate"
+                        style={{ color }}
                       >
                         {ds.district}
-                      </div>
+                      </span>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#4e5e81' }}>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="w-16 h-1.5 rounded-full overflow-hidden bg-[var(--el-surface-container)]">
                         <div
                           className="h-full"
-                          style={{
-                            width: `${ds.votedPercentage}%`,
-                            backgroundColor: index === 0 ? '#10B981' : ds.votedPercentage < 30 ? '#F59E0B' : '#b6c6ef',
-                          }}
+                          style={{ width: `${pct}%`, backgroundColor: color }}
                         />
                       </div>
                       <span
-                        className="text-[12px] leading-[16px] font-medium"
-                        style={{
-                          color: index === 0 ? '#10B981' : ds.votedPercentage < 30 ? '#F59E0B' : '#ffffff',
-                          fontFamily: 'var(--font-geist-mono)',
-                        }}
+                        className="text-[11px] font-medium tnum w-6 text-left"
+                        style={{ color }}
                       >
-                        {ds.votedPercentage}%
+                        {ds.count}
                       </span>
                     </div>
                   </div>
-                ))}
+                );
+              })}
+              {sortedDistricts.length === 0 && (
+                <div className="p-3 text-center text-[var(--el-muted)] text-xs">
+                  لا توجد بيانات أقضية
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Conflict Alerts */}
-          <div className="flex-1 rounded-sm flex flex-col overflow-hidden relative" style={{ backgroundColor: '#1a2b4b', border: '1px solid rgba(245,158,11,0.5)' }}>
-            {/* Header */}
-            <div className="absolute top-0 w-full p-3 backdrop-blur-sm flex justify-between items-center z-10" style={{ backgroundColor: 'rgba(26,43,75,0.8)', borderBottom: '1px solid rgba(245,158,11,0.3)' }}>
-              <h2 className="text-[18px] leading-[24px] font-semibold flex items-center gap-2" style={{ color: '#F59E0B' }}>
-                <AlertTriangle className="w-5 h-5" />
-                سجل التنبيهات المباشر
-              </h2>
-              <span className="relative flex h-3 w-3">
-                <span className="animate-alert-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: '#F59E0B' }} />
-                <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: '#F59E0B' }} />
+          {/* التنبيهات المباشرة */}
+          <div className="rounded-lg bg-[var(--el-surface)] border border-[rgba(242,160,36,0.3)] overflow-hidden flex flex-col">
+            <div className="px-4 py-2.5 flex justify-between items-center bg-[rgba(242,160,36,0.08)] border-b border-[rgba(242,160,36,0.2)]">
+              <h3 className="text-sm font-semibold text-[var(--el-primary)] flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                التنبيهات المباشرة
+              </h3>
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-alert-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-[var(--el-primary)]" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--el-primary)]" />
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto pt-16 p-1 space-y-1">
+            <div className="flex-1 overflow-y-auto p-1.5 space-y-1 max-h-[180px] custom-scroll">
               {alerts.map((alert) => {
-                const isGreen = alert.type === 'INFO';
-                const isAmber = alert.type === 'WARNING';
-                const borderColor = isGreen ? '#10B981' : isAmber ? '#F59E0B' : '#ffdad6';
-                const Icon = isGreen ? ShieldCheck : isAmber ? AlertCircle : AlertTriangle;
+                const isCritical = alert.type === "CRITICAL";
+                const isWarning = alert.type === "WARNING";
+                const color = isCritical
+                  ? "var(--el-alert)"
+                  : isWarning
+                  ? "var(--el-primary)"
+                  : "var(--el-secondary)";
+                const Icon = isCritical
+                  ? AlertTriangle
+                  : isWarning
+                  ? AlertCircle
+                  : ShieldCheck;
 
                 return (
-                  <div key={alert.id} className="p-2 rounded-r flex gap-2 items-start" style={{ backgroundColor: 'rgba(11,28,48,0.8)', borderLeft: `2px solid ${borderColor}` }}>
-                    <span className="text-[11px] font-medium shrink-0" style={{ color: '#d3e4fe', fontFamily: 'var(--font-geist-mono)' }}>
-                      {new Date(alert.createdAt).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </span>
-                    <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: borderColor }} />
-                    <span className="text-[11px] font-medium text-white">
-                      {alert.title} {alert.district && `- ${alert.district}`}
-                    </span>
+                  <div
+                    key={alert.id}
+                    className="p-1.5 rounded flex gap-2 items-start bg-[var(--el-bg)]"
+                    style={{ borderRight: `2px solid ${color}` }}
+                  >
+                    <Icon
+                      className="w-3 h-3 shrink-0 mt-0.5"
+                      style={{ color }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10.5px] font-medium text-[var(--el-text)] block leading-tight">
+                        {alert.title}
+                      </span>
+                      <span className="text-[9.5px] text-[var(--el-muted)] leading-tight">
+                        {alert.description}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
               {alerts.length === 0 && (
-                <div className="p-3 text-center" style={{ color: '#d3e4fe' }}>لا توجد تنبيهات</div>
+                <div className="p-3 text-center text-[var(--el-muted)] text-xs flex items-center justify-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[var(--el-secondary)]" />
+                  لا توجد تنبيهات — الوضع مستقر
+                </div>
               )}
             </div>
           </div>
         </div>
-      </main>
+
+        {/* شريط مؤشرات سفلي */}
+        <div className="col-span-12 grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
+          <MetricPill
+            icon={<Users className="w-3.5 h-3.5" />}
+            label="إجمالي الناخبين"
+            value={stats?.totalVoters ?? 0}
+            color="var(--el-text)"
+          />
+          <MetricPill
+            icon={<Activity className="w-3.5 h-3.5" />}
+            label="صوّتوا"
+            value={stats?.checkedInCount ?? 0}
+            color="var(--el-secondary)"
+          />
+          <MetricPill
+            icon={<BarChart3 className="w-3.5 h-3.5" />}
+            label="نسبة الاقتراع"
+            value={`${votedPercentage}%`}
+            color="var(--el-primary)"
+          />
+          <MetricPill
+            icon={<AlertTriangle className="w-3.5 h-3.5" />}
+            label="تنبيهات نشطة"
+            value={alerts.length}
+            color={alerts.length > 0 ? "var(--el-alert)" : "var(--el-secondary)"}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetricPill({
+  icon,
+  label,
+  value,
+  color,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number | string;
+  color: string;
+}) {
+  return (
+    <div className="rounded-lg bg-[var(--el-surface)] border border-[var(--el-line)] p-2.5 flex items-center gap-2.5">
+      <span
+        className="inline-flex items-center justify-center w-8 h-8 rounded-md shrink-0"
+        style={{ backgroundColor: `rgba(${color === "var(--el-primary)" ? "242,160,36" : color === "var(--el-secondary)" ? "45,212,191" : color === "var(--el-alert)" ? "229,72,77" : "138,153,180"},0.12)`, color }}
+      >
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-[9.5px] text-[var(--el-muted)] truncate">{label}</p>
+        <p className="text-base font-bold tnum" style={{ color }}>
+          {typeof value === "number" ? value.toLocaleString("ar-IQ") : value}
+        </p>
+      </div>
     </div>
   );
 }

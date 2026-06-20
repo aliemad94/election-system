@@ -1,15 +1,19 @@
+// ====================================================================
+// /api/commission — بيانات المفوضية (GET + POST)
+// ====================================================================
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
+import { withAuth } from "@/lib/auth-guard";
+import { handleApiError, auditLog } from "@/lib/security";
 
-// GET /api/commission - Returns all commission statistics grouped by district
-async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+async function getHandler(_req: NextRequest) {
   try {
     let list = await prisma.commissionData.findMany({
-      orderBy: { district: "asc" }
+      orderBy: { district: "asc" },
     });
 
-    // Seed default Governorate totals if empty
+    // بيانات افتراضية إن كانت فارغة
     if (list.length === 0) {
       const defaultData = [
         {
@@ -42,50 +46,25 @@ async function getHandler(request: NextRequest, { user }: { user: AuthenticatedU
           historicalTurnout: 50.1,
           expectedTurnout: 50.1,
         },
-        {
-          province: "ذي قار",
-          district: "الرفاعي",
-          subDistrict: "الرفاعي",
-          pollingCenter: "مراكز الرفاعي",
-          ballotStation: "عام",
-          registeredVoters: 130000,
-          historicalTurnout: 52.4,
-          expectedTurnout: 52.4,
-        },
-        {
-          province: "ذي قار",
-          district: "الدواية",
-          subDistrict: "الدواية",
-          pollingCenter: "مراكز الدواية",
-          ballotStation: "عام",
-          registeredVoters: 850000,
-          historicalTurnout: 49.8,
-          expectedTurnout: 49.8,
-        }
       ];
 
       for (const item of defaultData) {
-        await prisma.commissionData.create({
-          data: item
-        });
+        await prisma.commissionData.create({ data: item });
       }
-
       list = await prisma.commissionData.findMany({
-        orderBy: { district: "asc" }
+        orderBy: { district: "asc" },
       });
     }
 
     return NextResponse.json(list);
   } catch (error) {
-    console.error("[commission-get] failed:", error);
-    return NextResponse.json({ error: "Failed to retrieve commission data" }, { status: 500 });
+    return handleApiError(error, "commission-get");
   }
 }
 
-// POST /api/commission - Creates new district commission data
-async function postHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+async function postHandler(req: NextRequest, { user }: any) {
   try {
-    const body = await request.json();
+    const body = await req.json();
     const {
       province,
       district,
@@ -98,7 +77,10 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
     } = body;
 
     if (!district || !pollingCenter || !ballotStation) {
-      return NextResponse.json({ error: "القضاء، مركز الاقتراع، والمحطة حقول مطلوبة" }, { status: 400 });
+      return NextResponse.json(
+        { error: "القضاء، مركز الاقتراع، والمحطة حقول مطلوبة" },
+        { status: 400 }
+      );
     }
 
     const created = await prisma.commissionData.create({
@@ -111,18 +93,26 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
         registeredVoters: parseInt(registeredVoters) || 0,
         historicalTurnout: parseFloat(historicalTurnout) || 0.0,
         expectedTurnout: expectedTurnout ? parseFloat(expectedTurnout) : null,
-      }
+      },
+    });
+
+    await auditLog({
+      userId: user.userId,
+      username: user.username,
+      action: "CREATE",
+      entity: "CommissionData",
+      entityId: created.id,
+      details: { district, pollingCenter },
     });
 
     return NextResponse.json(created, { status: 201 });
-  } catch (error: any) {
-    console.error("[commission-post] failed:", error);
-    if (error.code === 'P2002') {
-      return NextResponse.json({ error: "هذه المحطة ومركز الاقتراع مسجلان مسبقاً" }, { status: 400 });
-    }
-    return NextResponse.json({ error: "Failed to create commission data" }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error, "commission-post");
   }
 }
 
-export const GET = withAuth(getHandler, { GET: ["admin", "viewer", "operator", "key_user"] });
-export const POST = withAuth(postHandler, { POST: ["admin", "operator"] });
+export const GET = withAuth(getHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
+export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
+

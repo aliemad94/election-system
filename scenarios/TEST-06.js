@@ -35,3 +35,50 @@ export default function () {
   }
   check(res, { 'served': (r) => r.status !== 0 }, { type: 'served' });
 }
+
+```
+
+
+---
+
+## ملخص المشروع
+
+### إحصائيات
+- **API endpoints:** 30
+- **مكوّنات election UI:** 22
+- **مكوّنات shadcn/ui:** 48
+- **مكتبات lib:** 16 (محركات تحليل + أمان + أنواع)
+- **نماذج Prisma:** 14
+- **مؤشرات تحليلية:** 80+ (EII/KRI/VPS/DRS/EFI/API/EWLI/GSI/EDRI + Saint-Laguë)
+- **صفحات UI:** 17 (في 5 مجموعات)
+
+### المعمارية
+- **Framework:** Next.js 16 (App Router, Turbopack)
+- **Language:** TypeScript 5
+- **Styling:** Tailwind CSS v4 + shadcn/ui (Command Deck dark theme)
+- **Database:** Prisma ORM + SQLite (staging) / PostgreSQL (production)
+- **Auth:** JWT (jose) + bcryptjs + RBAC (ADMIN/KEY_USER/OBSERVER)
+- **Charts:** Recharts 2
+- **Fonts:** IBM Plex Sans Arabic + IBM Plex Mono (tabular-nums)
+
+### نظام التصميم (Command Deck)
+- ثيم داكن افتراضي: خلفية `#0B1120`، سطح `#131C2E`
+- اللون الأساسي: `#F2A024` (كهرماني — سلطة/تأثير)
+- اللون الثانوي: `#2DD4BF` (تيل — ولاء/إيجابي)
+- لون التحذير: `#E5484D` (قرمزي — خطر/سلبي)
+- أرقام جدولية (tabular-nums) في كل البيانات
+- RTL عربي كامل + تجاوب موبايل/سطح مكتب
+
+### حسابات الدخول
+| المستخدم | كلمة المرور | الدور |
+|----------|-------------|-------|
+| `admin` | `Election2024!Admin` | ADMIN |
+| `observer` | `Election2024!User` | OBSERVER |
+| `key_user` | `Election2024!User` | KEY_USER |
+
+### التشغيل
+```bash
+bun install              # تثبيت الاعتماديات
+bun run db:push          # مزامنة قاعدة البيانات
+bun run db:seed          # تهيئة البيانات الأولية
+bun run dev              # تشغيل خادم التطوير (port 3000)

@@ -25,3 +25,4 @@ copyDir(path.join(__dirname, 'public'), path.join(__dirname, '.next', 'standalon
 copyDir(path.join(__dirname, '.next', 'static'), path.join(__dirname, '.next', 'standalone', '.next', 'static'));
 
 console.log('✅ Standalone static files copied successfully.');
+

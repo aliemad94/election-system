@@ -35,3 +35,4 @@ export default function () {
   check(res, { 'status 2xx': (r) => r.status >= 200 && r.status < 300 });
   sleep(randomIntBetween(1, 3) / 10);
 }
+

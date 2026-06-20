@@ -262,3 +262,4 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
     </header>
   );
 }
+

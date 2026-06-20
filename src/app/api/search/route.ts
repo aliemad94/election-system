@@ -1,33 +1,40 @@
+// ====================================================================
+// /api/search — بحث شامل عبر الناخبين والعشائر والمفاتيح
+// ====================================================================
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
+import { handleApiError } from "@/lib/security";
 
-type SearchEntity = "voters" | "tribes" | "all";
-
-async function searchHandler(req: NextRequest): Promise<NextResponse> {
+async function searchHandler(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("q")?.trim();
-  const entity = (searchParams.get("entity") as SearchEntity) ?? "all";
+  const entity = searchParams.get("entity") ?? "all";
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 50);
 
   if (!query || query.length < 2) {
-    return NextResponse.json({ error: "Query must be at least 2 characters" }, { status: 400 });
+    return NextResponse.json(
+      { error: "البحث يجب أن يكون حرفين على الأقل" },
+      { status: 400 }
+    );
   }
 
   try {
     const results: any[] = [];
-    const perEntity = entity === "all" ? Math.floor(limit / 2) : limit;
+    const perEntity = entity === "all" ? Math.floor(limit / 3) : limit;
 
     if (entity === "voters" || entity === "all") {
       const voters = await prisma.voter.findMany({
         where: {
           OR: [
-            { firstName: { contains: query, mode: "insensitive" } },
-            { fatherName: { contains: query, mode: "insensitive" } },
-            { grandfatherName: { contains: query, mode: "insensitive" } },
-            { fourthName: { contains: query, mode: "insensitive" } },
-            { nationalId: { contains: query } }
-          ]
+            { firstName: { contains: query } },
+            { fatherName: { contains: query } },
+            { grandfatherName: { contains: query } },
+            { fourthName: { contains: query } },
+            { nationalId: { contains: query } },
+            { phone: { contains: query } },
+          ],
         },
         take: perEntity,
         select: {
@@ -38,42 +45,73 @@ async function searchHandler(req: NextRequest): Promise<NextResponse> {
           fourthName: true,
           nationalId: true,
           votedOnDay: true,
-          tribe: { select: { name: true } }
+          district: true,
+          tribe: { select: { name: true } },
         },
       });
-      results.push(...voters.map((v) => {
-        const fullName = `${v.firstName} ${v.fatherName} ${v.grandfatherName} ${v.fourthName}`.trim().replace(/\s+/g, " ");
-        return {
+      results.push(
+        ...voters.map((v) => ({
           entity: "voters",
           id: v.id,
-          label: fullName,
-          sublabel: `${v.nationalId || ""} — ${v.tribe?.name ?? ""}${v.votedOnDay ? " ✓" : ""}`,
-        };
-      }));
+          label: `${v.firstName} ${v.fatherName} ${v.grandfatherName}`.trim(),
+          sublabel: `${v.district} — ${v.tribe?.name ?? ""}${v.votedOnDay ? " ✓" : ""}`,
+        }))
+      );
     }
 
     if (entity === "tribes" || entity === "all") {
       const tribes = await prisma.tribe.findMany({
-        where: { name: { contains: query, mode: "insensitive" } },
+        where: { name: { contains: query } },
+        take: perEntity,
+        select: { id: true, name: true, _count: { select: { voters: true } } },
+      });
+      results.push(
+        ...tribes.map((t) => ({
+          entity: "tribes",
+          id: t.id,
+          label: t.name,
+          sublabel: `${t._count.voters} ناخب`,
+        }))
+      );
+    }
+
+    if (entity === "keys" || entity === "all") {
+      const keys = await prisma.electionKey.findMany({
+        where: {
+          OR: [
+            { firstName: { contains: query } },
+            { fatherName: { contains: query } },
+            { phone: { contains: query } },
+            { keyCode: { contains: query } },
+          ],
+        },
         take: perEntity,
         select: {
           id: true,
-          name: true,
-          _count: {
-            select: { voters: true }
-          }
+          keyCode: true,
+          firstName: true,
+          fatherName: true,
+          district: true,
+          tribe: { select: { name: true } },
         },
       });
-      results.push(...tribes.map((t) => ({
-        entity: "tribes", id: t.id, label: t.name, sublabel: `${t._count.voters} ناخب`,
-      })));
+      results.push(
+        ...keys.map((k) => ({
+          entity: "keys",
+          id: k.id,
+          label: `${k.keyCode} — ${k.firstName} ${k.fatherName}`,
+          sublabel: `${k.district} — ${k.tribe?.name ?? ""}`,
+        }))
+      );
     }
 
     return NextResponse.json({ results, total: results.length, query });
   } catch (error) {
-    console.error("[search] failed:", error);
-    return NextResponse.json({ error: "Search failed" }, { status: 500 });
+    return handleApiError(error, "search");
   }
 }
 
-export const GET = withAuth(searchHandler, { GET: ["admin", "viewer", "operator"] });
+export const GET = withAuth(searchHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
+

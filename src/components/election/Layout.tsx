@@ -36,3 +36,4 @@ export default function Layout({ activePage, onPageChange, children, isOwner, on
     </div>
   );
 }
+

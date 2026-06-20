@@ -34,3 +34,4 @@ export default function () {
     check(res, { 'write 2xx': (r) => r.status >= 200 && r.status < 300 });
   }
 }
+

@@ -1,42 +1,49 @@
+// ====================================================================
+// /api/access — بوابة المصادقة المركزية
+// الإجراءات: login | owner-login | logout | toggle-access | change-password
+// محمي بـ rate limiting + audit logging
+// ====================================================================
+
 import { NextRequest, NextResponse } from "next/server";
 import { createToken, verifyToken } from "@/lib/auth";
-import { checkRateLimit, resetRateLimit, auditLog, getClientIp, validatePassword } from "@/lib/security";
+import {
+  checkRateLimit,
+  auditLog,
+  getClientIp,
+  validatePassword,
+} from "@/lib/security";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 import { getSystemConfig, setSystemConfig } from "@/lib/config-store";
+import bcrypt from "bcryptjs";
 
-// GET /api/access - Checks whether visitor access is enabled and returns current user if authenticated
-export async function GET(req: NextRequest) {
+// GET /api/access — هل وصول الزوار مفعّل؟
+export async function GET() {
   const config = await getSystemConfig();
-  const tokenCookie = req.cookies.get("election_auth");
-  let user = null;
-
-  if (tokenCookie) {
-    const payload = await verifyToken(tokenCookie.value);
-    if (payload) {
-      user = {
-        userId: payload.userId,
-        username: payload.username,
-        role: payload.role,
-        isOwner: payload.isOwner,
-      };
-    }
-  }
-
-  return NextResponse.json({ enabled: config.enabled, user });
+  return NextResponse.json({ enabled: config.enabled });
 }
 
-// POST /api/access - Handles login, logout, password change, and visitor access toggles
+// POST /api/access — معالجة كل إجراءات المصادقة
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.json();
-    const { action, password, ownerPassword, currentPassword, newPassword, enabled, username } = rawBody;
+    const {
+      action,
+      password,
+      ownerPassword,
+      currentPassword,
+      newPassword,
+      enabled,
+    } = rawBody;
     const clientIp = getClientIp(req);
 
-    // Apply Rate Limiting for Login/Sensitive actions to prevent brute forcing
-    if (action === "login" || action === "owner-login" || action === "change-password") {
+    // ===== تحديد المعدل للإجراءات الحساسة =====
+    if (
+      action === "login" ||
+      action === "owner-login" ||
+      action === "change-password"
+    ) {
       const limitKey = `rate_limit_${action}_${clientIp}`;
-      const limit = await checkRateLimit(limitKey, 5, 15 * 60 * 1000);
+      const limit = await checkRateLimit(limitKey, 5, 15 * 60 * 1000); // 5 محاولات / 15 دقيقة
       if (!limit.allowed) {
         return NextResponse.json(
           {
@@ -50,13 +57,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // --- Action: Visitor/Observer/KeyUser Login ---
+    // ===== إجراء: دخول الزائر (OBSERVER) =====
     if (action === "login") {
-      const usernameInput = username || "observer"; // default to observer if username not provided
       const systemConfig = await getSystemConfig();
-      
-      // If observer, enforce visitor access gate toggle
-      if (usernameInput === "observer" && !systemConfig.enabled) {
+      if (!systemConfig.enabled) {
         return NextResponse.json(
           { success: false, message: "الدخول معطل حالياً من قبل المالك" },
           { status: 403 }
@@ -64,7 +68,7 @@ export async function POST(req: NextRequest) {
       }
 
       const user = await prisma.user.findUnique({
-        where: { username: usernameInput },
+        where: { username: "observer" },
       });
 
       if (!user || !password) {
@@ -77,9 +81,9 @@ export async function POST(req: NextRequest) {
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         await auditLog({
-          username: usernameInput,
+          username: "observer",
           action: "LOGIN",
-          details: { success: false, error: "كلمة مرور خاطئة" },
+          details: { success: false, error: "كلمة مرور خاطئة للزائر" },
           ipAddress: clientIp,
         });
         return NextResponse.json(
@@ -88,14 +92,11 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Reset rate limit on success
-      await resetRateLimit(`rate_limit_login_${clientIp}`);
-
       const token = await createToken({
         userId: user.id,
         username: user.username,
         role: user.role,
-        isOwner: user.role === "ADMIN",
+        isOwner: false,
       });
 
       await auditLog({
@@ -117,13 +118,13 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 60 * 60 * 8, // 8 hours
+        maxAge: 60 * 60 * 24 * 7, // 7 أيام
       });
 
       return response;
     }
 
-    // --- Action: Owner/Admin Login ---
+    // ===== إجراء: دخول المالك (ADMIN) =====
     if (action === "owner-login") {
       const user = await prisma.user.findUnique({
         where: { username: "admin" },
@@ -149,9 +150,6 @@ export async function POST(req: NextRequest) {
           { status: 401 }
         );
       }
-
-      // Reset rate limit on success
-      await resetRateLimit(`rate_limit_owner-login_${clientIp}`);
 
       const token = await createToken({
         userId: user.id,
@@ -179,14 +177,28 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 60 * 60 * 8, // 8 hours
+        maxAge: 60 * 60 * 24 * 7,
       });
 
       return response;
     }
 
-    // --- Action: Logout ---
+    // ===== إجراء: تسجيل الخروج =====
     if (action === "logout") {
+      // محاولة تسجيل من قام بالخروج
+      const tokenCookie = req.cookies.get("election_auth");
+      if (tokenCookie) {
+        const payload = await verifyToken(tokenCookie.value);
+        if (payload) {
+          await auditLog({
+            userId: payload.userId,
+            username: payload.username,
+            action: "LOGOUT",
+            ipAddress: clientIp,
+          });
+        }
+      }
+
       const response = NextResponse.json({ success: true });
       response.cookies.set("election_auth", "", {
         path: "/",
@@ -196,21 +208,30 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
-    // --- Protect ADMIN operations for toggle-access and change-password ---
+    // ===== حماية إجراءات ADMIN: toggle-access و change-password =====
     const tokenCookie = req.cookies.get("election_auth");
     if (!tokenCookie) {
-      return NextResponse.json({ error: "غير مصرح - يرجى تسجيل الدخول" }, { status: 401 });
+      return NextResponse.json(
+        { error: "غير مصرح - يرجى تسجيل الدخول" },
+        { status: 401 }
+      );
     }
 
     const payload = await verifyToken(tokenCookie.value);
     if (!payload || payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "غير مصرح - الصلاحيات غير كافية" }, { status: 403 });
+      return NextResponse.json(
+        { error: "غير مصرح - الصلاحيات غير كافية" },
+        { status: 403 }
+      );
     }
 
-    // --- Action: Toggle Visitor Access ---
+    // ===== إجراء: تفعيل/تعطيل وصول الزوار =====
     if (action === "toggle-access") {
       if (enabled === undefined) {
-        return NextResponse.json({ success: false, message: "حقل enabled مطلوب" }, { status: 400 });
+        return NextResponse.json(
+          { success: false, message: "حقل enabled مطلوب" },
+          { status: 400 }
+        );
       }
 
       await setSystemConfig({ enabled: Boolean(enabled) });
@@ -226,7 +247,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, enabled: Boolean(enabled) });
     }
 
-    // --- Action: Owner/Admin Change Password ---
+    // ===== إجراء: تغيير كلمة المرور =====
     if (action === "change-password") {
       if (!currentPassword || !newPassword) {
         return NextResponse.json(
@@ -240,17 +261,27 @@ export async function POST(req: NextRequest) {
       });
 
       if (!user) {
-        return NextResponse.json({ success: false, message: "المستخدم غير موجود" }, { status: 404 });
+        return NextResponse.json(
+          { success: false, message: "المستخدم غير موجود" },
+          { status: 404 }
+        );
       }
 
       const isMatch = await bcrypt.compare(currentPassword, user.password);
       if (!isMatch) {
-        return NextResponse.json({ success: false, message: "كلمة المرور الحالية غير صحيحة" }, { status: 400 });
+        return NextResponse.json(
+          { success: false, message: "كلمة المرور الحالية غير صحيحة" },
+          { status: 400 }
+        );
       }
 
+      // التحقق من سياسة كلمات المرور
       const validation = validatePassword(newPassword);
       if (!validation.valid) {
-        return NextResponse.json({ success: false, message: validation.errors.join("، ") }, { status: 400 });
+        return NextResponse.json(
+          { success: false, message: validation.errors.join("، ") },
+          { status: 400 }
+        );
       }
 
       const hashedPassword = await bcrypt.hash(newPassword, 12);
@@ -269,15 +300,19 @@ export async function POST(req: NextRequest) {
         ipAddress: clientIp,
       });
 
-      // Reset rate limit after successful password change
-      await resetRateLimit(`rate_limit_change-password_${clientIp}`);
-
       return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ success: false, error: "طلب غير معروف" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "طلب غير معروف" },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("[access-api] failed:", error);
-    return NextResponse.json({ success: false, error: "حدث خطأ داخلي في الخادم" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "حدث خطأ داخلي في الخادم" },
+      { status: 500 }
+    );
   }
 }
+

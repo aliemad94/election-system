@@ -1,287 +1,178 @@
+// ====================================================================
+// /api/electoral-keys — المفاتيح الانتخابية (GET + POST مع كود تلقائي)
+// ====================================================================
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
-import { calculateKeyScore } from "@/lib/indicators-helper";
+import { withAuth } from "@/lib/auth-guard";
+import { handleApiError, auditLog } from "@/lib/security";
+import { createElectionKeySchema, formatZodError } from "@/lib/validators";
 
-function safeJsonParse(val: any) {
-  if (!val) return null;
-  if (typeof val === "string") {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return { text: val };
-    }
-  }
-  return val;
-}
-
-// GET /api/electoral-keys - Handles querying electoral keys with matching fields
-async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+// GET /api/electoral-keys — قائمة المفاتيح مع فلترة وبحث
+async function getHandler(req: NextRequest, { user }: any) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const district = searchParams.get("district");
-    const classification = searchParams.get("classification");
     const search = searchParams.get("search");
+    const tribeId = searchParams.get("tribeId");
 
-    const where: Record<string, any> = {};
+    const where: Record<string, unknown> = {};
 
-    if (district) {
+    if (district && district !== "all") {
       where.district = district;
     }
-
-    if (search && search.trim() !== "") {
-      const q = search.trim();
-      where.OR = [
-        { firstName: { contains: q, mode: 'insensitive' } },
-        { fatherName: { contains: q, mode: 'insensitive' } },
-        { grandfatherName: { contains: q, mode: 'insensitive' } },
-        { fourthName: { contains: q, mode: 'insensitive' } },
-        { keyCode: { contains: q, mode: 'insensitive' } },
-        { phone: { contains: q } },
-      ];
+    if (tribeId) {
+      where.tribeId = tribeId;
     }
 
-    // If role is KEY_USER, restrict to their own key
+    // KEY_USER يرى مفتاحه فقط
     if (user.role === "KEY_USER") {
       where.phone = user.username;
+    }
+
+    if (search && search.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { firstName: { contains: q } },
+        { fatherName: { contains: q } },
+        { grandfatherName: { contains: q } },
+        { fourthName: { contains: q } },
+        { phone: { contains: q } },
+        { keyCode: { contains: q } },
+      ];
     }
 
     const keys = await prisma.electionKey.findMany({
       where,
       orderBy: { createdAt: "desc" },
       include: {
-        tribe: true,
-        _count: {
-          select: { voters: true }
-        }
-      }
+        tribe: { select: { name: true } },
+        _count: { select: { voters: true } },
+      },
     });
 
-    const mappedKeys = keys.map((key) => {
-      const { score, classification, ratings } = calculateKeyScore(key);
+    const result = keys.map((k) => ({
+      id: k.id,
+      keyCode: k.keyCode,
+      fullName: [k.firstName, k.fatherName, k.grandfatherName, k.fourthName]
+        .filter(Boolean)
+        .join(" ")
+        .trim(),
+      firstName: k.firstName,
+      fatherName: k.fatherName,
+      grandfatherName: k.grandfatherName,
+      fourthName: k.fourthName,
+      gender: k.gender,
+      phone: k.phone,
+      district: k.district,
+      subDistrict: k.subDistrict,
+      pollingCenter: k.pollingCenter,
+      expectedVotes: k.expectedVotes,
+      influenceLevel: k.influenceLevel,
+      mobilizationCap: k.mobilizationCap,
+      loyaltyScore: k.loyaltyScore,
+      riskLevel: k.riskLevel,
+      tribeId: k.tribeId,
+      tribeName: k.tribe?.name || "غير محدد",
+      voterCount: k._count.voters,
+      createdAt: k.createdAt.toISOString(),
+    }));
 
-      return {
-        id: key.id,
-        code: key.keyCode,
-        firstName: key.firstName,
-        fatherName: key.fatherName,
-        grandfatherName: key.grandfatherName,
-        fourthName: key.fourthName,
-        nickname: key.tribe?.name || "",
-        gender: key.gender,
-        phone: key.phone,
-        educationLevel: key.education,
-        profession: key.profession,
-        governorate: key.province,
-        district: key.district,
-        area: key.subDistrict, // SubDistrict maps to area/neighborhood in client context
-        pollingCenter: key.pollingCenter,
-        totalVotes: key.expectedVotes, // map client expectation
-        supportedVotes: Math.round(key.expectedVotes * 0.6), // Mocked breakdown or default distribution if not saved separately
-        neutralVotes: Math.round(key.expectedVotes * 0.3),
-        weakVotes: Math.round(key.expectedVotes * 0.1),
-        netVotes: key.expectedVotes,
-        loyaltyLevel: ratings.loyaltyLevel,
-        influenceLevel: ratings.influenceLevel,
-        mobilizationAbility: ratings.mobilizationAbility,
-        voteProtection: ratings.voteProtection,
-        supportReason: ratings.supportReason,
-        needsLevel: ratings.needsLevel,
-        politicalNote: ratings.politicalNote,
-        organizationalNote: ratings.organizationalNote,
-        generalNote: ratings.generalNote,
-        weightedScore: score,
-        classification: classification,
-        tribeId: key.tribeId,
-        tribe: key.tribe,
-        voterCount: key._count?.voters || 0,
-        notes: "",
-        socialMedia: key.socialMedia ? (typeof key.socialMedia === "string" ? key.socialMedia : JSON.stringify(key.socialMedia)) : null,
-        dateOfBirth: key.birthDate ? key.birthDate.toISOString().split("T")[0] : null,
-        createdAt: key.createdAt.toISOString(),
-      };
-    });
-
-    // Client classification filter
-    const finalKeys = classification 
-      ? mappedKeys.filter(k => k.classification === classification)
-      : mappedKeys;
-
-    return NextResponse.json(finalKeys);
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("[electoral-keys-get] failed:", error);
-    return NextResponse.json({ error: "Failed to retrieve electoral keys" }, { status: 500 });
+    return handleApiError(error, "electoral-keys-get");
   }
 }
 
-// POST /api/electoral-keys - Create key with full schema
-async function postHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+// POST /api/electoral-keys — إنشاء مفتاح مع توليد كود تلقائي (retry لمنع التضارب)
+async function postHandler(req: NextRequest, { user }: any) {
   try {
-    const body = await request.json();
-    const {
-      code,
-      firstName,
-      fatherName,
-      grandfatherName,
-      fourthName,
-      gender,
-      dateOfBirth,
-      phone,
-      educationLevel,
-      profession,
-      governorate,
-      district,
-      area,
-      pollingCenter,
-      totalVotes,
-      loyaltyLevel,
-      influenceLevel,
-      mobilizationAbility,
-      riskLevel,
-      voteProtection,
-      supportReason,
-      needsLevel,
-      politicalNote,
-      organizationalNote,
-      generalNote,
-      tribeId,
-      socialMedia,
-    } = body;
-
-    if (!firstName || !phone) {
-      return NextResponse.json({ error: "الاسم الأول ورقم الهاتف حقول مطلوبة" }, { status: 400 });
+    const body = await req.json();
+    const parsed = createElectionKeySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: formatZodError(parsed.error) },
+        { status: 400 }
+      );
     }
 
-    const birthDate = dateOfBirth ? new Date(dateOfBirth) : new Date("1980-01-01");
+    const d = parsed.data;
+    const birthDate = d.dateOfBirth
+      ? new Date(d.dateOfBirth)
+      : new Date("1980-01-01");
 
-    const relLogs = {
-      loyaltyLevel: parseInt(loyaltyLevel) || 3,
-      influenceLevel: parseInt(influenceLevel) || 3,
-      mobilizationAbility: parseInt(mobilizationAbility) || 3,
-      riskLevel: parseInt(riskLevel) || parseInt(needsLevel) || 3,
-      voteProtection: parseInt(voteProtection) || 3,
-      supportReason: parseInt(supportReason) || 3,
-      needsLevel: parseInt(needsLevel) || 3,
-      politicalNote: parseInt(politicalNote) || 3,
-      organizationalNote: parseInt(organizationalNote) || 3,
-      generalNote: parseInt(generalNote) || 3,
-    };
-
-    let generatedCode = "";
+    // توليد كود تلقائي متسلسل مع retry
+    let key = null;
     let attempts = 0;
     const maxAttempts = 5;
-    let key = null;
 
     while (attempts < maxAttempts) {
       const maxKey = await prisma.electionKey.aggregate({
-        _max: {
-          keyCode: true
-        }
+        _max: { keyCode: true },
       });
       const maxCodeStr = maxKey._max.keyCode;
       let maxSeq = 0;
       if (maxCodeStr) {
         const num = parseInt(maxCodeStr, 10);
-        if (!isNaN(num)) {
-          maxSeq = num;
-        }
+        if (!isNaN(num)) maxSeq = num;
       }
-      generatedCode = String(maxSeq + 1);
+      const generatedCode = String(maxSeq + 1);
 
       try {
         key = await prisma.electionKey.create({
           data: {
             keyCode: generatedCode,
-            firstName,
-            fatherName: fatherName || "",
-            grandfatherName: grandfatherName || "",
-            fourthName: fourthName || "",
-            gender: gender || "ذكر",
+            firstName: d.firstName,
+            fatherName: d.fatherName,
+            grandfatherName: d.grandfatherName,
+            fourthName: d.fourthName,
+            gender: d.gender,
             birthDate,
-            phone,
-            education: educationLevel || "",
-            profession: profession || "",
-            province: governorate || "ذي قار",
-            district: district || "الناصرية",
-            subDistrict: area || "",
-            pollingCenter: pollingCenter || "",
-            expectedVotes: parseInt(totalVotes) || 0,
-            loyaltyScore: relLogs.loyaltyLevel,
-            influenceLevel: relLogs.influenceLevel,
-            mobilizationCap: relLogs.mobilizationAbility,
-            riskLevel: relLogs.riskLevel,
-            reliabilityLogs: relLogs,
-            tribeId: tribeId || null,
-            socialMedia: safeJsonParse(socialMedia),
+            education: d.education,
+            profession: d.profession,
+            phone: d.phone,
+            province: "ذي قار",
+            district: d.district,
+            subDistrict: d.subDistrict,
+            pollingCenter: d.pollingCenter,
+            expectedVotes: d.expectedVotes,
+            influenceLevel: d.influenceLevel,
+            mobilizationCap: d.mobilizationCap,
+            loyaltyScore: d.loyaltyScore,
+            riskLevel: d.riskLevel,
+            tribeId: d.tribeId || null,
           },
-          include: {
-            tribe: true,
-          }
         });
-        break; // Success!
-      } catch (error: any) {
-        if (error.code === 'P2002' && (error.meta?.target?.includes('keyCode') || error.message?.includes('keyCode'))) {
-          attempts++;
-          continue; // Retry with a new generated code
-        }
-        throw error; // Propagate other errors
+        break;
+      } catch {
+        attempts++;
       }
     }
 
     if (!key) {
-      return NextResponse.json({ error: "فشل توليد كود المفتاح الانتخابي بسبب التزامن، يرجى المحاولة مرة أخرى" }, { status: 500 });
+      return NextResponse.json(
+        { error: "فشل توليد كود فريد للمفتاح" },
+        { status: 500 }
+      );
     }
 
-    const { score, classification, ratings } = calculateKeyScore(key);
+    await auditLog({
+      userId: user.userId,
+      username: user.username,
+      action: "CREATE",
+      entity: "ElectionKey",
+      entityId: key.id,
+      details: { keyCode: key.keyCode, name: key.firstName },
+    });
 
-    return NextResponse.json({
-      id: key.id,
-      code: key.keyCode,
-      firstName: key.firstName,
-      fatherName: key.fatherName,
-      grandfatherName: key.grandfatherName,
-      fourthName: key.fourthName,
-      nickname: key.tribe?.name || "",
-      gender: key.gender,
-      phone: key.phone,
-      educationLevel: key.education,
-      profession: key.profession,
-      governorate: key.province,
-      district: key.district,
-      area: key.subDistrict,
-      pollingCenter: key.pollingCenter,
-      totalVotes: key.expectedVotes,
-      supportedVotes: Math.round(key.expectedVotes * 0.6),
-      neutralVotes: Math.round(key.expectedVotes * 0.3),
-      weakVotes: Math.round(key.expectedVotes * 0.1),
-      netVotes: key.expectedVotes,
-      loyaltyLevel: ratings.loyaltyLevel,
-      influenceLevel: ratings.influenceLevel,
-      mobilizationAbility: ratings.mobilizationAbility,
-      voteProtection: ratings.voteProtection,
-      supportReason: ratings.supportReason,
-      needsLevel: ratings.needsLevel,
-      politicalNote: ratings.politicalNote,
-      organizationalNote: ratings.organizationalNote,
-      generalNote: ratings.generalNote,
-      weightedScore: score,
-      classification: classification,
-      tribeId: key.tribeId,
-      tribe: key.tribe,
-      voterCount: 0,
-      notes: "",
-      socialMedia: key.socialMedia ? JSON.stringify(key.socialMedia) : null,
-      dateOfBirth: key.birthDate ? key.birthDate.toISOString().split("T")[0] : null,
-      createdAt: key.createdAt.toISOString(),
-    }, { status: 201 });
-  } catch (error: any) {
-    console.error("[electoral-keys-post] failed:", error);
-    if (error.code === 'P2002') {
-      return NextResponse.json({ error: "كود المفتاح أو رقم الهاتف مسجل مسبقاً" }, { status: 400 });
-    }
-    return NextResponse.json({ error: "Failed to create electoral key" }, { status: 500 });
+    return NextResponse.json(key, { status: 201 });
+  } catch (error) {
+    return handleApiError(error, "electoral-keys-post");
   }
 }
 
-export const GET = withAuth(getHandler, { GET: ["admin", "viewer", "operator", "key_user"] });
-export const POST = withAuth(postHandler, { POST: ["admin", "operator"] });
+export const GET = withAuth(getHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
+export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
+

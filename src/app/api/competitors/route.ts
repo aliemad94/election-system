@@ -1,15 +1,32 @@
+// ====================================================================
+// /api/competitors — إدارة المنافسين (CRUD)
+// ====================================================================
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
+import { withAuth } from "@/lib/auth-guard";
+import { handleApiError, auditLog } from "@/lib/security";
+import { z } from "zod";
 
-// GET /api/competitors - Returns all competitors
-async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+const competitorSchema = z.object({
+  candidateName: z.string().min(1, "اسم المرشح مطلوب"),
+  partyOrList: z.string().min(1, "القائمة مطلوبة"),
+  strengthLevel: z.number().int().min(1).max(5).default(3),
+  district: z.string().optional().default(""),
+  primaryArea: z.string().optional().default(""),
+  estimatedVotesBase: z.number().int().min(0).default(0),
+  keyStrengths: z.string().optional(),
+  keyWeaknesses: z.string().optional(),
+  counterStrategy: z.string().optional(),
+});
+
+async function getHandler(_req: NextRequest) {
   try {
     const competitors = await prisma.competitor.findMany({
       orderBy: { createdAt: "desc" },
     });
 
-    const mapped = competitors.map(c => ({
+    const mapped = competitors.map((c) => ({
       id: c.id,
       candidateName: c.name,
       partyOrList: c.party,
@@ -25,52 +42,54 @@ async function getHandler(request: NextRequest, { user }: { user: AuthenticatedU
 
     return NextResponse.json(mapped);
   } catch (error) {
-    console.error("[competitors-get] failed:", error);
-    return NextResponse.json({ error: "Failed to retrieve competitors" }, { status: 500 });
+    return handleApiError(error, "competitors-get");
   }
 }
 
-// POST /api/competitors - Creates a new competitor
-async function postHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+async function postHandler(req: NextRequest, { user }: any) {
   try {
-    const body = await request.json();
-    const {
-      candidateName,
-      partyOrList,
-      strengthLevel,
-      district,
-      primaryArea,
-      estimatedVotesBase,
-      keyStrengths,
-      keyWeaknesses,
-      counterStrategy
-    } = body;
-
-    if (!candidateName || !partyOrList) {
-      return NextResponse.json({ error: "اسم المرشح المنافس والقائمة حقول مطلوبة" }, { status: 400 });
+    const body = await req.json();
+    const parsed = competitorSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "بيانات غير صالحة" },
+        { status: 400 }
+      );
     }
 
+    const d = parsed.data;
     const competitor = await prisma.competitor.create({
       data: {
-        name: candidateName,
-        party: partyOrList,
-        tribe: primaryArea || "", // maintaining schema compatibility
-        baseDistrict: district || "",
-        estimatedVotes: parseInt(estimatedVotesBase) || 0,
-        strengthLevel: parseInt(strengthLevel) || 3,
-        primaryArea: primaryArea || null,
-        keyStrengths: keyStrengths || null,
-        keyWeaknesses: keyWeaknesses || null,
-        counterStrategy: counterStrategy || null,
+        name: d.candidateName,
+        party: d.partyOrList,
+        tribe: d.primaryArea || "",
+        baseDistrict: d.district || "",
+        estimatedVotes: d.estimatedVotesBase,
+        strengthLevel: d.strengthLevel,
+        primaryArea: d.primaryArea || null,
+        keyStrengths: d.keyStrengths || null,
+        keyWeaknesses: d.keyWeaknesses || null,
+        counterStrategy: d.counterStrategy || null,
       },
+    });
+
+    await auditLog({
+      userId: user.userId,
+      username: user.username,
+      action: "CREATE",
+      entity: "Competitor",
+      entityId: competitor.id,
+      details: { name: competitor.name },
     });
 
     return NextResponse.json(competitor, { status: 201 });
   } catch (error) {
-    console.error("[competitors-post] failed:", error);
-    return NextResponse.json({ error: "Failed to create competitor profile" }, { status: 500 });
+    return handleApiError(error, "competitors-post");
   }
 }
 
-export const GET = withAuth(getHandler, { GET: ["admin", "viewer", "operator"] });
-export const POST = withAuth(postHandler, { POST: ["admin", "operator"] });
+export const GET = withAuth(getHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
+export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
+

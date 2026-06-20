@@ -28,3 +28,4 @@ export default function () {
   const res = http.get(`${BASE}${ep}`);
   check(res, { 'status 2xx': (r) => r.status >= 200 && r.status < 300 });
 }
+

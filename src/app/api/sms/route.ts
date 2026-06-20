@@ -1,74 +1,121 @@
-import { NextRequest, NextResponse } from "next/server";
-import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
-import { prisma } from "@/lib/prisma";
-import { auditLog, getClientIp } from "@/lib/security";
+// ====================================================================
+// /api/sms — بث رسائل SMS (محاكاة: تسجيل الحملة بدون إرسال فعلي)
+// ====================================================================
 
-// GET /api/sms - Returns mockup campaign counters based on real database records
-async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { withAuth } from "@/lib/auth-guard";
+import { handleApiError, auditLog } from "@/lib/security";
+import { z } from "zod";
+
+const smsSchema = z.object({
+  message: z.string().min(1, "نص الرسالة مطلوب").max(480, "الرسالة طويلة جداً"),
+  district: z.string().optional(),
+  tribeId: z.string().optional(),
+  minSupportDegree: z.number().int().min(1).max(5).optional(),
+  status: z.enum(["SUPPORTED", "NEUTRAL", "WEAK"]).optional(),
+});
+
+async function getHandler() {
   try {
-    const totalVoters = await prisma.voter.count();
-    const checkedInCount = await prisma.voter.count({ where: { votedOnDay: true } });
-    
-    return NextResponse.json({
-      sent: totalVoters - checkedInCount,
-      pending: checkedInCount,
+    // إرجاع سجل الحملات السابقة (من AuditLog حيث action = CREATE و entity = SMS)
+    const logs = await prisma.auditLog.findMany({
+      where: {
+        action: "CREATE",
+        entity: "SMS",
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        details: true,
+        createdAt: true,
+        username: true,
+      },
     });
+
+    const campaigns = logs.map((l) => {
+      let details: any = {};
+      try {
+        details = l.details ? JSON.parse(l.details) : {};
+      } catch {
+        // تجاهل
+      }
+      return {
+        id: l.id,
+        message: details.message || "",
+        recipients: details.recipients || 0,
+        filter: details.filter || "",
+        createdAt: l.createdAt.toISOString(),
+        username: l.username,
+      };
+    });
+
+    return NextResponse.json(campaigns);
   } catch (error) {
-    console.error("[sms-get] failed:", error);
-    return NextResponse.json({ error: "Failed to retrieve SMS stats" }, { status: 500 });
+    return handleApiError(error, "sms-get");
   }
 }
 
-// POST /api/sms - Launches/Simulates a targeted SMS broadcast
-async function postHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+async function postHandler(req: NextRequest, { user }: any) {
   try {
-    const body = await request.json();
-    const { smsText, selectedDistrict, selectedTribe, confidenceScore } = body;
-    const clientIp = getClientIp(request);
-
-    if (!smsText) {
-      return NextResponse.json({ error: "نص الرسالة مطلوب" }, { status: 400 });
+    const body = await req.json();
+    const parsed = smsSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "بيانات غير صالحة" },
+        { status: 400 }
+      );
     }
 
-    // Build filter query for counting target reach
-    const where: Record<string, any> = {};
-    if (selectedDistrict) {
-      where.district = selectedDistrict;
-    }
-    if (selectedTribe) {
-      where.tribeId = selectedTribe;
-    }
-    if (Array.isArray(confidenceScore) && confidenceScore.length > 0) {
-      where.supportDegree = { in: confidenceScore.map((s: any) => parseInt(s) || 3) };
-    }
+    const { message, district, tribeId, minSupportDegree, status } = parsed.data;
 
-    const reach = await prisma.voter.count({ where });
+    // حساب المستلمين المحتملين
+    const where: Record<string, unknown> = {};
+    if (district) where.district = district;
+    if (tribeId) where.tribeId = tribeId;
+    if (status) where.status = status;
+    if (minSupportDegree) where.supportDegree = { gte: minSupportDegree };
 
-    // Log the event in our database audit log
+    const recipientCount = await prisma.voter.count({
+      where: { ...where, phone: { not: null } },
+    });
+
+    // تسجيل الحملة في AuditLog (محاكاة — لا إرسال فعلي)
+    const filterDesc = [
+      district && `قضاء: ${district}`,
+      tribeId && `عشيرة`,
+      status && `حالة: ${status}`,
+      minSupportDegree && `ثقة≥${minSupportDegree}`,
+    ]
+      .filter(Boolean)
+      .join("، ");
+
     await auditLog({
       userId: user.userId,
       username: user.username,
       action: "CREATE",
-      entity: "SMSCampaign",
+      entity: "SMS",
       details: {
-        textLength: smsText.length,
-        estimatedReach: reach,
-        district: selectedDistrict || "الكل",
-        tribe: selectedTribe || "الكل",
+        message,
+        recipients: recipientCount,
+        filter: filterDesc || "الكل",
       },
-      ipAddress: clientIp,
     });
 
     return NextResponse.json({
       success: true,
-      message: `تم إطلاق حملة البث بنجاح إلى ${reach} ناخب مستهدف`,
-      reach,
+      recipients: recipientCount,
+      message: `تم تسجيل حملة SMS لـ ${recipientCount} مستلم`,
+      smsCount: Math.ceil(message.length / 160) * recipientCount,
     });
   } catch (error) {
-    console.error("[sms-post] failed:", error);
-    return NextResponse.json({ error: "Failed to broadcast SMS campaign" }, { status: 500 });
+    return handleApiError(error, "sms-post");
   }
 }
 
-export const GET = withAuth(getHandler, { GET: ["admin", "viewer", "operator"] });
-export const POST = withAuth(postHandler, { POST: ["admin", "operator"] });
+export const GET = withAuth(getHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
+export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
+

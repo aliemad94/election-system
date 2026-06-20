@@ -1,3 +1,8 @@
+// ====================================================================
+// Prisma Client Singleton
+// يضمن وجود نسخة واحدة فقط في وضع التطوير لتفادي استنزاف الاتصالات
+// ====================================================================
+
 import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
@@ -7,7 +12,8 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    log:
+      process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
 if (process.env.NODE_ENV !== "production") {
@@ -17,3 +23,4 @@ if (process.env.NODE_ENV !== "production") {
 export async function disconnectPrisma() {
   await prisma.$disconnect();
 }
+

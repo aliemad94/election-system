@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+// نقطة فحص الصحة العامة (تُستثنى من middleware)
+import { NextResponse } from "next/server";
 
 export async function GET() {
-  return NextResponse.json({ 
-    status: 'healthy',
+  return NextResponse.json({
+    status: "ok",
+    system: "electoral-machine",
+    governorate: "ذي قار",
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
+    version: "0.1.0-foundation",
   });
 }
+

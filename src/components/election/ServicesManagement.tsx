@@ -1,265 +1,423 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Wrench, CheckCircle, Clock, AlertCircle, Plus, Users, Landmark, Heart } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+// ====================================================================
+// ServicesManagement — إدارة الخدمات الميدانية
+// ====================================================================
+
+import { useEffect, useState, useCallback } from "react";
+import {
+  Wrench,
+  Plus,
+  Search,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Loader,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { toast } from "sonner";
+import {
+  SERVICE_CATEGORIES,
+  SERVICE_STATUSES,
+  SERVICE_PRIORITIES,
+} from "@/lib/types";
+
+interface Service {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  status: string;
+  priority: string;
+  cost: number;
+  estimatedVotesImpact: number;
+  assignedTo: string;
+  keyCode: string;
+  voterName: string;
+  createdAt: string;
+}
+
+const emptyForm = {
+  title: "",
+  description: "",
+  category: "أخرى",
+  priority: "NORMAL",
+  cost: 0,
+  estimatedVotesImpact: 0,
+  assignedTo: "",
+};
+
+const STATUS_META: Record<
+  string,
+  { label: string; icon: React.ReactNode; class: string }
+> = {
+  PENDING: {
+    label: "بانتظار",
+    icon: <Clock className="w-3 h-3" />,
+    class: "bg-yellow-100 text-yellow-700",
+  },
+  IN_PROGRESS: {
+    label: "قيد التنفيذ",
+    icon: <Loader className="w-3 h-3" />,
+    class: "bg-blue-100 text-blue-700",
+  },
+  COMPLETED: {
+    label: "منجزة",
+    icon: <CheckCircle2 className="w-3 h-3" />,
+    class: "bg-emerald-100 text-emerald-700",
+  },
+  CANCELLED: {
+    label: "ملغاة",
+    icon: <XCircle className="w-3 h-3" />,
+    class: "bg-red-100 text-red-700",
+  },
+};
+
+const PRIORITY_META: Record<string, { label: string; class: string }> = {
+  URGENT: { label: "عاجل", class: "bg-red-100 text-red-700" },
+  HIGH: { label: "عالي", class: "bg-orange-100 text-orange-700" },
+  NORMAL: { label: "عادي", class: "bg-[var(--el-surface-container-high)] text-[var(--el-on-surface-variant)]" },
+  LOW: { label: "منخفض", class: "bg-[var(--el-surface-container)] text-[var(--el-on-surface-variant)]" },
+};
 
 export default function ServicesManagement() {
-  const [services, setServices] = useState<any[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    serviceType: 'MUNICIPAL',
-    priority: 'NORMAL',
-    status: 'PENDING',
-    assignedTo: '',
-    estimatedCost: '',
-    estimatedVotesImpact: '',
-  });
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
 
-  const { toast } = useToast();
-
-  useEffect(() => {
-    fetchServices();
-  }, []);
-
-  const fetchServices = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/services');
-      const data = await res.json();
-      setServices(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
+      const res = await fetch(
+        `/api/services${statusFilter !== "all" ? `?status=${statusFilter}` : ""}`
+      );
+      if (res.ok) setServices(await res.json());
+    } catch {
+      toast.error("تعذر تحميل الخدمات");
     } finally {
       setLoading(false);
     }
+  }, [statusFilter]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleSave = async () => {
+    if (!form.title.trim()) {
+      toast.error("عنوان الخدمة مطلوب");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("تم إنشاء الخدمة");
+        setDialogOpen(false);
+        setForm(emptyForm);
+        load();
+      } else {
+        toast.error(data.error || "فشل الإنشاء");
+      }
+    } catch {
+      toast.error("تعذر الاتصال بالخادم");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleStatusChange = async (id: string, status: string) => {
     try {
-      const res = await fetch('/api/services', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      const res = await fetch("/api/services", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
       });
       if (res.ok) {
-        toast({ title: 'نجاح', description: 'تم تسجيل الطلب الخدمي بنجاح' });
-        setShowAddForm(false);
-        setFormData({
-          title: '',
-          description: '',
-          serviceType: 'MUNICIPAL',
-          priority: 'NORMAL',
-          status: 'PENDING',
-          assignedTo: '',
-          estimatedCost: '',
-          estimatedVotesImpact: '',
-        });
-        fetchServices();
+        toast.success("تم تحديث الحالة");
+        load();
+      } else {
+        toast.error("فشل التحديث");
       }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleUpdateStatus = async (id: string, newStatus: string) => {
-    try {
-      const res = await fetch('/api/services', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: newStatus }),
-      });
-      if (res.ok) {
-        toast({ title: 'نجاح', description: 'تم تحديث حالة الخدمة' });
-        fetchServices();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'COMPLETED': return <CheckCircle className="w-5 h-5 text-emerald-500" />;
-      case 'IN_PROGRESS': return <Clock className="w-5 h-5 text-amber-500" />;
-      default: return <AlertCircle className="w-5 h-5 text-zinc-400" />;
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'MUNICIPAL': return 'بلدية وبنى تحتية';
-      case 'HEALTH': return 'رعاية صحية وتأمين طبي';
-      case 'EMPLOYMENT': return 'توظيف وتعيينات';
-      case 'FINANCIAL': return 'دعم مالي وتسهيلات';
-      default: return 'إدارية ومعاملات';
+    } catch {
+      toast.error("تعذر الاتصال بالخادم");
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-4 sm:p-6 space-y-4 max-w-7xl mx-auto">
+      {/* الرأس */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-[28px] leading-[36px] font-bold text-el-primary">نظام الخدمات والمساعدات</h2>
-          <p className="text-el-on-surface-variant text-[14px]">متابعة وتلبية متطلبات المواطنين لتعزيز الثقة الانتخابية في ذي قار</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--el-on-surface)]">
+            الخدمات الميدانية
+          </h2>
+          <p className="text-sm text-[var(--el-on-surface-variant)] mt-1">
+            {services.length} خدمة — تتبع الطلبات الخدمية وتأثيرها الانتخابي
+          </p>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-el-primary text-el-on-primary py-2 px-4 rounded flex items-center gap-2 text-[14px] font-medium shadow active:scale-95 transition-all cursor-pointer"
+        <Button
+          onClick={() => {
+            setForm(emptyForm);
+            setDialogOpen(true);
+          }}
+          className="shrink-0"
         >
-          <Plus className="w-4 h-4" />
-          تسجيل طلب خدمي جديد
-        </button>
+          <Plus className="w-4 h-4 ml-1" />
+          خدمة جديدة
+        </Button>
       </div>
 
-      {showAddForm && (
-        <Card className="border-el-outline-variant bg-el-surface-container">
-          <CardHeader>
-            <CardTitle className="text-[18px]">طلب خدمي جديد</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-[12px] font-bold">عنوان الطلب الخدمي *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={e => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="مثال: تبليط زقاق أو توفير محولة"
-                  className="bg-el-surface border border-el-outline rounded p-2 text-[14px]"
-                />
-              </div>
+      {/* فلتر الحالة */}
+      <div className="flex gap-2 flex-wrap">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="كل الحالات" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الحالات</SelectItem>
+            {SERVICE_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {STATUS_META[s]?.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-[12px] font-bold">نوع الخدمة</label>
-                <select
-                  value={formData.serviceType}
-                  onChange={e => setFormData({ ...formData, serviceType: e.target.value })}
-                  className="bg-el-surface border border-el-outline rounded p-2 text-[14px]"
+      {/* الجدول */}
+      <Card>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-8 h-8 border-4 border-[var(--el-primary)] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : services.length === 0 ? (
+            <div className="py-12 text-center text-[var(--el-on-surface-variant)]">
+              <Wrench className="w-12 h-12 mx-auto mb-3 opacity-40" />
+              <p>لا توجد خدمات مسجّلة</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+              <Table>
+                <TableHeader className="sticky top-0 bg-[var(--el-surface-container-low)] z-10">
+                  <TableRow>
+                    <TableHead>العنوان</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      التصنيف
+                    </TableHead>
+                    <TableHead className="text-center">الأولوية</TableHead>
+                    <TableHead className="text-center">الحالة</TableHead>
+                    <TableHead className="hidden lg:table-cell text-center">
+                      التأثير
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell">
+                      التكلفة
+                    </TableHead>
+                    <TableHead className="text-center">تحديث</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {services.map((s) => (
+                    <TableRow
+                      key={s.id}
+                      className="hover:bg-[var(--el-surface-container-low)]"
+                    >
+                      <TableCell>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">
+                            {s.title}
+                          </p>
+                          {s.description && (
+                            <p className="text-xs text-[var(--el-on-surface-variant)] truncate max-w-xs">
+                              {s.description}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs">
+                        {s.category}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${PRIORITY_META[s.priority]?.class}`}
+                        >
+                          {PRIORITY_META[s.priority]?.label}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${STATUS_META[s.status]?.class}`}
+                        >
+                          {STATUS_META[s.status]?.icon}
+                          {STATUS_META[s.status]?.label}
+                        </span>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-center text-xs">
+                        {s.estimatedVotesImpact} صوت
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs">
+                        {s.cost > 0 ? `${s.cost.toLocaleString()} د.ع` : "—"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Select
+                          value={s.status}
+                          onValueChange={(v) => handleStatusChange(s.id, v)}
+                        >
+                          <SelectTrigger className="h-7 w-32 text-xs mx-auto">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SERVICE_STATUSES.map((st) => (
+                              <SelectItem key={st} value={st}>
+                                {STATUS_META[st]?.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* نافذة الإنشاء */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>خدمة جديدة</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>العنوان *</Label>
+              <Input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="مثال: معالجة طلب رصف شارع"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>الوصف</Label>
+              <Textarea
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>التصنيف</Label>
+                <Select
+                  value={form.category}
+                  onValueChange={(v) => setForm({ ...form, category: v })}
                 >
-                  <option value="MUNICIPAL">بلدية وبنى تحتية</option>
-                  <option value="HEALTH">رعاية صحية وتأمين طبي</option>
-                  <option value="EMPLOYMENT">توظيف وتعيينات</option>
-                  <option value="FINANCIAL">دعم مالي وتسهيلات</option>
-                  <option value="ADMINISTRATIVE">إدارية ومعاملات</option>
-                </select>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-
-              <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-[12px] font-bold">تفاصيل الطلب والاحتياجات</label>
-                <textarea
-                  value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="تفاصيل إضافية..."
-                  className="bg-el-surface border border-el-outline rounded p-2 text-[14px] h-20"
-                />
+              <div className="space-y-2">
+                <Label>الأولوية</Label>
+                <Select
+                  value={form.priority}
+                  onValueChange={(v) => setForm({ ...form, priority: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_PRIORITIES.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {PRIORITY_META[p]?.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[12px] font-bold">المسؤول عن المتابعة</label>
-                <input
-                  type="text"
-                  value={formData.assignedTo}
-                  onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}
-                  placeholder="اسم المشرف أو المندوب"
-                  className="bg-el-surface border border-el-outline rounded p-2 text-[14px]"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[12px] font-bold">الأصوات المتأثرة المتوقعة</label>
-                <input
+              <div className="space-y-2">
+                <Label>التكلفة (د.ع)</Label>
+                <Input
                   type="number"
-                  value={formData.estimatedVotesImpact}
-                  onChange={e => setFormData({ ...formData, estimatedVotesImpact: e.target.value })}
-                  placeholder="عدد الأصوات كسباً"
-                  className="bg-el-surface border border-el-outline rounded p-2 text-[14px]"
+                  value={form.cost}
+                  onChange={(e) =>
+                    setForm({ ...form, cost: parseFloat(e.target.value) || 0 })
+                  }
                 />
               </div>
-
-              <div className="flex justify-end gap-2 md:col-span-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 text-[14px] font-bold border border-el-outline rounded"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-el-primary text-el-on-primary text-[14px] font-bold rounded"
-                >
-                  حفظ وتسجيل
-                </button>
+              <div className="space-y-2">
+                <Label>التأثير الانتخابي (أصوات)</Label>
+                <Input
+                  type="number"
+                  value={form.estimatedVotesImpact}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      estimatedVotesImpact: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
               </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {loading ? (
-        <div className="text-center py-10">جاري تحميل طلبات الخدمات...</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {services.map((serv: any) => (
-            <Card key={serv.id} className="border-el-outline-variant hover:shadow-md transition-all">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start gap-2">
-                  <span className="bg-el-primary-container text-el-on-primary-container text-[11px] px-2 py-0.5 rounded font-bold">
-                    {getTypeLabel(serv.serviceType)}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    {getStatusIcon(serv.status)}
-                    <span className="text-[12px] font-bold">
-                      {serv.status === 'COMPLETED' ? 'مكتمل' : serv.status === 'IN_PROGRESS' ? 'قيد التنفيذ' : 'معلق'}
-                    </span>
-                  </div>
-                </div>
-                <CardTitle className="text-[16px] leading-[22px] mt-2 font-bold">{serv.title}</CardTitle>
-                <CardDescription className="text-[12px]">{serv.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-2 text-[13px] space-y-2 border-t border-el-outline-variant mt-2">
-                <div className="flex justify-between text-zinc-500">
-                  <span>المتابعة:</span>
-                  <span className="font-bold text-el-on-surface">{serv.assignedTo || 'غير محدد'}</span>
-                </div>
-                <div className="flex justify-between text-zinc-500">
-                  <span>التأثير الانتخابي:</span>
-                  <span className="font-bold text-emerald-600">{serv.estimatedVotesImpact} صوت</span>
-                </div>
-                <div className="flex justify-between text-zinc-500">
-                  <span>التكلفة التقديرية:</span>
-                  <span className="font-bold text-amber-700">{serv.estimatedCost.toLocaleString()} د.ع</span>
-                </div>
-
-                <div className="pt-3 flex gap-2 justify-end">
-                  {serv.status !== 'COMPLETED' && (
-                    <button
-                      onClick={() => handleUpdateStatus(serv.id, 'COMPLETED')}
-                      className="bg-emerald-600 text-white text-[12px] font-bold py-1 px-3 rounded hover:bg-emerald-700 active:scale-95 transition-all"
-                    >
-                      تأكيد الإنجاز
-                    </button>
-                  )}
-                  {serv.status === 'PENDING' && (
-                    <button
-                      onClick={() => handleUpdateStatus(serv.id, 'IN_PROGRESS')}
-                      className="bg-amber-600 text-white text-[12px] font-bold py-1 px-3 rounded hover:bg-amber-700 active:scale-95 transition-all"
-                    >
-                      بدء التنفيذ
-                    </button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "جاري الحفظ..." : "إنشاء"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

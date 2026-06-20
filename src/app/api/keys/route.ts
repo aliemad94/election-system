@@ -1,1 +1,6 @@
-export { GET, POST } from '../electoral-keys/route';
+// ====================================================================
+// /api/keys — واجهة legacy تعيد تصدير electoral-keys
+// ====================================================================
+
+export { GET, POST } from "../electoral-keys/route";
+

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   keywords: ["election", "campaign", "management", "إدارة", "انتخابات", "ماكينة"],
   authors: [{ name: "Election Management Team" }],
   icons: {
-    icon: "/favicon.svg",
+    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
 };
 
@@ -23,7 +23,7 @@ export default function RootLayout({
       <body className="antialiased bg-background text-foreground">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
@@ -34,3 +34,4 @@ export default function RootLayout({
     </html>
   );
 }
+

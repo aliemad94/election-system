@@ -1,26 +1,48 @@
-import { NextRequest, NextResponse } from "next/server";
-import { calculateAllCompositeIndicators } from "@/lib/indicators-engine";
-import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
+// ====================================================================
+// /api/composite-indicators — تفصيل المؤشرات المركّبة لكل قضاء
+// ====================================================================
+// نفس بيانات /api/indicators لكن بترتيب يركّز على المقارنة بين الأقضية.
+// ====================================================================
 
-async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth-guard";
+import { handleApiError } from "@/lib/security";
+import { getCachedIndicators } from "@/lib/indicators-cache";
+
+async function getHandler() {
   try {
-    const data = await calculateAllCompositeIndicators();
-    return NextResponse.json(data);
+    const data = await getCachedIndicators();
+
+    // تركيز على مقارنة الأقضية
+    const districtComparison = data.districts.map((d) => ({
+      district: d.name,
+      efiScore: d.efiScore,
+      eiiScore: d.eiiScore,
+      kriScore: d.kriScore,
+      vpsScore: d.vpsScore,
+      drsScore: d.drsScore,
+      apiScore: d.apiScore,
+      ewliScore: d.ewliScore,
+      gsiScore: d.gsiScore,
+      edriScore: d.edriScore,
+      projectedSeats: d.projectedSeats,
+      totalKeys: d.totalKeysInArea,
+      totalVoters: d.totalVotersInArea,
+      netVotes: d.totalNetVotes,
+    }));
+
+    return NextResponse.json({
+      governorate: data.governorate,
+      districtComparison,
+      seatProjection: data.seatProjection,
+      lastCalculated: data.lastCalculated,
+    });
   } catch (error) {
-    console.error("[composite-indicators-get] failed:", error);
-    return NextResponse.json({ error: "Failed to calculate composite indicators" }, { status: 500 });
+    return handleApiError(error, "composite-indicators-get");
   }
 }
 
-async function postHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
-  try {
-    const data = await calculateAllCompositeIndicators();
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("[composite-indicators-post] failed:", error);
-    return NextResponse.json({ error: "Failed to recalculate composite indicators" }, { status: 500 });
-  }
-}
+export const GET = withAuth(getHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
 
-export const GET = withAuth(getHandler, { GET: ["admin", "observer", "operator", "key_user"] });
-export const POST = withAuth(postHandler, { POST: ["admin", "operator"] });

@@ -1,35 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getCachedIndicators } from "@/lib/indicators-cache";
-import { withAuth } from "@/lib/auth-guard";
+// ====================================================================
+// /api/indicators — المؤشرات المركّبة الكاملة (مخزّنة مؤقتاً 15s)
+// ====================================================================
 
-async function getIndicators(_req: NextRequest): Promise<NextResponse> {
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth-guard";
+import { handleApiError } from "@/lib/security";
+import { getCachedIndicators } from "@/lib/indicators-cache";
+
+async function getHandler() {
   try {
-    const indicators = await getCachedIndicators();
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          gsi: {
-            value: indicators.gsi.gsi,
-            totalVoters: indicators.gsi.totalVoters,
-            checkedIn: indicators.gsi.checkedIn,
-            byTribe: indicators.gsi.byTribe,
-          },
-          edri: {
-            value: indicators.edri.edri,
-            dominantTribe: indicators.edri.dominantTribe,
-            dominantShare: Math.round(indicators.edri.dominantShare * 1000) / 10,
-            entropyScore: indicators.edri.entropyScore,
-          },
-          cachedAt: new Date().toISOString(),
-        },
-      },
-      { headers: { "Cache-Control": "public, max-age=10, stale-while-revalidate=20" } }
-    );
+    const data = await getCachedIndicators();
+    return NextResponse.json(data);
   } catch (error) {
-    console.error("[indicators] computation failed:", error);
-    return NextResponse.json({ success: false, error: "Failed to compute indicators" }, { status: 500 });
+    return handleApiError(error, "indicators-get");
   }
 }
 
-export const GET = withAuth(getIndicators, { GET: ["admin", "viewer", "operator"] });
+export const GET = withAuth(getHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
+

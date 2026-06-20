@@ -9,3 +9,4 @@ cmds = ["cp prisma/schema.postgres.prisma prisma/schema.prisma && npx prisma gen
 
 [start]
 cmd = "npx prisma db push --skip-generate && npx prisma db seed && node .next/standalone/server.js"
+
