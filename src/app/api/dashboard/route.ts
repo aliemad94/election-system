@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/auth-guard";
 
 export async function GET(req: Request) {
-  const user = getUserFromRequest(req as any);
+  const user = await getUserFromRequest(req as any);
 
   if (!user) {
     return NextResponse.json(

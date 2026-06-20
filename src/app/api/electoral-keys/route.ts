@@ -195,4 +195,3 @@ export const GET = withAuth(getHandler, {
   GET: ["ADMIN", "KEY_USER", "OBSERVER"],
 });
 export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
-
