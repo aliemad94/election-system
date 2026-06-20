@@ -1375,3 +1375,4 @@ export default function VoterRegistration() {
     </div>
   );
 }
+

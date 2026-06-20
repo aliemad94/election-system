@@ -1,15 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
-import { calculateComprehensiveIndicators } from "@/lib/comprehensive-indicators-engine";
-import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
+// ====================================================================
+// /api/comprehensive-indicators — 80+ مؤشراً تحليلياً شاملاً
+// ====================================================================
 
-async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth-guard";
+import { handleApiError } from "@/lib/security";
+import { calculateComprehensiveIndicators } from "@/lib/comprehensive-indicators-engine";
+
+async function getHandler(_req: NextRequest) {
   try {
     const data = await calculateComprehensiveIndicators();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error("[comprehensive-indicators-get] failed:", error);
-    return NextResponse.json({ error: error.message || "Failed to retrieve comprehensive indicators" }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error, "comprehensive-indicators-get");
   }
 }
 
-export const GET = withAuth(getHandler, { GET: ["admin", "observer"] });
+export const GET = withAuth(getHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
+

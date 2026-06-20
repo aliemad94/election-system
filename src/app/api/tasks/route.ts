@@ -1,23 +1,22 @@
+// ====================================================================
+// /api/tasks — إدارة المهام الميدانية (GET + POST + PUT)
+// ====================================================================
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
+import { withAuth } from "@/lib/auth-guard";
+import { handleApiError, auditLog } from "@/lib/security";
 
-// GET /api/tasks - Returns all tasks matching filters, along with status counts
-async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+async function getHandler(req: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const district = searchParams.get("district");
     const status = searchParams.get("status");
 
-    const where: Record<string, any> = {};
-    if (district) {
-      where.district = district;
-    }
-    if (status) {
-      where.status = status;
-    }
+    const where: Record<string, unknown> = {};
+    if (district) where.district = district;
+    if (status) where.status = status;
 
-    // Retrieve tasks with related voter and volunteer details
     const tasks = await prisma.task.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -31,22 +30,24 @@ async function getHandler(request: NextRequest, { user }: { user: AuthenticatedU
             fourthName: true,
             phone: true,
             supportDegree: true,
-          }
+          },
         },
         assignedTo: {
-          select: {
-            id: true,
-            fullName: true,
-            district: true,
-          }
-        }
-      }
+          select: { id: true, fullName: true, district: true },
+        },
+      },
     });
 
-    // Format tasks for the frontend mapping
-    const mappedTasks = tasks.map(t => {
-      const voterName = t.targetVoter 
-        ? [t.targetVoter.firstName, t.targetVoter.fatherName, t.targetVoter.grandfatherName, t.targetVoter.fourthName].filter(Boolean).join(" ")
+    const mappedTasks = tasks.map((t) => {
+      const voterName = t.targetVoter
+        ? [
+            t.targetVoter.firstName,
+            t.targetVoter.fatherName,
+            t.targetVoter.grandfatherName,
+            t.targetVoter.fourthName,
+          ]
+          .filter(Boolean)
+          .join(" ")
         : "";
 
       return {
@@ -58,50 +59,63 @@ async function getHandler(request: NextRequest, { user }: { user: AuthenticatedU
         taskType: t.taskType,
         district: t.district,
         impactEstimate: t.impactEstimate,
-        targetVoter: t.targetVoter ? {
-          id: t.targetVoter.id,
-          fullName: voterName,
-          phoneNumber: t.targetVoter.phone || "",
-          confidenceScore: t.targetVoter.supportDegree,
-        } : null,
-        assignedTo: t.assignedTo ? {
-          id: t.assignedTo.id,
-          name: t.assignedTo.fullName,
-          district: t.assignedTo.district,
-        } : null,
+        dueDate: t.dueDate?.toISOString() || null,
+        targetVoter: t.targetVoter
+          ? {
+              id: t.targetVoter.id,
+              fullName: voterName,
+              phoneNumber: t.targetVoter.phone || "",
+              confidenceScore: t.targetVoter.supportDegree,
+            }
+          : null,
+        assignedTo: t.assignedTo
+          ? {
+              id: t.assignedTo.id,
+              name: t.assignedTo.fullName,
+              district: t.assignedTo.district,
+            }
+          : null,
         createdAt: t.createdAt.toISOString(),
       };
     });
 
-    // Retrieve aggregate status counts
     const counts = await prisma.task.groupBy({
-      by: ['status'],
-      _count: { id: true }
+      by: ["status"],
+      _count: { id: true },
     });
 
-    const statusCounts = counts.map(c => ({
+    const statusCounts = counts.map((c) => ({
       status: c.status,
-      _count: { id: c._count.id }
+      count: c._count.id,
     }));
 
-    return NextResponse.json({
-      tasks: mappedTasks,
-      statusCounts,
-    });
+    return NextResponse.json({ tasks: mappedTasks, statusCounts });
   } catch (error) {
-    console.error("[tasks-get] failed:", error);
-    return NextResponse.json({ error: "Failed to retrieve tasks" }, { status: 500 });
+    return handleApiError(error, "tasks-get");
   }
 }
 
-// POST /api/tasks - Creates a new task
-async function postHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+async function postHandler(req: NextRequest, { user }: any) {
   try {
-    const body = await request.json();
-    const { title, description, priority, status, taskType, district, impactEstimate, targetVoterId, assignedToId } = body;
+    const body = await req.json();
+    const {
+      title,
+      description,
+      priority,
+      status,
+      taskType,
+      district,
+      impactEstimate,
+      targetVoterId,
+      assignedToId,
+      dueDate,
+    } = body;
 
     if (!title) {
-      return NextResponse.json({ error: "عنوان المهمة حقل مطلوب" }, { status: 400 });
+      return NextResponse.json(
+        { error: "عنوان المهمة حقل مطلوب" },
+        { status: 400 }
+      );
     }
 
     const task = await prisma.task.create({
@@ -115,25 +129,85 @@ async function postHandler(request: NextRequest, { user }: { user: Authenticated
         impactEstimate: impactEstimate || null,
         targetVoterId: targetVoterId || null,
         assignedToId: assignedToId || null,
+        dueDate: dueDate ? new Date(dueDate) : null,
       },
     });
 
-    // Increment assigned task count for volunteer
     if (assignedToId) {
       await prisma.volunteer.update({
         where: { id: assignedToId },
-        data: {
-          totalAssignedTasks: { increment: 1 }
-        }
+        data: { totalAssignedTasks: { increment: 1 } },
       });
     }
 
+    await auditLog({
+      userId: user.userId,
+      username: user.username,
+      action: "CREATE",
+      entity: "Task",
+      entityId: task.id,
+      details: { title: task.title },
+    });
+
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
-    console.error("[tasks-post] failed:", error);
-    return NextResponse.json({ error: "Failed to create task" }, { status: 500 });
+    return handleApiError(error, "tasks-post");
   }
 }
 
-export const GET = withAuth(getHandler, { GET: ["admin", "viewer", "operator", "key_user"] });
-export const POST = withAuth(postHandler, { POST: ["admin", "operator"] });
+async function putHandler(req: NextRequest, { user }: any) {
+  try {
+    const body = await req.json();
+    const { id, status, priority } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "معرف المهمة مطلوب" },
+        { status: 400 }
+      );
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (status !== undefined) updateData.status = status;
+    if (priority !== undefined) updateData.priority = priority;
+
+    // إذا اكتملت المهمة، نزيد عدّاد المهام المكتملة للمتطوع
+    if (status === "COMPLETED") {
+      const task = await prisma.task.findUnique({
+        where: { id },
+        select: { assignedToId: true },
+      });
+      if (task?.assignedToId) {
+        await prisma.volunteer.update({
+          where: { id: task.assignedToId },
+          data: { totalCompletedTasks: { increment: 1 } },
+        });
+      }
+    }
+
+    const updated = await prisma.task.update({
+      where: { id },
+      data: updateData,
+    });
+
+    await auditLog({
+      userId: user.userId,
+      username: user.username,
+      action: "UPDATE",
+      entity: "Task",
+      entityId: id,
+      details: { fields: Object.keys(updateData).join(', ') },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    return handleApiError(error, "tasks-put");
+  }
+}
+
+export const GET = withAuth(getHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
+export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
+export const PUT = withAuth(putHandler, { PUT: ["ADMIN", "KEY_USER"] });
+

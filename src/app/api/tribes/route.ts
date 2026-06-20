@@ -1,74 +1,94 @@
+// ====================================================================
+// /api/tribes — إدارة العشائر (CRUD مع Zod + RBAC + audit)
+// ====================================================================
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withAuth, AuthenticatedUser } from "@/lib/auth-guard";
+import { withAuth } from "@/lib/auth-guard";
+import { handleApiError } from "@/lib/security";
+import { auditLog } from "@/lib/security";
+import { createTribeSchema, formatZodError } from "@/lib/validators";
 
-async function getHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+// GET /api/tribes — قائمة العشائر مع إحصاءات الناخبين
+async function getHandler(_req: NextRequest) {
   try {
     const tribes = await prisma.tribe.findMany({
-      select: {
-        id: true,
-        name: true,
+      include: {
         _count: {
-          select: { voters: true }
-        }
-      }
+          select: { voters: true, subTribes: true },
+        },
+      },
+      orderBy: { name: "asc" },
     });
 
-    const tribeVotedCounts = await prisma.voter.groupBy({
-      by: ['tribeId'],
-      where: { votedOnDay: true },
-      _count: { id: true }
+    // إحصاءات التصويت لكل عشيرة
+    const votedGroups = await prisma.voter.groupBy({
+      by: ["tribeId"],
+      where: { votedOnDay: true, tribeId: { not: null } },
+      _count: { id: true },
     });
-    const votedMap = new Map(tribeVotedCounts.map(g => [g.tribeId, g._count.id]));
+    const votedMap = new Map(
+      votedGroups.map((g) => [g.tribeId, g._count.id])
+    );
 
-    const mapped = tribes.map((t) => {
+    const result = tribes.map((t) => {
       const voterCount = t._count.voters;
-      const checkedInCount = votedMap.get(t.id) || 0;
-      const votedPercentage = voterCount > 0 ? Math.round((checkedInCount / voterCount) * 100) : 0;
-
+      const votedCount = votedMap.get(t.id) || 0;
       return {
         id: t.id,
         name: t.name,
-        leaderName: "غير محدد",
-        leaderPhone: "",
-        influence: 3,
-        district: "ذي قار",
-        notes: "",
+        description: t.description,
         voterCount,
-        votedCount: checkedInCount,
-        votedPercentage,
-        avgConfidence: 3,
+        votedCount,
+        votedPercentage:
+          voterCount > 0 ? Math.round((votedCount / voterCount) * 100) : 0,
+        subTribeCount: t._count.subTribes,
+        createdAt: t.createdAt.toISOString(),
       };
     });
 
-    return NextResponse.json(mapped);
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("[tribes-get] failed:", error);
-    return NextResponse.json({ error: "Failed to retrieve tribes" }, { status: 500 });
+    return handleApiError(error, "tribes-get");
   }
 }
 
-async function postHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
+// POST /api/tribes — إنشاء عشيرة
+async function postHandler(req: NextRequest, { user }: any) {
   try {
-    const body = await request.json();
-    const { name } = body;
-
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    const body = await req.json();
+    const parsed = createTribeSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: formatZodError(parsed.error) },
+        { status: 400 }
+      );
     }
 
     const tribe = await prisma.tribe.create({
       data: {
-        name,
+        name: parsed.data.name,
+        description: parsed.data.description || null,
       },
+    });
+
+    await auditLog({
+      userId: user.userId,
+      username: user.username,
+      action: "CREATE",
+      entity: "Tribe",
+      entityId: tribe.id,
+      details: { name: tribe.name },
     });
 
     return NextResponse.json(tribe, { status: 201 });
   } catch (error) {
-    console.error("[tribes-post] failed:", error);
-    return NextResponse.json({ error: "Failed to create tribe" }, { status: 500 });
+    return handleApiError(error, "tribes-post");
   }
 }
 
-export const GET = withAuth(getHandler, { GET: ["admin", "viewer", "operator", "key_user"] });
-export const POST = withAuth(postHandler, { POST: ["admin", "operator"] });
+export const GET = withAuth(getHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
+export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
+

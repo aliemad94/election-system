@@ -274,13 +274,13 @@ export default function ElectoralKeyManagement() {
       ((form.organizationalNote || 3) - 1) * 5 +
       ((form.generalNote || 3) - 1) * 5;
 
-    return Math.min(100, Math.max(0, Math.round(rawScore / 4)));
+    return Math.round(rawScore / 2);
   };
 
   const getClassification = (score: number) => {
     if (score < 20) return 'ضعيف';
     if (score <= 50) return 'مقبول';
-    if (score <= 80) return 'جيد';
+    if (score <= 100) return 'جيد';
     return 'قوي';
   };
 
@@ -728,7 +728,7 @@ export default function ElectoralKeyManagement() {
                       <span className="text-[14px] font-semibold text-el-on-surface">التقييم الموزون النهائي:</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[24px] font-bold text-el-primary font-mono">{calcWeighted()}</span>
-                        <span className="text-[12px] text-el-on-surface-variant">/100</span>
+                        <span className="text-[12px] text-el-on-surface-variant">/200</span>
                       </div>
                     </div>
                     <div className="flex justify-between items-center mt-2">
@@ -738,14 +738,14 @@ export default function ElectoralKeyManagement() {
                       </span>
                     </div>
                     <div className="mt-2 h-2 w-full bg-el-surface-variant rounded-full overflow-hidden">
-                      <div className={`h-full transition-all ${calcWeighted() >= 80 ? 'bg-green-500' : calcWeighted() >= 50 ? 'bg-blue-500' : calcWeighted() >= 20 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                        style={{ width: `${calcWeighted()}%` }} />
+                      <div className={`h-full transition-all ${calcWeighted() >= 100 ? 'bg-green-500' : calcWeighted() >= 50 ? 'bg-blue-500' : calcWeighted() >= 20 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                        style={{ width: `${Math.min(calcWeighted() / 2, 100)}%` }} />
                     </div>
                     <div className="flex justify-between text-[10px] text-el-on-surface-variant mt-1">
                       <span>ضعيف &lt;20</span>
                       <span>مقبول 20-50</span>
-                      <span>جيد 50-80</span>
-                      <span>قوي 80-100</span>
+                      <span>جيد 50-100</span>
+                      <span>قوي 100-200</span>
                     </div>
                   </div>
 
@@ -926,3 +926,4 @@ export default function ElectoralKeyManagement() {
     </div>
   );
 }
+

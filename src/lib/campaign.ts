@@ -1,3 +1,7 @@
+// ====================================================================
+// campaign.ts — حسابات عائد استثمار الحملة
+// ====================================================================
+
 export interface ROIResult {
   roi: number;
   label: string;
@@ -5,10 +9,13 @@ export interface ROIResult {
 }
 
 /**
- * Calculates Campaign ROI safely
- * If there is no spending data (totalSpent <= 0), it returns hasSpendingData = false.
+ * يحسب عائد استثمار الحملة بأمان.
+ * إذا لم توجد بيانات إنفاق (totalSpent <= 0)، يرجع hasSpendingData = false.
  */
-export function computeCampaignROI(netVotes: number, totalSpent: number): ROIResult {
+export function computeCampaignROI(
+  netVotes: number,
+  totalSpent: number
+): ROIResult {
   if (totalSpent <= 0) {
     return {
       roi: 0,
@@ -17,11 +24,15 @@ export function computeCampaignROI(netVotes: number, totalSpent: number): ROIRes
     };
   }
 
-  // Formula: (netVotes / (totalSpent / 1,000,000)) * 10
-  const roi = Math.min(200, Math.round((netVotes / (totalSpent / 1000000)) * 10) / 10);
+  // المعادلة: (netVotes / (totalSpent / 1,000,000)) * 10
+  const roi = Math.min(
+    200,
+    Math.round((netVotes / (totalSpent / 1000000)) * 10) / 10
+  );
   return {
     roi,
     label: `${roi}%`,
     hasSpendingData: true,
   };
 }
+

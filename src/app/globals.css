@@ -1,9 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
-
-@source "../**/*.{js,ts,jsx,tsx,mdx}";
-@source "../../src/**/*.{js,ts,jsx,tsx,mdx}";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -46,93 +42,181 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Design System Command Deck Custom Mappings */
-  --color-el-bg: var(--background);
-  --color-el-surface: var(--card);
-  --color-el-surface-container: var(--muted);
-  --color-el-line: var(--border);
-  --color-el-primary: var(--primary);
-  --color-el-secondary: var(--secondary);
-  --color-el-alert: var(--destructive);
-  --color-el-text: var(--foreground);
-  --color-el-muted: var(--muted-foreground);
+  /* Election system custom colors */
+  --color-el-primary: var(--el-primary);
+  --color-el-primary-container: var(--el-primary-container);
+  --color-el-on-primary: var(--el-on-primary);
+  --color-el-on-primary-container: var(--el-on-primary-container);
+  --color-el-secondary: var(--el-secondary);
+  --color-el-secondary-container: var(--el-secondary-container);
+  --color-el-on-secondary: var(--el-on-secondary);
+  --color-el-on-secondary-container: var(--el-on-secondary-container);
+  --color-el-tertiary-container: var(--el-tertiary-container);
+  --color-el-surface: var(--el-surface);
+  --color-el-surface-container: var(--el-surface-container);
+  --color-el-surface-container-low: var(--el-surface-container-low);
+  --color-el-surface-container-high: var(--el-surface-container-high);
+  --color-el-surface-container-highest: var(--el-surface-container-highest);
+  --color-el-surface-variant: var(--el-surface-variant);
+  --color-el-outline: var(--el-outline);
+  --color-el-outline-variant: var(--el-outline-variant);
+  --color-el-error: var(--el-error);
+  --color-el-background: var(--el-background);
+  --color-el-on-background: var(--el-on-background);
+  --color-el-on-surface: var(--el-on-surface);
+  --color-el-on-surface-variant: var(--el-on-surface-variant);
+  --color-el-primary-fixed: var(--el-primary-fixed);
+  --color-el-primary-fixed-dim: var(--el-primary-fixed-dim);
+  --color-el-on-primary-fixed: var(--el-on-primary-fixed);
+  --color-el-on-primary-fixed-variant: var(--el-on-primary-fixed-variant);
+  --color-el-secondary-fixed: var(--el-secondary-fixed);
+  --color-el-inverse-surface: var(--el-inverse-surface);
+  --color-el-inverse-on-surface: var(--el-inverse-on-surface);
+  --color-el-error-container: var(--el-error-container);
+  --color-el-surface-dim: var(--el-surface-dim);
+  --color-el-surface-bright: var(--el-surface-bright);
+  --color-el-surface-container-lowest: var(--el-surface-container-lowest);
 }
 
 :root {
-  --font-geist-sans: 'IBM Plex Sans Arabic', Tajawal, 'Segoe UI', Tahoma, sans-serif;
-  --font-geist-mono: 'IBM Plex Mono', 'SFMono-Regular', monospace;
-  --radius: 12px;
-  
-  /* Light Theme (For reports and printing) */
-  --background: #F6F8FC;
-  --foreground: #0B1120;
-  --card: #FFFFFF;
-  --card-foreground: #0B1120;
-  --popover: #FFFFFF;
-  --popover-foreground: #0B1120;
-  --primary: #C97D12;
-  --primary-foreground: #FFFFFF;
-  --secondary: #0E9C8E;
-  --secondary-foreground: #FFFFFF;
-  --muted: #EEF2F9;
-  --muted-foreground: #5A6B85;
-  --accent: #EEF2F9;
-  --accent-foreground: #0B1120;
-  --destructive: #C5383C;
-  --border: #DDE4F0;
-  --input: #DDE4F0;
-  --ring: #C97D12;
-  --sidebar: #EEF2F9;
-  --sidebar-foreground: #0B1120;
-  --sidebar-primary: #C97D12;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EEF2F9;
-  --sidebar-accent-foreground: #0B1120;
-  --sidebar-border: #DDE4F0;
-  --sidebar-ring: #C97D12;
-  
-  --chart-1: #C97D12;
-  --chart-2: #0E9C8E;
-  --chart-3: #EEF2F9;
-  --chart-4: #5A6B85;
-  --chart-5: #C5383C;
+  --font-geist-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-geist-mono: JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --radius: 0.625rem;
+  --background: #f8f9ff;
+  --foreground: #0b1c30;
+  --card: #ffffff;
+  --card-foreground: #0b1c30;
+  --popover: #ffffff;
+  --popover-foreground: #0b1c30;
+  --primary: #031635;
+  --primary-foreground: #ffffff;
+  --secondary: #855300;
+  --secondary-foreground: #ffffff;
+  --muted: #e5eeff;
+  --muted-foreground: #44474e;
+  --accent: #d3e4fe;
+  --accent-foreground: #0b1c30;
+  --destructive: #ba1a1a;
+  --border: #c5c6cf;
+  --input: #c5c6cf;
+  --ring: #031635;
+  --chart-1: #031635;
+  --chart-2: #fea619;
+  --chart-3: #d3e4fe;
+  --chart-4: #1a2b4b;
+  --chart-5: #855300;
+  --sidebar: #e5eeff;
+  --sidebar-foreground: #0b1c30;
+  --sidebar-primary: #031635;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fea619;
+  --sidebar-accent-foreground: #684000;
+  --sidebar-border: #c5c6cf;
+  --sidebar-ring: #031635;
+
+  /* Election system design tokens */
+  --el-primary: #031635;
+  --el-primary-container: #1a2b4b;
+  --el-on-primary: #ffffff;
+  --el-on-primary-container: #8293b8;
+  --el-secondary: #855300;
+  --el-secondary-container: #fea619;
+  --el-on-secondary: #ffffff;
+  --el-on-secondary-container: #684000;
+  --el-tertiary-container: #3e2700;
+  --el-surface: #f8f9ff;
+  --el-surface-container: #e5eeff;
+  --el-surface-container-low: #eff4ff;
+  --el-surface-container-high: #dce9ff;
+  --el-surface-container-highest: #d3e4fe;
+  --el-surface-variant: #d3e4fe;
+  --el-outline: #75777f;
+  --el-outline-variant: #c5c6cf;
+  --el-error: #ba1a1a;
+  --el-background: #f8f9ff;
+  --el-on-background: #0b1c30;
+  --el-on-surface: #0b1c30;
+  --el-on-surface-variant: #44474e;
+  --el-primary-fixed: #d8e2ff;
+  --el-primary-fixed-dim: #b6c6ef;
+  --el-on-primary-fixed: #081b3a;
+  --el-on-primary-fixed-variant: #364768;
+  --el-secondary-fixed: #ffddb8;
+  --el-inverse-surface: #213145;
+  --el-inverse-on-surface: #eaf1ff;
+  --el-error-container: #ffdad6;
+  --el-surface-dim: #cbdbf5;
+  --el-surface-bright: #f8f9ff;
+  --el-surface-container-lowest: #ffffff;
 }
 
 .dark {
-  /* Dark Theme - Command Deck Default */
-  --background: #0B1120;
-  --foreground: #E8EDF7;
-  --card: #131C2E;
-  --card-foreground: #E8EDF7;
-  --popover: #131C2E;
-  --popover-foreground: #E8EDF7;
-  --primary: #F2A024;
-  --primary-foreground: #0B1120;
-  --secondary: #2DD4BF;
-  --secondary-foreground: #0B1120;
-  --muted: #1B2638;
-  --muted-foreground: #8A99B4;
-  --accent: #1B2638;
-  --accent-foreground: #E8EDF7;
-  --destructive: #E5484D;
-  --destructive-foreground: #FFFFFF;
-  --border: #26324B;
-  --input: #26324B;
-  --ring: #F2A024;
-  --sidebar: #131C2E;
-  --sidebar-foreground: #E8EDF7;
-  --sidebar-primary: #F2A024;
-  --sidebar-primary-foreground: #0B1120;
-  --sidebar-accent: #1B2638;
-  --sidebar-accent-foreground: #F2A024;
-  --sidebar-border: #26324B;
-  --sidebar-ring: #F2A024;
+  --background: #050b14;
+  --foreground: #f0f4f8;
+  --card: #0c1424;
+  --card-foreground: #f0f4f8;
+  --popover: #0c1424;
+  --popover-foreground: #f0f4f8;
+  --primary: #fea619;
+  --primary-foreground: #031635;
+  --secondary: #b6c6ef;
+  --secondary-foreground: #0c1424;
+  --muted: #162238;
+  --muted-foreground: #8aa0c2;
+  --accent: #1e2e4a;
+  --accent-foreground: #f0f4f8;
+  --destructive: #ba1a1a;
+  --border: #1e2e4a;
+  --input: #1e2e4a;
+  --ring: #fea619;
+  --chart-1: #fea619;
+  --chart-2: #ffb95f;
+  --chart-3: #1a2b4b;
+  --chart-4: #d8e2ff;
+  --chart-5: #b6c6ef;
+  --sidebar: #090f1a;
+  --sidebar-foreground: #f0f4f8;
+  --sidebar-primary: #fea619;
+  --sidebar-primary-foreground: #031635;
+  --sidebar-accent: #1a2b4b;
+  --sidebar-accent-foreground: #fea619;
+  --sidebar-border: #1e2e4a;
+  --sidebar-ring: #fea619;
 
-  --chart-1: #F2A024;
-  --chart-2: #2DD4BF;
-  --chart-3: #1B2638;
-  --chart-4: #8A99B4;
-  --chart-5: #E5484D;
+  /* Election system design tokens in dark mode */
+  --el-primary: #fea619;
+  --el-primary-container: #1e2e4a;
+  --el-on-primary: #031635;
+  --el-on-primary-container: #b6c6ef;
+  --el-secondary: #ffb95f;
+  --el-secondary-container: #fea619;
+  --el-on-secondary: #3e2700;
+  --el-on-secondary-container: #ffddb8;
+  --el-tertiary-container: #ffddb8;
+  --el-surface: #0c1424;
+  --el-surface-container: #111d33;
+  --el-surface-container-low: #090f1a;
+  --el-surface-container-high: #162742;
+  --el-surface-container-highest: #1e3354;
+  --el-surface-variant: #1e2e4a;
+  --el-outline: #8e95a5;
+  --el-outline-variant: #2d3f5d;
+  --el-error: #ffb4ab;
+  --el-background: #050b14;
+  --el-on-background: #f0f4f8;
+  --el-on-surface: #f0f4f8;
+  --el-on-surface-variant: #c2c9d6;
+  --el-primary-fixed: #ffddb8;
+  --el-primary-fixed-dim: #ffb95f;
+  --el-on-primary-fixed: #3e2700;
+  --el-on-primary-fixed-variant: #ffb95f;
+  --el-secondary-fixed: #b6c6ef;
+  --el-inverse-surface: #f0f4f8;
+  --el-inverse-on-surface: #050b14;
+  --el-error-container: #93000a;
+  --el-surface-dim: #090f1a;
+  --el-surface-bright: #162742;
+  --el-surface-container-lowest: #070c17;
 }
 
 @layer base {
@@ -144,7 +228,7 @@
   }
 }
 
-/* Custom scrollbar for high data density */
+/* Custom scrollbar for data density */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -153,23 +237,15 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: #c5c6cf;
   border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
-}
-
-/* Tabular numbers for clean column alignment */
-.font-mono {
-  font-variant-numeric: tabular-nums;
 }
 
 /* War Room pulse animation */
 @keyframes warRoomPulse {
-  0% { box-shadow: 0 0 0 0 rgba(242, 160, 36, 0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(242, 160, 36, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(242, 160, 36, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
 }
 
 .pulse-animation {

@@ -143,18 +143,18 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
 
       {/* Panel - slides from the right (RTL) */}
       <div
-        className="fixed top-0 right-0 h-full w-full max-w-md bg-card border-l border-border z-50 shadow-2xl flex flex-col overflow-hidden"
+        className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col overflow-hidden"
         style={{ animation: 'slideInRight 0.3s ease-out' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/20">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)' }}>
           <div className="flex items-center gap-3">
-            <Shield className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold text-foreground">لوحة تحكم المالك</h2>
+            <Shield className="w-5 h-5 text-white" />
+            <h2 className="text-lg font-bold text-white">لوحة تحكم المالك</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded cursor-pointer"
+            className="text-white/70 hover:text-white transition-colors p-1 rounded cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -164,10 +164,10 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {/* Message Toast */}
           {message && (
-            <div className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 border ${
+            <div className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 ${
               message.type === 'success'
-                ? 'bg-secondary/10 text-secondary border-secondary/20'
-                : 'bg-destructive/10 text-destructive border-destructive/20'
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-red-50 text-red-600 border border-red-200'
             }`}>
               {message.type === 'success' ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
               {message.text}
@@ -175,24 +175,24 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           )}
 
           {/* Access Toggle Section */}
-          <div className="bg-muted/30 border border-border/50 rounded-xl p-5 space-y-4">
+          <div className="bg-gray-50 rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-foreground text-sm">حالة الوصول</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <h3 className="font-semibold text-gray-900 text-sm">حالة الوصول</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
                   {accessEnabled ? 'النظام متاح للزوار' : 'النظام معطل عن الزوار'}
                 </p>
               </div>
-              <div className={`w-3 h-3 rounded-full ${accessEnabled ? 'bg-secondary' : 'bg-destructive'} animate-pulse`} />
+              <div className={`w-3 h-3 rounded-full ${accessEnabled ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
             </div>
 
             <button
               onClick={handleToggleAccess}
               disabled={loading}
-              className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 border ${
+              className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 ${
                 accessEnabled
-                  ? 'bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20'
-                  : 'bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20'
+                  ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
+                  : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
               }`}
             >
               <Power className="w-4 h-4" />
@@ -201,8 +201,8 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           </div>
 
           {/* Change Password Section */}
-          <div className="bg-muted/30 border border-border/50 rounded-xl p-5 space-y-3">
-            <h3 className="font-semibold text-foreground text-sm">تغيير كلمة مرور المالك</h3>
+          <div className="bg-gray-50 rounded-xl p-5 space-y-3">
+            <h3 className="font-semibold text-gray-900 text-sm">تغيير كلمة مرور المالك</h3>
             <div className="space-y-2">
               <div className="relative">
                 <input
@@ -210,12 +210,12 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="كلمة المرور الحالية"
-                  className="w-full px-4 py-2.5 pr-10 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono"
+                  className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   dir="ltr"
                 />
                 <button
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                   tabIndex={-1}
                 >
                   {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -227,12 +227,12 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder={`كلمة المرور الجديدة (${PASSWORD_MIN_LENGTH} أحرف على الأقل)`}
-                  className="w-full px-4 py-2.5 pr-10 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono"
+                  className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   dir="ltr"
                 />
                 <button
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                   tabIndex={-1}
                 >
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -242,7 +242,7 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
             <button
               onClick={handleChangePassword}
               disabled={loading || !newPassword || !currentPassword}
-              className="w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50 hover:opacity-95 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 rounded-lg bg-blue-700 text-white font-semibold text-sm disabled:opacity-50 hover:bg-blue-800 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
               تغيير كلمة المرور
@@ -250,26 +250,26 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           </div>
 
           {/* Share Link Section */}
-          <div className="bg-muted/30 border border-border/50 rounded-xl p-5 space-y-3">
-            <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
-              <LinkIcon className="w-4 h-4 text-primary" />
+          <div className="bg-gray-50 rounded-xl p-5 space-y-3">
+            <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-blue-700" />
               رابط المشاركة
             </h3>
-            <p className="text-xs text-muted-foreground">شارك هذا الرابط مع الأشخاص الذين تريد منحهم الوصول بعد إعطائهم كلمة المرور</p>
+            <p className="text-xs text-gray-500">شارك هذا الرابط مع الأشخاص الذين تريد منحهم الوصول بعد إعطائهم كلمة المرور</p>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={typeof window !== 'undefined' ? window.location.href : ''}
                 readOnly
-                className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs truncate font-mono"
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-600 text-xs truncate"
                 dir="ltr"
               />
               <button
                 onClick={handleCopyLink}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
                   copied
-                    ? 'bg-secondary/10 text-secondary border border-secondary/20'
-                    : 'bg-primary text-primary-foreground hover:opacity-95'
+                    ? 'bg-green-100 text-green-700 border border-green-200'
+                    : 'bg-blue-700 text-white hover:bg-blue-800'
                 }`}
               >
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -280,10 +280,10 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border bg-muted/10">
+        <div className="px-6 py-4 border-t border-gray-100">
           <button
             onClick={onLogout}
-            className="w-full py-3 px-4 rounded-xl bg-destructive/10 text-destructive font-semibold text-sm border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 rounded-xl bg-red-50 text-red-700 font-semibold text-sm border border-red-200 hover:bg-red-100 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
           >
             <LogOut className="w-4 h-4" />
             تسجيل خروج
@@ -301,3 +301,4 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
     </>
   );
 }
+

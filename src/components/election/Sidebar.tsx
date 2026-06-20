@@ -179,3 +179,4 @@ export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: S
     </>
   );
 }
+

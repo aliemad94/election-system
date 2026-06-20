@@ -1,8 +1,10 @@
-import { SignJWT, jwtVerify } from 'jose';
-import { prisma as db } from './prisma';
+// ====================================================================
+// المصادقة — JWT عبر jose (متوافق مع Edge Runtime في middleware)
+// ====================================================================
 
-// JWT Secret - MUST be set via environment variable
-// No fallback for security - application will refuse to start without it
+import { SignJWT, jwtVerify } from "jose";
+
+// سر JWT — يجب ضبطه في .env ولا يوجد fallback للأمان
 let _cachedSecret: Uint8Array | null = null;
 
 const getJwtSecret = (): Uint8Array => {
@@ -10,8 +12,8 @@ const getJwtSecret = (): Uint8Array => {
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 32) {
     throw new Error(
-      'FATAL: JWT_SECRET environment variable must be set and at least 32 characters long. ' +
-      'Generate one with: openssl rand -base64 48'
+      "FATAL: JWT_SECRET environment variable must be set and at least 32 characters long. " +
+        "Generate one with: openssl rand -base64 48"
     );
   }
   _cachedSecret = new TextEncoder().encode(secret);
@@ -21,20 +23,20 @@ const getJwtSecret = (): Uint8Array => {
 export interface AuthPayload {
   userId: string;
   username: string;
-  role: string; // ADMIN, KEY_USER, OBSERVER
+  role: string; // ADMIN | KEY_USER | OBSERVER
   isOwner: boolean;
 }
 
-const TOKEN_EXPIRY = '7d';
-const ISSUER = 'electoral-system';
-const AUDIENCE = 'electoral-system-users';
+const TOKEN_EXPIRY = "7d";
+const ISSUER = "electoral-system";
+const AUDIENCE = "electoral-system-users";
 
 /**
- * Create a signed JWT token for an authenticated user
+ * إنشاء JWT موقّع للمستخدم المصادق عليه
  */
 export async function createToken(payload: AuthPayload): Promise<string> {
   return new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: 'HS256' })
+    .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRY)
     .setSubject(payload.userId)
@@ -44,17 +46,19 @@ export async function createToken(payload: AuthPayload): Promise<string> {
 }
 
 /**
- * Verify and decode a JWT token
- * Returns the payload if valid, null if invalid/expired
+ * التحقق من وفك تشفير JWT
+ * يرجع payload إن صالح، null إن منتهٍ أو تالف
  */
-export async function verifyToken(token: string): Promise<AuthPayload | null> {
+export async function verifyToken(
+  token: string
+): Promise<AuthPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getJwtSecret(), {
-      algorithms: ['HS256'],
+      algorithms: ["HS256"],
       issuer: ISSUER,
       audience: AUDIENCE,
     });
-    
+
     return {
       userId: payload.userId as string,
       username: payload.username as string,
@@ -62,25 +66,8 @@ export async function verifyToken(token: string): Promise<AuthPayload | null> {
       isOwner: payload.isOwner as boolean,
     };
   } catch {
-    // Token is invalid, expired, or malformed
+    // التوكن غير صالح أو منتهي
     return null;
   }
 }
 
-/**
- * Validate a token against the database
- * Ensures the user still exists and hasn't been deactivated
- */
-export async function validateTokenAgainstDB(payload: AuthPayload): Promise<boolean> {
-  try {
-    const user = await db.user.findUnique({
-      where: { id: payload.userId },
-      select: { username: true, role: true }
-    });
-    if (!user) return false;
-    return user.username === payload.username && user.role === payload.role;
-  } catch (error) {
-    console.error('Error validating token against DB:', error);
-    return false;
-  }
-}

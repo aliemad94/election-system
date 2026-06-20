@@ -35,3 +35,4 @@ export default function () {
     'no_db_lock': (r) => !String(r.body).includes('SQLITE_BUSY'),
   }, { type: 'no_db_lock' });
 }
+

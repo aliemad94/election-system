@@ -1,33 +1,31 @@
+// ====================================================================
+// indicators.ts — مؤشرات أساسية (GSI + EDRI)
+// ====================================================================
+
 import { prisma } from "./prisma";
 
+/**
+ * يحسب مؤشرات GSI (Geographic Strength Index) و EDRI (Election Day Readiness Index)
+ * بشكل مبسّط من بيانات الحضور الفعلية.
+ */
 export async function computeAllIndicators() {
   const totalVoters = await prisma.voter.count();
   const checkedIn = await prisma.voter.count({ where: { votedOnDay: true } });
 
-  // GSI = Checked-In percentage (checkedIn / totalVoters * 100) or default to 0 if totalVoters is 0
   const gsiVal = totalVoters > 0 ? (checkedIn / totalVoters) * 100 : 0;
 
-  // Let's get checked in voters by tribe to satisfy indicators.gsi.byTribe structure
-  // and other details:
-  // We need indicators.gsi.gsi, indicators.gsi.totalVoters, indicators.gsi.checkedIn, indicators.gsi.byTribe
   const tribes = await prisma.tribe.findMany({
     select: {
       id: true,
       name: true,
-      _count: {
-        select: {
-          voters: true,
-        },
-      },
+      _count: { select: { voters: true } },
     },
   });
 
   const checkedInPerTribe = await prisma.voter.groupBy({
     by: ["tribeId"],
     where: { votedOnDay: true },
-    _count: {
-      id: true,
-    },
+    _count: { id: true },
   });
 
   const checkedInDict = new Map<string, number>();
@@ -49,11 +47,8 @@ export async function computeAllIndicators() {
     };
   });
 
-  // EDRI computation details:
-  // indicators.edri.edri, indicators.edri.dominantTribe, indicators.edri.dominantShare, indicators.edri.entropyScore
-  // entropyScore could be computed or static. Let's compute a simple entropy or share.
-  // Dominant tribe is the tribe with the highest checked-in voters.
-  let dominantTribe = "None";
+  // EDRI — العشيرة المسيطرة والإنتروبيا
+  let dominantTribe = "لا يوجد";
   let dominantShare = 0;
   let maxChecked = 0;
 
@@ -68,7 +63,7 @@ export async function computeAllIndicators() {
     dominantShare = maxChecked / checkedIn;
   }
 
-  // Simple Shannon entropy over tribe distributions of checked-in voters
+  // إنتروبيا شانون على توزيع العشائر
   let entropyScore = 0;
   if (checkedIn > 0) {
     let sum = 0;
@@ -98,3 +93,4 @@ export async function computeAllIndicators() {
     },
   };
 }
+
