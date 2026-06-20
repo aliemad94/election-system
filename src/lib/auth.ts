@@ -27,7 +27,7 @@ export interface AuthPayload {
   isOwner: boolean;
 }
 
-const TOKEN_EXPIRY = "7d";
+const TOKEN_EXPIRY = "8h";
 const ISSUER = "electoral-system";
 const AUDIENCE = "electoral-system-users";
 

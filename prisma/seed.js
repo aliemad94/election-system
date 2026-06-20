@@ -7,8 +7,15 @@ async function main() {
   console.log('🌱 بدء تهيئة قاعدة البيانات (JS)...');
 
   // Read passwords from environment variables ONLY - no hardcoded defaults
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin12345!';
-  const userPassword = process.env.USER_PASSWORD || 'User12345!';
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const userPassword = process.env.USER_PASSWORD;
+
+  if (!adminPassword || adminPassword.length < 8) {
+    throw new Error('❌ خطأ: يجب ضبط متغير البيئة ADMIN_PASSWORD بكلمة مرور لا تقل عن 8 أحرف');
+  }
+  if (!userPassword || userPassword.length < 8) {
+    throw new Error('❌ خطأ: يجب ضبط متغير البيئة USER_PASSWORD بكلمة مرور لا تقل عن 8 أحرف');
+  }
 
   // Create/Update admin user with mustChangePwd flag
   await prisma.user.upsert({
