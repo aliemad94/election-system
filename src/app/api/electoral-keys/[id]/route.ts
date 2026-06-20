@@ -46,9 +46,6 @@ async function putHandler(
       data.birthDate = new Date(parsed.data.dateOfBirth);
       delete data.dateOfBirth;
     }
-    if (parsed.data.socialMedia !== undefined) {
-      delete data.socialMedia; // نتعامل معه لاحقاً إن لزم
-    }
 
     const updated = await prisma.electionKey.update({
       where: { id: params.id },

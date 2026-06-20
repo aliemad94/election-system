@@ -33,25 +33,40 @@ async function getHandler(req: NextRequest, { user }: any) {
     if (search && search.trim()) {
       const q = search.trim();
       where.OR = [
-        { firstName: { contains: q } },
-        { fatherName: { contains: q } },
-        { grandfatherName: { contains: q } },
-        { fourthName: { contains: q } },
-        { phone: { contains: q } },
-        { keyCode: { contains: q } },
+        { firstName: { contains: q, mode: "insensitive" } },
+        { fatherName: { contains: q, mode: "insensitive" } },
+        { grandfatherName: { contains: q, mode: "insensitive" } },
+        { fourthName: { contains: q, mode: "insensitive" } },
+        { phone: { contains: q, mode: "insensitive" } },
+        { keyCode: { contains: q, mode: "insensitive" } },
       ];
     }
 
-    const keys = await prisma.electionKey.findMany({
+    const pageParam = searchParams.get("page");
+    const limitParam = searchParams.get("limit");
+    const page = pageParam ? parseInt(pageParam, 10) : null;
+    const limit = limitParam ? parseInt(limitParam, 10) : null;
+
+    const findOptions: any = {
       where,
       orderBy: { createdAt: "desc" },
       include: {
         tribe: { select: { name: true } },
         _count: { select: { voters: true } },
       },
-    });
+    };
 
-    const result = keys.map((k) => ({
+    if (page && limit) {
+      findOptions.skip = (page - 1) * limit;
+      findOptions.take = limit;
+    }
+
+    const [keys, total] = await Promise.all([
+      prisma.electionKey.findMany(findOptions),
+      page && limit ? prisma.electionKey.count({ where }) : Promise.resolve(0),
+    ]);
+
+    const result = (keys as any[]).map((k) => ({
       id: k.id,
       keyCode: k.keyCode,
       fullName: [k.firstName, k.fatherName, k.grandfatherName, k.fourthName]
@@ -76,8 +91,12 @@ async function getHandler(req: NextRequest, { user }: any) {
       tribeName: k.tribe?.name || "غير محدد",
       voterCount: k._count.voters,
       createdAt: k.createdAt.toISOString(),
+      socialMedia: k.socialMedia || null,
     }));
 
+    if (page && limit) {
+      return NextResponse.json({ keys: result, total, page, limit });
+    }
     return NextResponse.json(result);
   } catch (error) {
     return handleApiError(error, "electoral-keys-get");
@@ -141,6 +160,7 @@ async function postHandler(req: NextRequest, { user }: any) {
             loyaltyScore: d.loyaltyScore,
             riskLevel: d.riskLevel,
             tribeId: d.tribeId || null,
+            socialMedia: d.socialMedia || null,
           },
         });
         break;
