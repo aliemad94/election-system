@@ -13,8 +13,8 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Switch to PostgreSQL schema for production
-RUN cp prisma/schema.postgres.prisma prisma/schema.prisma
+# Switch to PostgreSQL schema for production (schema.prisma is already configured for postgres)
+# RUN cp prisma/schema.postgres.prisma prisma/schema.prisma
 
 # Generate Prisma client
 RUN npx prisma generate
