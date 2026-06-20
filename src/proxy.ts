@@ -15,7 +15,8 @@ export async function proxy(request: NextRequest) {
   const isProtectedApi =
     pathname.startsWith("/api") &&
     !pathname.startsWith("/api/access") &&
-    !pathname.startsWith("/api/health");
+    !pathname.startsWith("/api/health") &&
+    !pathname.startsWith("/api/me");
 
   if (isProtectedApi) {
     const tokenCookie = request.cookies.get("election_auth");
