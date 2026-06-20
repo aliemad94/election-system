@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createToken, verifyToken } from "@/lib/auth";
 import {
   checkRateLimit,
+  resetRateLimit,
   auditLog,
   getClientIp,
   validatePassword,
@@ -37,12 +38,13 @@ export async function POST(req: NextRequest) {
     const clientIp = getClientIp(req);
 
     // ===== تحديد المعدل للإجراءات الحساسة =====
+    let limitKey = "";
     if (
       action === "login" ||
       action === "owner-login" ||
       action === "change-password"
     ) {
-      const limitKey = `rate_limit_${action}_${clientIp}`;
+      limitKey = `rate_limit_${action}_${clientIp}`;
       const limit = await checkRateLimit(limitKey, 5, 15 * 60 * 1000); // 5 محاولات / 15 دقيقة
       if (!limit.allowed) {
         return NextResponse.json(
@@ -107,6 +109,10 @@ export async function POST(req: NextRequest) {
         ipAddress: clientIp,
       });
 
+      if (limitKey) {
+        await resetRateLimit(limitKey);
+      }
+
       const response = NextResponse.json({
         success: true,
         role: user.role,
@@ -165,6 +171,10 @@ export async function POST(req: NextRequest) {
         details: { success: true },
         ipAddress: clientIp,
       });
+
+      if (limitKey) {
+        await resetRateLimit(limitKey);
+      }
 
       const response = NextResponse.json({
         success: true,

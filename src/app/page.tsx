@@ -1,27 +1,28 @@
 'use client';
 
 import React, { useReducer, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Layout from '@/components/election/Layout';
-import ExecutiveDashboard from '@/components/election/ExecutiveDashboard';
-import TaskTracking from '@/components/election/TaskTracking';
-import WarRoom from '@/components/election/WarRoom';
-import FieldAgentPortal from '@/components/election/FieldAgentPortal';
-import CommunicationEngine from '@/components/election/CommunicationEngine';
-import SMSBroadcasting from '@/components/election/SMSBroadcasting';
-import TribalManagement from '@/components/election/TribalManagement';
-import VoterRegistration from '@/components/election/VoterRegistration';
-import ElectoralKeyManagement from '@/components/election/ElectoralKeyManagement';
-import DataAnalysis from '@/components/election/DataAnalysis';
-import EarlyWarningMonitor from '@/components/election/EarlyWarningMonitor';
-import AdvancedIndicators from '@/components/election/AdvancedIndicators';
 import LoginGate from '@/components/election/LoginGate';
 import OwnerPanel from '@/components/election/OwnerPanel';
 
-import ServicesManagement from '@/components/election/ServicesManagement';
-import CompetitorsManagement from '@/components/election/CompetitorsManagement';
-import VolunteersManagement from '@/components/election/VolunteersManagement';
-import PublicOpinion from '@/components/election/PublicOpinion';
-import CommissionManagement from '@/components/election/CommissionManagement';
+const ExecutiveDashboard = dynamic(() => import('@/components/election/ExecutiveDashboard'), { ssr: false });
+const TaskTracking = dynamic(() => import('@/components/election/TaskTracking'), { ssr: false });
+const WarRoom = dynamic(() => import('@/components/election/WarRoom'), { ssr: false });
+const FieldAgentPortal = dynamic(() => import('@/components/election/FieldAgentPortal'), { ssr: false });
+const CommunicationEngine = dynamic(() => import('@/components/election/CommunicationEngine'), { ssr: false });
+const SMSBroadcasting = dynamic(() => import('@/components/election/SMSBroadcasting'), { ssr: false });
+const TribalManagement = dynamic(() => import('@/components/election/TribalManagement'), { ssr: false });
+const VoterRegistration = dynamic(() => import('@/components/election/VoterRegistration'), { ssr: false });
+const ElectoralKeyManagement = dynamic(() => import('@/components/election/ElectoralKeyManagement'), { ssr: false });
+const DataAnalysis = dynamic(() => import('@/components/election/DataAnalysis'), { ssr: false });
+const EarlyWarningMonitor = dynamic(() => import('@/components/election/EarlyWarningMonitor'), { ssr: false });
+const AdvancedIndicators = dynamic(() => import('@/components/election/AdvancedIndicators'), { ssr: false });
+const ServicesManagement = dynamic(() => import('@/components/election/ServicesManagement'), { ssr: false });
+const CompetitorsManagement = dynamic(() => import('@/components/election/CompetitorsManagement'), { ssr: false });
+const VolunteersManagement = dynamic(() => import('@/components/election/VolunteersManagement'), { ssr: false });
+const PublicOpinion = dynamic(() => import('@/components/election/PublicOpinion'), { ssr: false });
+const CommissionManagement = dynamic(() => import('@/components/election/CommissionManagement'), { ssr: false });
 
 import type { PageId } from '@/components/election/Sidebar';
 
@@ -146,10 +147,10 @@ export default function Home() {
   // Don't render until mounted
   if (!authState.mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8f9ff]">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-[#031635] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[#031635] text-sm font-medium">جاري تهيئة النظام...</p>
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-foreground text-sm font-medium">جاري تهيئة النظام...</p>
         </div>
       </div>
     );

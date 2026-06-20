@@ -31,15 +31,14 @@ export function hasPermission(role: string, permission: string): boolean {
 // ==================== تنقية المدخلات ====================
 
 /**
- * تنقية نص لمنع XSS و SQL injection
+ * تنقية نص لمنع وسوم HTML الضارة (XSS)
  */
 export function sanitizeString(input: unknown): string {
   if (typeof input !== "string") return "";
   return input
-    .replace(/[<>]/g, "") // إزالة وسوم HTML
-    .replace(/['";\\]/g, "") // إزالة رموز SQL
+    .replace(/<[^>]*>/g, "") // إزالة وسوم HTML بالكامل
     .trim()
-    .slice(0, 1000); // حد الطول
+    .slice(0, 1000); // حد الطول لسلامة الذاكرة
 }
 
 /**

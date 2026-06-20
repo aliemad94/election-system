@@ -44,12 +44,12 @@ async function getHandler(req: NextRequest, { user }: any) {
     if (search && search.trim()) {
       const q = search.trim();
       where.OR = [
-        { firstName: { contains: q } },
-        { fatherName: { contains: q } },
-        { grandfatherName: { contains: q } },
-        { fourthName: { contains: q } },
-        { phone: { contains: q } },
-        { nationalId: { contains: q } },
+        { firstName: { contains: q, mode: "insensitive" } },
+        { fatherName: { contains: q, mode: "insensitive" } },
+        { grandfatherName: { contains: q, mode: "insensitive" } },
+        { fourthName: { contains: q, mode: "insensitive" } },
+        { phone: { contains: q, mode: "insensitive" } },
+        { nationalId: { contains: q, mode: "insensitive" } },
       ];
     }
 
@@ -101,6 +101,7 @@ async function getHandler(req: NextRequest, { user }: any) {
       influenceRate: v.influenceRate,
       lastContactDate: v.lastContactDate?.toISOString() || null,
       createdAt: v.createdAt.toISOString(),
+      socialMedia: v.socialMedia || null,
     }));
 
     return NextResponse.json({ voters: mapped, total, page, limit });
@@ -166,6 +167,7 @@ async function postHandler(req: NextRequest, { user }: any) {
         latitude: d.latitude || null,
         longitude: d.longitude || null,
         gpsVerified: d.gpsVerified,
+        socialMedia: d.socialMedia || null,
       },
       include: { tribe: { select: { name: true } } },
     });

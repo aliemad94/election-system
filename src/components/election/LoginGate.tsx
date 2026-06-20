@@ -92,15 +92,15 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
       </div>
 
       {/* Login Card */}
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-md bg-card text-card-foreground border border-border/40 rounded-2xl shadow-2xl overflow-hidden">
         {/* Card Header with gradient */}
-        <div className="px-8 pt-10 pb-6 text-center" style={{ background: 'linear-gradient(180deg, #f5f5ff 0%, #ffffff 100%)' }}>
+        <div className="px-8 pt-10 pb-6 text-center" style={{ background: 'linear-gradient(180deg, var(--el-surface-container-low) 0%, var(--card) 100%)' }}>
           {/* Logo */}
-          <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)' }}>
+          <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, var(--el-primary) 0%, var(--el-primary-container) 100%)' }}>
             <Vote className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-1">منصة إدارة الماكينة الانتخابية</h1>
-          <p className="text-sm text-gray-500 font-medium">محافظة ذي قار</p>
+          <h1 className="text-xl font-bold text-foreground mb-1">منصة إدارة الماكينة الانتخابية</h1>
+          <p className="text-sm text-muted-foreground font-medium">محافظة ذي قار</p>
         </div>
 
         {/* Card Body */}
@@ -108,11 +108,11 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
           {/* Mode indicator */}
           <div className="flex items-center justify-center gap-2 mb-5">
             {isOwnerMode ? (
-              <Shield className="w-4 h-4 text-amber-600" />
+              <Shield className="w-4 h-4 text-amber-500" />
             ) : (
-              <Lock className="w-4 h-4 text-blue-700" />
+              <Lock className="w-4 h-4 text-primary" />
             )}
-            <span className="text-sm font-medium text-gray-600">
+            <span className="text-sm font-medium text-muted-foreground">
               {isOwnerMode ? 'دخول المالك' : 'دخول الزائر'}
             </span>
           </div>
@@ -120,7 +120,7 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Password Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">
                 {isOwnerMode ? 'كلمة مرور المالك' : 'كلمة المرور'}
               </label>
               <div className="relative">
@@ -129,15 +129,15 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(''); }}
                   placeholder={isOwnerMode ? 'أدخل كلمة مرور المالك' : 'أدخل كلمة المرور'}
-                  className="w-full px-4 py-3 pr-11 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-sm"
+                  className="w-full px-4 py-3 pr-11 border border-border rounded-xl bg-background text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm text-center"
                   dir="ltr"
                   autoFocus
                 />
-                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-pointer"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -147,7 +147,7 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-red-600 text-sm flex items-center gap-2">
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-2.5 text-destructive text-sm flex items-center gap-2">
                 <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
@@ -160,7 +160,7 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
               type="submit"
               disabled={loading || !password}
               className="w-full py-3 px-4 rounded-xl text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg hover:shadow-xl cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)' }}
+              style={{ background: 'linear-gradient(135deg, var(--el-primary) 0%, var(--el-primary-container) 100%)' }}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -174,18 +174,18 @@ export default function LoginGate({ onLogin }: LoginGateProps) {
           </form>
 
           {/* Mode Switch */}
-          <div className="mt-6 text-center border-t border-gray-100 pt-5">
+          <div className="mt-6 text-center border-t border-border/40 pt-5">
             {isOwnerMode ? (
               <button
                 onClick={() => { setIsOwnerMode(false); setError(''); setPassword(''); }}
-                className="text-sm text-blue-700 hover:text-blue-800 font-medium transition-colors cursor-pointer"
+                className="text-sm text-primary hover:opacity-80 font-medium transition-colors cursor-pointer"
               >
                 دخول الزائر
               </button>
             ) : (
               <button
                 onClick={() => { setIsOwnerMode(true); setError(''); setPassword(''); }}
-                className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
+                className="text-sm text-muted-foreground hover:text-foreground font-medium transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
               >
                 <Shield className="w-3.5 h-3.5" />
                 دخول المالك

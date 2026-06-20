@@ -137,17 +137,16 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 z-50 transition-opacity"
+        className="fixed inset-0 bg-black/60 z-50 transition-opacity"
         onClick={onClose}
       />
 
       {/* Panel - slides from the right (RTL) */}
       <div
-        className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col overflow-hidden"
-        style={{ animation: 'slideInRight 0.3s ease-out' }}
+        className="fixed top-0 right-0 h-full w-full max-w-md bg-card text-card-foreground border-l border-border/40 z-50 shadow-2xl flex flex-col overflow-hidden animate-slide-in-right"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)' }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/40" style={{ background: 'linear-gradient(135deg, var(--el-primary) 0%, var(--el-primary-container) 100%)' }}>
           <div className="flex items-center gap-3">
             <Shield className="w-5 h-5 text-white" />
             <h2 className="text-lg font-bold text-white">لوحة تحكم المالك</h2>
@@ -166,8 +165,8 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           {message && (
             <div className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 ${
               message.type === 'success'
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-red-50 text-red-600 border border-red-200'
+                ? 'bg-green-500/10 text-green-500 border border-green-500/20'
+                : 'bg-destructive/10 text-destructive border border-destructive/20'
             }`}>
               {message.type === 'success' ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
               {message.text}
@@ -175,11 +174,11 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           )}
 
           {/* Access Toggle Section */}
-          <div className="bg-gray-50 rounded-xl p-5 space-y-4">
+          <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-gray-900 text-sm">حالة الوصول</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <h3 className="font-semibold text-foreground text-sm">حالة الوصول</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {accessEnabled ? 'النظام متاح للزوار' : 'النظام معطل عن الزوار'}
                 </p>
               </div>
@@ -191,8 +190,8 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
               disabled={loading}
               className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 ${
                 accessEnabled
-                  ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
-                  : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
+                  ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
+                  : 'bg-green-500/10 text-green-500 border border-green-500/20 hover:bg-green-500/20'
               }`}
             >
               <Power className="w-4 h-4" />
@@ -201,8 +200,8 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           </div>
 
           {/* Change Password Section */}
-          <div className="bg-gray-50 rounded-xl p-5 space-y-3">
-            <h3 className="font-semibold text-gray-900 text-sm">تغيير كلمة مرور المالك</h3>
+          <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-3">
+            <h3 className="font-semibold text-foreground text-sm">تغيير كلمة مرور المالك</h3>
             <div className="space-y-2">
               <div className="relative">
                 <input
@@ -210,12 +209,12 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="كلمة المرور الحالية"
-                  className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="w-full px-4 py-2.5 pr-10 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   dir="ltr"
                 />
                 <button
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground cursor-pointer"
                   tabIndex={-1}
                 >
                   {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -227,12 +226,12 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder={`كلمة المرور الجديدة (${PASSWORD_MIN_LENGTH} أحرف على الأقل)`}
-                  className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="w-full px-4 py-2.5 pr-10 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   dir="ltr"
                 />
                 <button
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground cursor-pointer"
                   tabIndex={-1}
                 >
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -242,7 +241,7 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
             <button
               onClick={handleChangePassword}
               disabled={loading || !newPassword || !currentPassword}
-              className="w-full py-2.5 px-4 rounded-lg bg-blue-700 text-white font-semibold text-sm disabled:opacity-50 hover:bg-blue-800 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm disabled:opacity-50 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
               تغيير كلمة المرور
@@ -250,26 +249,26 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           </div>
 
           {/* Share Link Section */}
-          <div className="bg-gray-50 rounded-xl p-5 space-y-3">
-            <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
-              <LinkIcon className="w-4 h-4 text-blue-700" />
+          <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-3">
+            <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-primary" />
               رابط المشاركة
             </h3>
-            <p className="text-xs text-gray-500">شارك هذا الرابط مع الأشخاص الذين تريد منحهم الوصول بعد إعطائهم كلمة المرور</p>
+            <p className="text-xs text-muted-foreground">شارك هذا الرابط مع الأشخاص الذين تريد منحهم الوصول بعد إعطائهم كلمة المرور</p>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={typeof window !== 'undefined' ? window.location.href : ''}
                 readOnly
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-600 text-xs truncate"
+                className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-muted-foreground text-xs truncate"
                 dir="ltr"
               />
               <button
                 onClick={handleCopyLink}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
                   copied
-                    ? 'bg-green-100 text-green-700 border border-green-200'
-                    : 'bg-blue-700 text-white hover:bg-blue-800'
+                    ? 'bg-green-500/10 text-green-500 border border-green-500/20'
+                    : 'bg-primary hover:bg-primary/95 text-primary-foreground'
                 }`}
               >
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -280,24 +279,16 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100">
+        <div className="px-6 py-4 border-t border-border/40">
           <button
             onClick={onLogout}
-            className="w-full py-3 px-4 rounded-xl bg-red-50 text-red-700 font-semibold text-sm border border-red-200 hover:bg-red-100 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 rounded-xl bg-destructive/10 text-destructive font-semibold text-sm border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
           >
             <LogOut className="w-4 h-4" />
             تسجيل خروج
           </button>
         </div>
       </div>
-
-      {/* Animation */}
-      <style jsx>{`
-        @keyframes slideInRight {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-      `}</style>
     </>
   );
 }

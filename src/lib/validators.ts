@@ -41,7 +41,7 @@ export const createElectionKeySchema = z.object({
   loyaltyScore: z.number().int().min(1).max(5).default(3),
   riskLevel: z.number().int().min(1).max(5).default(1),
   tribeId: z.string().optional().nullable(),
-  socialMedia: z.any().optional().nullable(),
+  socialMedia: z.string().max(2000).optional().nullable(),
 });
 
 export const updateElectionKeySchema = createElectionKeySchema.partial();
@@ -80,6 +80,7 @@ export const createVoterSchema = z.object({
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
   gpsVerified: z.boolean().default(false),
+  socialMedia: z.string().max(2000).optional().nullable(),
 });
 
 export const updateVoterSchema = createVoterSchema.partial();
