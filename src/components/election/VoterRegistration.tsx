@@ -593,6 +593,11 @@ export default function VoterRegistration() {
                     </div>
                   </div>
                   <div>
+                    <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">التخصص الدقيق</label>
+                    <input className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary"
+                      value={form.specialization} onChange={(e) => setForm({ ...form, specialization: e.target.value })} placeholder="مثال: بكالوريوس هندسة" />
+                  </div>
+                  <div>
                     <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">الحالة الاجتماعية</label>
                     <div className="relative">
                       <select className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[11px] appearance-none pr-8 focus:outline-none focus:border-el-primary cursor-pointer"
@@ -1142,6 +1147,12 @@ export default function VoterRegistration() {
                       <span className="block text-[10px] text-el-on-surface-variant/70">التحصيل الدراسي:</span>
                       <span className="font-medium text-el-on-surface">{selectedVoter.education || selectedVoter.educationLevel || 'غير محدد'}</span>
                     </div>
+                    {selectedVoter.specialization && (
+                      <div>
+                        <span className="block text-[10px] text-el-on-surface-variant/70">التخصص الدقيق:</span>
+                        <span className="font-medium text-el-on-surface">{selectedVoter.specialization}</span>
+                      </div>
+                    )}
                     <div>
                       <span className="block text-[10px] text-el-on-surface-variant/70">المهنة:</span>
                       <span className="font-medium text-el-on-surface">{selectedVoter.profession || 'غير محدد'}</span>

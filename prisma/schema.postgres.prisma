@@ -200,6 +200,7 @@ model Voter {
   phone           String?
   education       String?
   profession      String?
+  specialization  String?
   maritalStatus   String?
   familySize      Int?
   nationalId      String?
