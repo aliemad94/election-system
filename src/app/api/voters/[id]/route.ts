@@ -38,6 +38,9 @@ async function putHandler(
       data.birthDate = new Date(parsed.data.dateOfBirth);
       delete data.dateOfBirth;
     }
+    if (parsed.data.checkedInAt) {
+      data.checkedInAt = new Date(parsed.data.checkedInAt);
+    }
 
     const updated = await prisma.voter.update({
       where: { id: params.id },

@@ -113,6 +113,58 @@ model ElectionKey {
   keyAccuracyScore Float      @default(1.0) // معامل الدقة التاريخية (0.0 - 1.0)
   reliabilityLogs  String?    // JSON string — منحنى دقة تقارير المفتاح
 
+  // === حقول إضافية من النسخة القديمة للتوافق الشامل ===
+  nickname         String?
+  phone2           String?
+  email            String?
+  address          String?
+  neighborhood     String?
+  pollingStation   String?
+  age              Int?
+  specialization   String?
+  maritalStatus    String?
+  familySize       Int?
+  notes            String?
+  isActive         Boolean    @default(true)
+  firstContactDate DateTime?
+  lastContactDate  DateTime?
+  lastSpentDate    DateTime?
+  trainingStatus   String?
+  dataAccuracy     String?
+  createdBy        String?
+
+  // حقول القوة الانتخابية والتصويت التفصيلية
+  totalVotes       Int        @default(0)
+  supportedVotes   Int        @default(0)
+  neutralVotes     Int        @default(0)
+  weakVotes        Int        @default(0)
+  netVotes         Int        @default(0)
+
+  // تسعة أبعاد تقييمية (تقييم من 1-5)
+  voteProtection     Int      @default(3) // القدرة على حماية الأصوات
+  supportReason      Int      @default(3) // أسباب الدعم
+  needsLevel         Int      @default(3) // الاحتياجات
+  politicalNote      Int      @default(3) // الملاحظات السياسية
+  organizationalNote Int      @default(3) // الملاحظات التنظيمية
+  generalNote        Int      @default(3) // الملاحظات العامة
+
+  // النتيجة النهائية الموزونة والتصنيف
+  weightedScore      Float      @default(0.0)
+  classification     String     @default("مقبول") // ضعيف / مقبول / جيد / قوي
+
+  // المؤشرات المركبة المتقدمة
+  eiiScore           Float      @default(0.0)
+  kriScore           Float      @default(0.0)
+  vpsScore           Float      @default(0.0)
+  drsScore           Float      @default(0.0)
+  campaignROI        Float      @default(0.0)
+
+  // حقول مالية للمؤشرات
+  totalSpent         Float      @default(0.0)
+  monthlyBudget      Float      @default(0.0)
+  totalInvestment    Float      @default(0.0)
+  costPerVote        Float      @default(0.0)
+
   tribeId    String?
   tribe      Tribe?     @relation(fields: [tribeId], references: [id])
   subTribeId String?
@@ -128,6 +180,9 @@ model ElectionKey {
   @@index([province])
   @@index([district])
   @@index([influenceLevel])
+  @@index([isActive])
+  @@index([classification])
+  @@index([weightedScore])
 }
 
 // ====================================================================
@@ -162,6 +217,8 @@ model Voter {
   voterCategory   String?
   conversionPath  String?
   votedOnDay      Boolean     @default(false) // حالة التصويت الفعلي يوم الاقتراع
+  checkedIn       Boolean     @default(false)
+  checkedInAt     DateTime?
 
   // نمذجة الكتلة الصامتة والمترددين (Floating Voters Profile Clustering)
   predictedClusterId String?  // رقم المجموعة الديمغرافية للتنبؤ

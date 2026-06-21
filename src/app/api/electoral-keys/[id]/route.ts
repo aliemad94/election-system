@@ -46,6 +46,15 @@ async function putHandler(
       data.birthDate = new Date(parsed.data.dateOfBirth);
       delete data.dateOfBirth;
     }
+    if (parsed.data.firstContactDate) {
+      data.firstContactDate = new Date(parsed.data.firstContactDate);
+    }
+    if (parsed.data.lastContactDate) {
+      data.lastContactDate = new Date(parsed.data.lastContactDate);
+    }
+    if (parsed.data.lastSpentDate) {
+      data.lastSpentDate = new Date(parsed.data.lastSpentDate);
+    }
 
     const updated = await prisma.electionKey.update({
       where: { id: params.id },
