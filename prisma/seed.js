@@ -20,36 +20,36 @@ async function main() {
   // Create/Update admin user with mustChangePwd flag
   await prisma.user.upsert({
     where: { username: 'admin' },
-    update: {},
+    update: { mustChangePwd: false },
     create: {
       username: 'admin',
       password: await bcrypt.hash(adminPassword, 12),
       role: 'ADMIN',
-      mustChangePwd: true,
+      mustChangePwd: false,
     },
   });
 
   // Create/Update observer user
   await prisma.user.upsert({
     where: { username: 'observer' },
-    update: {},
+    update: { mustChangePwd: false },
     create: {
       username: 'observer',
       password: await bcrypt.hash(userPassword, 12),
       role: 'OBSERVER',
-      mustChangePwd: true,
+      mustChangePwd: false,
     },
   });
 
   // Create/Update key_user
   await prisma.user.upsert({
     where: { username: 'key_user' },
-    update: {},
+    update: { mustChangePwd: false },
     create: {
       username: 'key_user',
       password: await bcrypt.hash(userPassword, 12),
       role: 'KEY_USER',
-      mustChangePwd: true,
+      mustChangePwd: false,
     },
   });
 
