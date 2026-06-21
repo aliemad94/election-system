@@ -92,6 +92,56 @@ async function getHandler(req: NextRequest, { user }: any) {
       voterCount: k._count.voters,
       createdAt: k.createdAt.toISOString(),
       socialMedia: k.socialMedia || null,
+
+      // === الحقول والتقييمات الإضافية ===
+      nickname: k.nickname || null,
+      phone2: k.phone2 || null,
+      email: k.email || null,
+      address: k.address || null,
+      neighborhood: k.neighborhood || null,
+      pollingStation: k.pollingStation || null,
+      age: k.age || null,
+      specialization: k.specialization || null,
+      maritalStatus: k.maritalStatus || null,
+      familySize: k.familySize || null,
+      notes: k.notes || null,
+      isActive: k.isActive,
+      firstContactDate: k.firstContactDate ? k.firstContactDate.toISOString() : null,
+      lastContactDate: k.lastContactDate ? k.lastContactDate.toISOString() : null,
+      lastSpentDate: k.lastSpentDate ? k.lastSpentDate.toISOString() : null,
+      trainingStatus: k.trainingStatus || null,
+      dataAccuracy: k.dataAccuracy || null,
+      createdBy: k.createdBy || null,
+
+      // الأصوات
+      totalVotes: k.totalVotes,
+      supportedVotes: k.supportedVotes,
+      neutralVotes: k.neutralVotes,
+      weakVotes: k.weakVotes,
+      netVotes: k.netVotes,
+
+      // التقييمات
+      voteProtection: k.voteProtection,
+      supportReason: k.supportReason,
+      needsLevel: k.needsLevel,
+      politicalNote: k.politicalNote,
+      organizationalNote: k.organizationalNote,
+      generalNote: k.generalNote,
+
+      // الدرجات الموزونة والمؤشرات
+      weightedScore: k.weightedScore,
+      classification: k.classification,
+      eiiScore: k.eiiScore,
+      kriScore: k.kriScore,
+      vpsScore: k.vpsScore,
+      drsScore: k.drsScore,
+      campaignROI: k.campaignROI,
+
+      // مالية
+      totalSpent: k.totalSpent,
+      monthlyBudget: k.monthlyBudget,
+      totalInvestment: k.totalInvestment,
+      costPerVote: k.costPerVote,
     }));
 
     if (page && limit) {
@@ -161,6 +211,53 @@ async function postHandler(req: NextRequest, { user }: any) {
             riskLevel: d.riskLevel,
             tribeId: d.tribeId || null,
             socialMedia: d.socialMedia || null,
+
+            // === حقول إضافية ===
+            nickname: d.nickname || null,
+            phone2: d.phone2 || null,
+            email: d.email || null,
+            address: d.address || null,
+            neighborhood: d.neighborhood || null,
+            pollingStation: d.pollingStation || null,
+            age: d.age || null,
+            specialization: d.specialization || null,
+            maritalStatus: d.maritalStatus || null,
+            familySize: d.familySize || null,
+            notes: d.notes || null,
+            isActive: d.isActive ?? true,
+            firstContactDate: d.firstContactDate ? new Date(d.firstContactDate) : null,
+            lastContactDate: d.lastContactDate ? new Date(d.lastContactDate) : null,
+            lastSpentDate: d.lastSpentDate ? new Date(d.lastSpentDate) : null,
+            trainingStatus: d.trainingStatus || null,
+            dataAccuracy: d.dataAccuracy || null,
+            createdBy: d.createdBy || null,
+
+            totalVotes: d.totalVotes ?? 0,
+            supportedVotes: d.supportedVotes ?? 0,
+            neutralVotes: d.neutralVotes ?? 0,
+            weakVotes: d.weakVotes ?? 0,
+            netVotes: d.netVotes ?? 0,
+
+            voteProtection: d.voteProtection ?? 3,
+            supportReason: d.supportReason ?? 3,
+            needsLevel: d.needsLevel ?? 3,
+            politicalNote: d.politicalNote ?? 3,
+            organizationalNote: d.organizationalNote ?? 3,
+            generalNote: d.generalNote ?? 3,
+
+            weightedScore: d.weightedScore ?? 0.0,
+            classification: d.classification ?? "مقبول",
+
+            eiiScore: d.eiiScore ?? 0.0,
+            kriScore: d.kriScore ?? 0.0,
+            vpsScore: d.vpsScore ?? 0.0,
+            drsScore: d.drsScore ?? 0.0,
+            campaignROI: d.campaignROI ?? 0.0,
+
+            totalSpent: d.totalSpent ?? 0.0,
+            monthlyBudget: d.monthlyBudget ?? 0.0,
+            totalInvestment: d.totalInvestment ?? 0.0,
+            costPerVote: d.costPerVote ?? 0.0,
           },
         });
         break;

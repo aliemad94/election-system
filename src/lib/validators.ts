@@ -42,6 +42,58 @@ export const createElectionKeySchema = z.object({
   riskLevel: z.number().int().min(1).max(5).default(1),
   tribeId: z.string().optional().nullable(),
   socialMedia: z.string().max(2000).optional().nullable(),
+
+  // === حقول إضافية تمت ترقيتها للتوافق الشامل ===
+  nickname: z.string().optional().nullable(),
+  phone2: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  neighborhood: z.string().optional().nullable(),
+  pollingStation: z.string().optional().nullable(),
+  age: z.number().int().optional().nullable(),
+  specialization: z.string().optional().nullable(),
+  maritalStatus: z.string().optional().nullable(),
+  familySize: z.number().int().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  isActive: z.boolean().default(true),
+  firstContactDate: z.string().optional().nullable(),
+  lastContactDate: z.string().optional().nullable(),
+  lastSpentDate: z.string().optional().nullable(),
+  trainingStatus: z.string().optional().nullable(),
+  dataAccuracy: z.string().optional().nullable(),
+  createdBy: z.string().optional().nullable(),
+
+  // الأصوات
+  totalVotes: z.number().int().default(0),
+  supportedVotes: z.number().int().default(0),
+  neutralVotes: z.number().int().default(0),
+  weakVotes: z.number().int().default(0),
+  netVotes: z.number().int().default(0),
+
+  // التقييمات التسعة
+  voteProtection: z.number().int().min(1).max(5).default(3),
+  supportReason: z.number().int().min(1).max(5).default(3),
+  needsLevel: z.number().int().min(1).max(5).default(3),
+  politicalNote: z.number().int().min(1).max(5).default(3),
+  organizationalNote: z.number().int().min(1).max(5).default(3),
+  generalNote: z.number().int().min(1).max(5).default(3),
+
+  // الدرجة المرجّحة والتصنيف
+  weightedScore: z.number().default(0),
+  classification: z.string().default("مقبول"),
+
+  // المؤشرات المركبة
+  eiiScore: z.number().default(0),
+  kriScore: z.number().default(0),
+  vpsScore: z.number().default(0),
+  drsScore: z.number().default(0),
+  campaignROI: z.number().default(0),
+
+  // مالية
+  totalSpent: z.number().default(0),
+  monthlyBudget: z.number().default(0),
+  totalInvestment: z.number().default(0),
+  costPerVote: z.number().default(0),
 });
 
 export const updateElectionKeySchema = createElectionKeySchema.partial();
@@ -81,6 +133,8 @@ export const createVoterSchema = z.object({
   longitude: z.number().optional().nullable(),
   gpsVerified: z.boolean().default(false),
   socialMedia: z.string().max(2000).optional().nullable(),
+  checkedIn: z.boolean().default(false),
+  checkedInAt: z.string().optional().nullable(),
 });
 
 export const updateVoterSchema = createVoterSchema.partial();
