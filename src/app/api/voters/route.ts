@@ -104,6 +104,7 @@ async function getHandler(req: NextRequest, { user }: any) {
       lastContactDate: v.lastContactDate?.toISOString() || null,
       createdAt: v.createdAt.toISOString(),
       socialMedia: v.socialMedia || null,
+      specialization: v.specialization,
     }));
 
     return NextResponse.json({ voters: mapped, total, page, limit });
@@ -162,6 +163,7 @@ async function postHandler(req: NextRequest, { user }: any) {
         supportReason: d.supportReason || null,
         profession: d.profession || null,
         education: d.education || null,
+        specialization: d.specialization || null,
         maritalStatus: d.maritalStatus || null,
         familySize: d.familySize || null,
         relationship: d.relationship || null,

@@ -125,6 +125,7 @@ export const createVoterSchema = z.object({
   supportReason: z.string().max(500).optional().nullable(),
   profession: z.string().max(100).optional().nullable(),
   education: z.string().max(100).optional().nullable(),
+  specialization: z.string().max(100).optional().nullable(),
   maritalStatus: z.string().max(50).optional().nullable(),
   familySize: z.number().int().min(1).max(50).optional().nullable(),
   relationship: z.string().max(100).optional().nullable(),

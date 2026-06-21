@@ -30,6 +30,7 @@ export interface EnrichedKey {
   influenceLevel: number;
   mobilizationCap: number;
   loyaltyScore: number;
+  classification?: string;
   [key: string]: unknown; // للحقول الأخرى المنقولة من المفتاح الأصلي
 }
 
@@ -72,20 +73,28 @@ export function enrichElectoralKey(
     totalVotes = exp;
   }
 
-  const netVotes = Math.max(0, supportedVotes - weakVotes);
+  const netVotes = Math.round(
+    supportedVotes * 0.8 + neutralVotes * 0.5 + weakVotes * 0.3
+  );
 
   // ===== 2. التقييم الموزون (Weighted Score) =====
   const rawScore =
     ((key.loyaltyScore || 3) - 1) * 20 +
-    ((key.influenceLevel || 3) - 1) * 20 +
-    ((key.mobilizationCap || 3) - 1) * 15 +
-    ((key.riskLevel || 3) - 1) * 15 +
-    20 + // وزن افتراضي
-    10 +
-    10 +
-    10 +
-    10;
-  const weightedScore = Math.min(100, Math.max(0, Math.round(rawScore / 2)));
+    ((key.influenceLevel || 1) - 1) * 20 +
+    ((key.mobilizationCap || 1) - 1) * 15 +
+    ((key.voteProtection || 3) - 1) * 15 +
+    ((key.supportReason || 3) - 1) * 10 +
+    ((key.needsLevel || 3) - 1) * 5 +
+    ((key.politicalNote || 3) - 1) * 5 +
+    ((key.organizationalNote || 3) - 1) * 5 +
+    ((key.generalNote || 3) - 1) * 5;
+  const weightedScore = Math.round(rawScore / 2);
+
+  let classification = "مقبول";
+  if (weightedScore < 20) classification = "ضعيف";
+  else if (weightedScore <= 50) classification = "مقبول";
+  else if (weightedScore <= 100) classification = "جيد";
+  else classification = "قوي";
 
   // ===== 3. EII (Electoral Impact Index) =====
   // = (تقييم موزون × 30%) + (نسبة أصوات صافية × 25%) + (نفوذ × 25%) + (تحشيد × 20%)
@@ -201,6 +210,7 @@ export function enrichElectoralKey(
     weakVotes,
     totalVotes,
     weightedScore,
+    classification,
     keyAccuracyScore: key.keyAccuracyScore || 1.0,
     pollingCenter: key.pollingCenter,
     tribeId: key.tribeId,
