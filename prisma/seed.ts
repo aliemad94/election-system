@@ -70,7 +70,7 @@ async function main() {
 
   await prisma.user.upsert({
     where: { username: "admin" },
-    update: {},
+    update: { mustChangePwd: false },
     create: {
       username: "admin",
       password: adminHash,
@@ -81,7 +81,7 @@ async function main() {
 
   await prisma.user.upsert({
     where: { username: "observer" },
-    update: {},
+    update: { mustChangePwd: false },
     create: {
       username: "observer",
       password: observerHash,
@@ -92,7 +92,7 @@ async function main() {
 
   await prisma.user.upsert({
     where: { username: "key_user" },
-    update: {},
+    update: { mustChangePwd: false },
     create: {
       username: "key_user",
       password: keyUserHash,
