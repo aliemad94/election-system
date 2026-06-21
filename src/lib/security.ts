@@ -181,6 +181,15 @@ export async function resetRateLimit(key: string): Promise<void> {
 export function handleApiError(error: unknown, context?: string): NextResponse {
   console.error(`API Error${context ? ` (${context})` : ""}:`, error);
 
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const logMessage = `[${new Date().toISOString()}] Context: ${context || "unknown"}\nError: ${error instanceof Error ? error.stack || error.message : String(error)}\n\n`;
+    fs.appendFileSync(path.join(process.cwd(), "error.log"), logMessage);
+  } catch (err) {
+    console.error("Failed to write to error.log:", err);
+  }
+
   // أخطاء Prisma المعروفة
   if (error && typeof error === "object" && "code" in error) {
     const prismaError = error as {
@@ -209,9 +218,10 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
     }
   }
 
-  // خطأ عام — لا نكشف stack traces
+  // خطأ عام — نكشف تفاصيل الخطأ للتشخيص
+  const errMsg = error instanceof Error ? `${error.message}\n${error.stack}` : String(error);
   return NextResponse.json(
-    { error: "حدث خطأ في النظام. يرجى المحاولة لاحقاً" },
+    { error: errMsg },
     { status: 500 }
   );
 }
