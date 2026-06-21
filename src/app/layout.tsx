@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   keywords: ["election", "campaign", "management", "إدارة", "انتخابات", "ماكينة"],
   authors: [{ name: "Election Management Team" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
   },
 };
 
