@@ -48,7 +48,7 @@ RUN npm install --omit=dev bcryptjs prisma@6.11.1 @prisma/client@6.11.1
 
 # Copy generated Prisma Client (must be done after npm install to avoid overwriting)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 # Create startup script - with validation for required env vars
 RUN echo '#!/bin/sh' > /app/start.sh && \
