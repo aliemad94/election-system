@@ -5,7 +5,7 @@ nixPkgs = ["nodejs_20", "openssl"]
 cmds = ["npm ci"]
 
 [phases.build]
-cmds = ["cp prisma/schema.postgres.prisma prisma/schema.prisma && npx prisma generate && npx next build && node copy-standalone.js"]
+cmds = ["npx prisma generate && npx next build && node copy-standalone.js"]
 
 [start]
 cmd = "npx prisma db push --skip-generate && npx prisma db seed && node .next/standalone/server.js"
