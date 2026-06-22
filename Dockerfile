@@ -73,9 +73,9 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'fi' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
     echo 'echo "Pushing database schema..."' >> /app/start.sh && \
-    echo 'npx prisma db push --skip-generate 2>/dev/null || true' >> /app/start.sh && \
+    echo 'npx prisma db push --skip-generate' >> /app/start.sh && \
     echo 'echo "Running database seed..."' >> /app/start.sh && \
-    echo 'npx prisma db seed 2>/dev/null || echo "Seed skipped (may already exist)"' >> /app/start.sh && \
+    echo 'npx prisma db seed || echo "Seed skipped (may already exist)"' >> /app/start.sh && \
     echo 'echo "Starting server..."' >> /app/start.sh && \
     echo 'exec node server.js' >> /app/start.sh && \
     chmod +x /app/start.sh && chown nextjs:nodejs /app/start.sh

@@ -637,12 +637,9 @@ export default function ElectoralKeyManagement() {
                         value={form.area} onChange={e => setForm({ ...form, area: e.target.value })} />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">العشيرة</label>
-                      <select className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary cursor-pointer"
-                        value={form.tribeId} onChange={e => setForm({ ...form, tribeId: e.target.value })}>
-                        <option value="">بدون عشيرة</option>
-                        {tribes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </select>
+                      <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">مركز الاقتراع</label>
+                      <input className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary"
+                        value={form.pollingCenter} onChange={e => setForm({ ...form, pollingCenter: e.target.value })} />
                     </div>
                   </div>
                 </div>
