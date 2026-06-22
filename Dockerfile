@@ -41,12 +41,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Copy Prisma schema and seed for runtime
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
+# Install bcryptjs and prisma for seed and push at runtime
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
+RUN npm install --omit=dev bcryptjs prisma@6.11.1 @prisma/client@6.11.1
+
+# Copy generated Prisma Client (must be done after npm install to avoid overwriting)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-
-# Install bcryptjs for seed at runtime
-COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
-RUN npm install --omit=dev bcryptjs 2>/dev/null || true
 
 # Create startup script - with validation for required env vars
 RUN echo '#!/bin/sh' > /app/start.sh && \
