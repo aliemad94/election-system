@@ -174,8 +174,17 @@ export default function ElectoralKeyManagement() {
         whatsapp: form.socialWhatsApp,
       });
 
+      const netVotesVal = calcNetVotes(form.supportedVotes, form.neutralVotes, form.weakVotes);
+      const totalVotesVal = form.totalVotes || (form.supportedVotes + form.neutralVotes + form.weakVotes);
+      const weightedVal = calcWeighted();
+      const classVal = getClassification(weightedVal);
+
       const payload = {
         ...form,
+        netVotes: netVotesVal,
+        totalVotes: totalVotesVal,
+        weightedScore: weightedVal,
+        classification: classVal,
         socialMedia: socialMediaString,
       };
 
@@ -274,13 +283,17 @@ export default function ElectoralKeyManagement() {
       ((form.organizationalNote || 3) - 1) * 5 +
       ((form.generalNote || 3) - 1) * 5;
 
-    return Math.round(rawScore / 2);
+    const totalVotesVal = form.totalVotes || (form.supportedVotes + form.neutralVotes + form.weakVotes);
+    const voteFactor = totalVotesVal / 50;
+    const weightedScore = rawScore * voteFactor;
+
+    return Math.round(weightedScore * 100) / 100;
   };
 
   const getClassification = (score: number) => {
     if (score < 20) return 'ضعيف';
-    if (score <= 50) return 'مقبول';
-    if (score <= 100) return 'جيد';
+    if (score < 50) return 'مقبول';
+    if (score < 100) return 'جيد';
     return 'قوي';
   };
 
@@ -657,22 +670,40 @@ export default function ElectoralKeyManagement() {
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">عدد الأصوات الكلي *</label>
+                      <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
+                        value={form.totalVotes} onChange={e => setForm({ ...form, totalVotes: parseInt(e.target.value) || 0 })} />
+                      <p className="text-[10px] text-el-on-surface-variant mt-0.5">إجمالي الكتلة التصويتية المستهدفة للمفتاح</p>
+                    </div>
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">عدد الأصوات المؤيدة</label>
                       <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                        value={form.supportedVotes} onChange={e => setForm({ ...form, supportedVotes: parseInt(e.target.value) || 0 })} />
+                        value={form.supportedVotes} onChange={e => {
+                          const s = parseInt(e.target.value) || 0;
+                          const nextTotal = s + form.neutralVotes + form.weakVotes;
+                          setForm({ ...form, supportedVotes: s, totalVotes: nextTotal });
+                        }} />
                       <p className="text-[10px] text-green-600 mt-0.5">= {Math.round(form.supportedVotes * 0.8)} صوت فعلي (80%)</p>
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">عدد الأصوات المحايدة</label>
                       <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                        value={form.neutralVotes} onChange={e => setForm({ ...form, neutralVotes: parseInt(e.target.value) || 0 })} />
+                        value={form.neutralVotes} onChange={e => {
+                          const n = parseInt(e.target.value) || 0;
+                          const nextTotal = form.supportedVotes + n + form.weakVotes;
+                          setForm({ ...form, neutralVotes: n, totalVotes: nextTotal });
+                        }} />
                       <p className="text-[10px] text-yellow-600 mt-0.5">= {Math.round(form.neutralVotes * 0.5)} صوت فعلي (50%)</p>
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">عدد الأصوات الضعيفة</label>
                       <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                        value={form.weakVotes} onChange={e => setForm({ ...form, weakVotes: parseInt(e.target.value) || 0 })} />
+                        value={form.weakVotes} onChange={e => {
+                          const w = parseInt(e.target.value) || 0;
+                          const nextTotal = form.supportedVotes + form.neutralVotes + w;
+                          setForm({ ...form, weakVotes: w, totalVotes: nextTotal });
+                        }} />
                       <p className="text-[10px] text-red-600 mt-0.5">= {Math.round(form.weakVotes * 0.3)} صوت فعلي (30%)</p>
                     </div>
                     <div>
@@ -725,7 +756,7 @@ export default function ElectoralKeyManagement() {
                       <span className="text-[14px] font-semibold text-el-on-surface">التقييم الموزون النهائي:</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[24px] font-bold text-el-primary font-mono">{calcWeighted()}</span>
-                        <span className="text-[12px] text-el-on-surface-variant">/200</span>
+                        <span className="text-[12px] text-el-on-surface-variant">درجة</span>
                       </div>
                     </div>
                     <div className="flex justify-between items-center mt-2">
@@ -803,7 +834,7 @@ export default function ElectoralKeyManagement() {
                   <span className={`px-3 py-1.5 rounded text-[14px] font-bold border ${getClassColor(selectedKey.classification)}`}>
                     {selectedKey.classification}
                   </span>
-                  <span className="text-[16px] font-bold font-mono text-el-primary">{selectedKey.weightedScore}/200</span>
+                  <span className="text-[16px] font-bold font-mono text-el-primary">التقييم: {selectedKey.weightedScore}</span>
                 </div>
 
                 {/* الأصوات */}
@@ -885,7 +916,7 @@ export default function ElectoralKeyManagement() {
                 <div className="border-t border-el-outline-variant/60 pt-3">
                   <div className="flex justify-between text-[11px] text-el-on-surface-variant mb-1">
                     <span>قوة نفوذ المفتاح</span>
-                    <span>{selectedKey.weightedScore}/200</span>
+                    <span>{selectedKey.weightedScore}</span>
                   </div>
                   <div className="h-2 w-full bg-el-surface-variant rounded-full overflow-hidden">
                     <div className={`h-full ${selectedKey.weightedScore >= 100 ? 'bg-green-500' : selectedKey.weightedScore >= 50 ? 'bg-blue-500' : selectedKey.weightedScore >= 20 ? 'bg-yellow-500' : 'bg-red-500'}`}

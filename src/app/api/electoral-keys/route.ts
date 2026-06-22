@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
 import { createElectionKeySchema, formatZodError } from "@/lib/validators";
+import { calculateAll } from "@/lib/electoral-calculations";
 
 // GET /api/electoral-keys — قائمة المفاتيح مع فلترة وبحث
 async function getHandler(req: NextRequest, { user }: any) {
@@ -187,6 +188,24 @@ async function postHandler(req: NextRequest, { user }: any) {
       }
       const generatedCode = String(maxSeq + 1);
 
+      // Calculate electoral values automatically
+      const calcData = {
+        supportedVotes: d.supportedVotes ?? 0,
+        neutralVotes: d.neutralVotes ?? 0,
+        weakVotes: d.weakVotes ?? 0,
+        totalVotes: d.totalVotes || ((d.supportedVotes ?? 0) + (d.neutralVotes ?? 0) + (d.weakVotes ?? 0)),
+        loyaltyScore: d.loyaltyScore ?? 3,
+        influenceLevel: d.influenceLevel ?? 3,
+        mobilizationCap: d.mobilizationCap ?? 3,
+        voteProtection: d.voteProtection ?? 3,
+        supportReason: d.supportReason ?? 3,
+        needsLevel: d.needsLevel ?? 3,
+        politicalNote: d.politicalNote ?? 3,
+        organizationalNote: d.organizationalNote ?? 3,
+        generalNote: d.generalNote ?? 3,
+      };
+      const calcResult = calculateAll(calcData);
+
       try {
         key = await prisma.electionKey.create({
           data: {
@@ -232,11 +251,11 @@ async function postHandler(req: NextRequest, { user }: any) {
             dataAccuracy: d.dataAccuracy || null,
             createdBy: d.createdBy || null,
 
-            totalVotes: d.totalVotes ?? 0,
-            supportedVotes: d.supportedVotes ?? 0,
-            neutralVotes: d.neutralVotes ?? 0,
-            weakVotes: d.weakVotes ?? 0,
-            netVotes: d.netVotes ?? 0,
+            totalVotes: calcData.totalVotes,
+            supportedVotes: calcData.supportedVotes,
+            neutralVotes: calcData.neutralVotes,
+            weakVotes: calcData.weakVotes,
+            netVotes: Math.round(calcResult.netVotes),
 
             voteProtection: d.voteProtection ?? 3,
             supportReason: d.supportReason ?? 3,
@@ -245,8 +264,8 @@ async function postHandler(req: NextRequest, { user }: any) {
             organizationalNote: d.organizationalNote ?? 3,
             generalNote: d.generalNote ?? 3,
 
-            weightedScore: d.weightedScore ?? 0.0,
-            classification: d.classification ?? "مقبول",
+            weightedScore: calcResult.weightedScore,
+            classification: calcResult.classification,
 
             eiiScore: d.eiiScore ?? 0.0,
             kriScore: d.kriScore ?? 0.0,

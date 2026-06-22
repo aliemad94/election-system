@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
 import { updateElectionKeySchema, formatZodError } from "@/lib/validators";
+import { calculateAll } from "@/lib/electoral-calculations";
 
 // PUT /api/electoral-keys/[id]
 async function putHandler(
@@ -41,19 +42,50 @@ async function putHandler(
       );
     }
 
-    const data: Record<string, unknown> = { ...parsed.data };
-    if (parsed.data.dateOfBirth) {
-      data.birthDate = new Date(parsed.data.dateOfBirth);
+    const d = parsed.data;
+
+    const merged = {
+      supportedVotes: d.supportedVotes !== undefined ? d.supportedVotes : existing.supportedVotes,
+      neutralVotes: d.neutralVotes !== undefined ? d.neutralVotes : existing.neutralVotes,
+      weakVotes: d.weakVotes !== undefined ? d.weakVotes : existing.weakVotes,
+      totalVotes: d.totalVotes !== undefined ? d.totalVotes : existing.totalVotes,
+      loyaltyScore: d.loyaltyScore !== undefined ? d.loyaltyScore : existing.loyaltyScore,
+      influenceLevel: d.influenceLevel !== undefined ? d.influenceLevel : existing.influenceLevel,
+      mobilizationCap: d.mobilizationCap !== undefined ? d.mobilizationCap : existing.mobilizationCap,
+      voteProtection: d.voteProtection !== undefined ? d.voteProtection : existing.voteProtection,
+      supportReason: d.supportReason !== undefined ? d.supportReason : existing.supportReason,
+      needsLevel: d.needsLevel !== undefined ? d.needsLevel : existing.needsLevel,
+      politicalNote: d.politicalNote !== undefined ? d.politicalNote : existing.politicalNote,
+      organizationalNote: d.organizationalNote !== undefined ? d.organizationalNote : existing.organizationalNote,
+      generalNote: d.generalNote !== undefined ? d.generalNote : existing.generalNote,
+    };
+
+    if (d.totalVotes === undefined && (d.supportedVotes !== undefined || d.neutralVotes !== undefined || d.weakVotes !== undefined)) {
+      merged.totalVotes = merged.supportedVotes + merged.neutralVotes + merged.weakVotes;
+    }
+
+    const calcResult = calculateAll(merged);
+
+    const data: Record<string, unknown> = {
+      ...d,
+      totalVotes: merged.totalVotes,
+      netVotes: Math.round(calcResult.netVotes),
+      weightedScore: calcResult.weightedScore,
+      classification: calcResult.classification,
+    };
+
+    if (d.dateOfBirth) {
+      data.birthDate = new Date(d.dateOfBirth);
       delete data.dateOfBirth;
     }
-    if (parsed.data.firstContactDate) {
-      data.firstContactDate = new Date(parsed.data.firstContactDate);
+    if (d.firstContactDate) {
+      data.firstContactDate = new Date(d.firstContactDate);
     }
-    if (parsed.data.lastContactDate) {
-      data.lastContactDate = new Date(parsed.data.lastContactDate);
+    if (d.lastContactDate) {
+      data.lastContactDate = new Date(d.lastContactDate);
     }
-    if (parsed.data.lastSpentDate) {
-      data.lastSpentDate = new Date(parsed.data.lastSpentDate);
+    if (d.lastSpentDate) {
+      data.lastSpentDate = new Date(d.lastSpentDate);
     }
 
     const updated = await prisma.electionKey.update({
