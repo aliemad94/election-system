@@ -66,3 +66,6 @@ skills-lock.json
 project_*.md
 MERGE_REPORT.md
 generate-md-source.js
+
+# Agent config
+.gemini/
