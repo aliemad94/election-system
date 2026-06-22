@@ -4,10 +4,28 @@
 
 ---
 
+#### لوحة تحكم المالك وخيارات الإشراف
+![Owner View Dashboard](C:/Users/SONY/.gemini/antigravity-ide/brain/4974392d-a779-4fa8-9046-63f83b17ff9e/owner_view_dashboard_1782090602264.png)
+
+#### 🎥 تسجيل تفاعلي لعملية تسجيل الدخول والتصفح
+![Login Flow WebP](C:/Users/SONY/.gemini/antigravity-ide/brain/4974392d-a779-4fa8-9046-63f83b17ff9e/login_flow_auth_1782090465346.webp)
+
+#### 🌐 رابط التشغيل العام والتحقق من النشر (Public URL Verification)
+* **رابط المنصة العام:** [منصة إدارة الماكينة الانتخابية لذي قار](https://election-system-production-30d4.up.railway.app)
+* **لقطة شاشة لبوابة الدخول باللغة العربية على الخادم العام:**
+![Arabic Login Gate Public URL](C:/Users/SONY/.gemini/antigravity-ide/brain/4974392d-a779-4fa8-9046-63f83b17ff9e/login_gate_arabic_1782091138443.png)
+* **تتبع تفاعلي للتحقق من الرابط العام:**
+![Public URL Check WebP](C:/Users/SONY/.gemini/antigravity-ide/brain/4974392d-a779-4fa8-9046-63f83b17ff9e/public_dep_verify_1782091074077.webp)
+
+---
+
+> [!NOTE]
+> جميع التعديلات والواجهات تمت حمايتها بضوابط أمنية متينة وتتبع التقييس الفعلي للغة العربية والتوثيق المطلوب. النظام الآن جاهز تماماً للتشغيل الميداني الفعلي والوصول إليه من أي مكان.
+
 ## 1. التحديثات التي تم إجراؤها (Database Configuration & Migration)
 
 ### قاعدة البيانات السحابية (PostgreSQL):
-* تم تعديل هيكل قاعدة البيانات الافتراضي في ملف `prisma/schema.prisma` ليدعم **PostgreSQL** بدلاً من SQLite لضمان المزامنة وحفظ البيانات سحابياً ومشاركتها مع جميع الأجهزة والمناطق المختلفة.
+* تم تعديل هيكل قاعدة البيانات الافتراضي في ملف `prisma/schema.prisma` لتدعم **PostgreSQL** بدلاً من SQLite لضمان المزامنة وحفظ البيانات سحابياً ومشاركتها مع جميع الأجهزة والمناطق المختلفة.
 * تم إعداد الحسابات الافتراضية وتهيئتها بنجاح داخل قاعدة البيانات السحابية.
 
 ### واجهات البرمجة الخلفية المصلحة بالكامل (APIs Corrected):
