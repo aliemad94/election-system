@@ -681,8 +681,7 @@ export default function ElectoralKeyManagement() {
                       <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
                         value={form.supportedVotes} onChange={e => {
                           const s = parseInt(e.target.value) || 0;
-                          const nextTotal = s + form.neutralVotes + form.weakVotes;
-                          setForm({ ...form, supportedVotes: s, totalVotes: nextTotal });
+                          setForm({ ...form, supportedVotes: s });
                         }} />
                       <p className="text-[10px] text-green-600 mt-0.5">= {Math.round(form.supportedVotes * 0.8)} صوت فعلي (80%)</p>
                     </div>
@@ -691,8 +690,7 @@ export default function ElectoralKeyManagement() {
                       <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
                         value={form.neutralVotes} onChange={e => {
                           const n = parseInt(e.target.value) || 0;
-                          const nextTotal = form.supportedVotes + n + form.weakVotes;
-                          setForm({ ...form, neutralVotes: n, totalVotes: nextTotal });
+                          setForm({ ...form, neutralVotes: n });
                         }} />
                       <p className="text-[10px] text-yellow-600 mt-0.5">= {Math.round(form.neutralVotes * 0.5)} صوت فعلي (50%)</p>
                     </div>
@@ -701,8 +699,7 @@ export default function ElectoralKeyManagement() {
                       <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
                         value={form.weakVotes} onChange={e => {
                           const w = parseInt(e.target.value) || 0;
-                          const nextTotal = form.supportedVotes + form.neutralVotes + w;
-                          setForm({ ...form, weakVotes: w, totalVotes: nextTotal });
+                          setForm({ ...form, weakVotes: w });
                         }} />
                       <p className="text-[10px] text-red-600 mt-0.5">= {Math.round(form.weakVotes * 0.3)} صوت فعلي (30%)</p>
                     </div>
