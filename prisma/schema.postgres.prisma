@@ -59,14 +59,21 @@ model AuditLog {
 
 // العشيرة الرئيسية
 model Tribe {
-  id           String        @id @default(cuid())
-  name         String        @unique // الاسم الموحّد للعشيرة
-  description  String?
-  subTribes    SubTribe[]
-  voters       Voter[]
-  electionKeys ElectionKey[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @default(now()) @updatedAt
+  id              String        @id @default(cuid())
+  name            String        @unique // الاسم الموحّد للعشيرة
+  description     String?
+  district        String?       // القضاء الذي تتواجد فيه
+  influenceRating Int           @default(3) // تصنيف التأثير (1-5)
+  population      Int?          // التعداد التقريبي
+  notes           String?
+  subTribes       SubTribe[]
+  voters          Voter[]
+  electionKeys    ElectionKey[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now()) @updatedAt
+
+  @@index([district])
+  @@index([influenceRating])
 }
 
 // الفخذ أو البيت داخل العشيرة
@@ -170,10 +177,12 @@ model ElectionKey {
   subTribeId String?
   subTribe   SubTribe?  @relation(fields: [subTribeId], references: [id])
 
-  voters   Voter[]
-  services Service[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  voters        Voter[]
+  services      Service[]
+  earlyWarnings EarlyWarning[]
+  tasks         Task[]         @relation("ElectionKeyTasks")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([tribeId])
   @@index([subTribeId])
@@ -221,9 +230,19 @@ model Voter {
   checkedIn       Boolean     @default(false)
   checkedInAt     DateTime?
 
+  // حقول الثقة والتقييم (من الوثيقة المرجعية)
+  confidenceScore Int         @default(50)  // درجة الثقة (0-100)
+  evaluationForm  String?     // JSON string — حقول نموذج التقييم
+  notes           String?     // ملاحظات عامة
+
   // نمذجة الكتلة الصامتة والمترددين (Floating Voters Profile Clustering)
   predictedClusterId String?  // رقم المجموعة الديمغرافية للتنبؤ
   imputationWeights  String?  // JSON string — أوزان احتمالية التصويت
+
+  // شجرة التجنيد الهرمية
+  recruitedById String?       // الناخب الذي جنّد هذا الناخب
+  recruitedBy   Voter?   @relation("VoterRecruitment", fields: [recruitedById], references: [id])
+  recruits      Voter[]  @relation("VoterRecruitment")
 
   keyId       String
   electionKey ElectionKey @relation(fields: [keyId], references: [id])
@@ -249,6 +268,7 @@ model Voter {
   registryVoterId     String?
   services            Service[]
   tasks               Task[]
+  confidenceLogs      ConfidenceLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -260,6 +280,8 @@ model Voter {
   @@index([district])
   @@index([status])
   @@index([votedOnDay])
+  @@index([confidenceScore])
+  @@index([recruitedById])
 }
 
 // ====================================================================
@@ -383,12 +405,16 @@ model Task {
   district       String?
   impactEstimate String?
   dueDate        DateTime?
+  completedAt    DateTime?
 
   targetVoterId String?
   targetVoter   Voter?     @relation(fields: [targetVoterId], references: [id])
 
   assignedToId String?
   assignedTo   Volunteer? @relation(fields: [assignedToId], references: [id])
+
+  electoralKeyId String?
+  electoralKey   ElectionKey? @relation("ElectionKeyTasks", fields: [electoralKeyId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -397,6 +423,7 @@ model Task {
   @@index([priority])
   @@index([district])
   @@index([assignedToId])
+  @@index([electoralKeyId])
 }
 
 // ====================================================================
@@ -420,5 +447,169 @@ model SystemConfig {
   id        String   @id @default("system")
   enabled   Boolean  @default(true)
   updatedAt DateTime @updatedAt
+}
+
+// ====================================================================
+// سجل الثقة (ConfidenceLog) — تتبع تغيّرات الثقة لكل ناخب
+// ====================================================================
+
+model ConfidenceLog {
+  id        String   @id @default(cuid())
+  voterId   String
+  voter     Voter    @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  oldScore  Int      // الدرجة القديمة
+  newScore  Int      // الدرجة الجديدة
+  change    Int      // مقدار التغيير (يمكن أن يكون سالباً)
+  reason    String?  // سبب التغيير
+  changedBy String?  // من قام بالتغيير
+  createdAt DateTime @default(now())
+
+  @@index([voterId])
+  @@index([createdAt])
+}
+
+// ====================================================================
+// حملات الرسائل القصيرة (SMSCampaign)
+// ====================================================================
+
+model SMSCampaign {
+  id             String    @id @default(cuid())
+  name           String
+  message        String    // نص الرسالة
+  filterType     String?   // DISTRICT | TRIBE | CLASSIFICATION | CONFIDENCE
+  filterValue    String?   // قيمة الفلتر
+  recipientCount Int       @default(0)
+  status         String    @default("DRAFT") // DRAFT | SCHEDULED | SENT | FAILED
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  provider       String    @default("TWILIO") // TWILIO | VONAGE
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+// ====================================================================
+// التنبيهات (Alert)
+// ====================================================================
+
+model Alert {
+  id        String   @id @default(cuid())
+  type      String   // INFO | WARNING | CRITICAL
+  title     String
+  message   String
+  source    String?  // مصدر التنبيه
+  isRead    Boolean  @default(false)
+  relatedId String?  // معرّف الكيان المرتبط
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// ====================================================================
+// التحكم بالوصول (AccessControl)
+// ====================================================================
+
+model AccessControl {
+  id          String   @id @default(cuid())
+  label       String   @unique // تسمية كلمة المرور (زائر | مالك)
+  password    String   // كلمة المرور المشفّرة
+  isActive    Boolean  @default(true)
+  lastChanged DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ====================================================================
+// الإنذار المبكر (EarlyWarning)
+// ====================================================================
+
+model EarlyWarning {
+  id              String       @id @default(cuid())
+  electoralKeyId  String?
+  electoralKey    ElectionKey? @relation(fields: [electoralKeyId], references: [id])
+  warningType     String       // CONFIDENCE_DROP | LOYALTY_CHANGE | DEFECTION_RISK | FIELD_ISSUE
+  severity        String       @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  description     String
+  status          String       @default("ACTIVE") // ACTIVE | IN_PROGRESS | RESOLVED
+  detectedAt      DateTime     @default(now())
+  resolvedAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([electoralKeyId])
+  @@index([severity])
+  @@index([status])
+  @@index([warningType])
+}
+
+// ====================================================================
+// المؤشرات الديناميكية (DynamicIndicator)
+// ====================================================================
+
+model DynamicIndicator {
+  id            String   @id @default(cuid())
+  area          String   // المنطقة
+  indicatorType String   // MOOD | TREND | STABILITY | TENSION
+  value         Float    // القيمة الحالية
+  previousValue Float    @default(0) // القيمة السابقة
+  trend         String   @default("STABLE") // UP | STABLE | DOWN
+  recordedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([area])
+  @@index([indicatorType])
+  @@index([recordedAt])
+}
+
+// ====================================================================
+// المؤشرات المركبة (CompositeIndicator) — العشرة الرئيسية لكل منطقة
+// ====================================================================
+
+model CompositeIndicator {
+  id           String   @id @default(cuid())
+  area         String   // المنطقة
+  eii          Float    @default(0) // مؤشر التأثير الانتخابي
+  kri          Float    @default(0) // مؤشر موثوقية المفتاح
+  vps          Float    @default(0) // درجة احتمالية التصويت
+  drs          Float    @default(0) // درجة خطر الانشقاق
+  campaignRoi  Float    @default(0) // عائد حملة الانتخاب
+  api          Float    @default(0) // مؤشر اختراق المنطقة
+  ewli         Float    @default(0) // مؤشر خسارة الإنذار المبكر
+  gsi          Float    @default(0) // مؤشر القوة الجغرافية
+  edri         Float    @default(0) // مؤشر جاهزية يوم الانتخاب
+  efi          Float    @default(0) // مؤشر التوقع الانتخابي
+  calculatedAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([area])
+  @@index([calculatedAt])
+}
+
+// ====================================================================
+// النتائج الانتخابية التاريخية (ElectionResult)
+// ====================================================================
+
+model ElectionResult {
+  id                String   @id @default(cuid())
+  year              Int
+  district          String
+  totalVotes        Int      @default(0)
+  validVotes        Int      @default(0)
+  invalidVotes      Int      @default(0)
+  participationRate Float    @default(0)
+  winnerName        String?
+  winnerVotes       Int      @default(0)
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([year])
+  @@index([district])
 }
 
