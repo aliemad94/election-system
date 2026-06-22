@@ -13,48 +13,7 @@ async function getHandler(_req: NextRequest) {
       orderBy: { district: "asc" },
     });
 
-    // بيانات افتراضية إن كانت فارغة
-    if (list.length === 0) {
-      const defaultData = [
-        {
-          province: "ذي قار",
-          district: "ذي قار (كلي)",
-          subDistrict: "جميع النواحي",
-          pollingCenter: "مراكز ذي قار",
-          ballotStation: "كلي",
-          registeredVoters: 1099438,
-          historicalTurnout: 48.97,
-          expectedTurnout: 48.97,
-        },
-        {
-          province: "ذي قار",
-          district: "الناصرية",
-          subDistrict: "المركز",
-          pollingCenter: "مراكز الناصرية",
-          ballotStation: "عام",
-          registeredVoters: 450000,
-          historicalTurnout: 45.2,
-          expectedTurnout: 45.2,
-        },
-        {
-          province: "ذي قار",
-          district: "الشطرة",
-          subDistrict: "الشطرة",
-          pollingCenter: "مراكز الشطرة",
-          ballotStation: "عام",
-          registeredVoters: 210000,
-          historicalTurnout: 50.1,
-          expectedTurnout: 50.1,
-        },
-      ];
-
-      for (const item of defaultData) {
-        await prisma.commissionData.create({ data: item });
-      }
-      list = await prisma.commissionData.findMany({
-        orderBy: { district: "asc" },
-      });
-    }
+    // لا توجد بيانات افتراضية — المستخدم يدخل البيانات الحقيقية بنفسه
 
     return NextResponse.json(list);
   } catch (error) {

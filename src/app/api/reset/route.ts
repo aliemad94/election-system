@@ -43,7 +43,10 @@ async function postHandler(
       prisma.electionKey.deleteMany(),
       prisma.electionResult.deleteMany(),
       prisma.tribe.deleteMany(),
-      prisma.iHECData.deleteMany(),
+      prisma.subTribe.deleteMany(),
+      prisma.commissionData.deleteMany(),
+      prisma.competitor.deleteMany(),
+      prisma.volunteer.deleteMany(),
     ]);
 
     // تسجيل العملية
