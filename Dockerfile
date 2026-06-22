@@ -70,7 +70,7 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'fi' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
     echo 'echo "Pushing database schema..."' >> /app/start.sh && \
-    echo 'npx prisma db push --skip-generate' >> /app/start.sh && \
+    echo 'npx prisma db push --skip-generate || echo "Database push failed or skipped (continuing...)"' >> /app/start.sh && \
     echo 'echo "Running database seed..."' >> /app/start.sh && \
     echo 'npx prisma db seed || echo "Seed skipped (may already exist)"' >> /app/start.sh && \
     echo 'echo "Starting server..."' >> /app/start.sh && \
