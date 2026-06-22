@@ -254,7 +254,6 @@ function calcDecisiveIndicators(
     keyRanking,
     avgKRI,
     avgDRS,
-    supportDistribution,
     areaMap,
     totalNetVotes,
     totalRegistered,
