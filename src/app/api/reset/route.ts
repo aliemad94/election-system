@@ -28,7 +28,7 @@ async function postHandler(
       );
     }
 
-    // حذف البيانات الانتخابية مع الاحتفاظ بالبيانات الأساسية
+    // حذف جميع البيانات مع الاحتفاظ بالمستخدمين فقط
     await prisma.$transaction([
       prisma.confidenceLog.deleteMany(),
       prisma.earlyWarning.deleteMany(),
@@ -42,6 +42,8 @@ async function postHandler(
       prisma.voter.deleteMany(),
       prisma.electionKey.deleteMany(),
       prisma.electionResult.deleteMany(),
+      prisma.tribe.deleteMany(),
+      prisma.iHECData.deleteMany(),
     ]);
 
     // تسجيل العملية
@@ -59,7 +61,7 @@ async function postHandler(
 
     return NextResponse.json({
       success: true,
-      message: "تم إعادة تعيين جميع البيانات الانتخابية بنجاح",
+      message: "تم إعادة تعيين جميع البيانات بالكامل بنجاح - القبائل والمفوضية والمفاتيح والناخبين",
     });
   } catch (error) {
     console.error("Error resetting data:", error);
