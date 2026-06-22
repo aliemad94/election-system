@@ -214,20 +214,22 @@ export default function DataAnalysis() {
 // 1. المؤشرات الحاسمة (1-12)
 // ═══════════════════════════════════════════════════════════════
 function DecisiveTab({ data }: { data: any }) {
+  const d = data || {};
+  const safe = (v: any, fallback: any = 0) => (v !== undefined && v !== null) ? v : fallback;
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <IndicatorCard number={1} title="عدد الأصوات المتوقعة" value={data.expectedVotes.toLocaleString()} subtitle="صوت محتمل" icon={Vote} activationGuide="يُحسب تلقائياً من الأصوات الصافية للمفاتيح الانتخابية الموزعة حسب نسبة المشاركة التاريخية لذي قار." />
-        <IndicatorCard number={2} title="الأصوات المطلوبة للفوز" value={data.votesNeededToWin.toLocaleString()} subtitle="العتبة المستهدفة للمقعد" icon={Award} color="text-amber-600" bgColor="bg-amber-100" />
-        <IndicatorCard number={3} title="مؤشر الفجوة الانتخابية" value={data.electoralGap.toLocaleString()} subtitle="صوت للفوز" icon={AlertTriangle} color="text-red-600" bgColor="bg-red-100" activationGuide="هو الفرق المتبقي بين عدد الأصوات المتوقعة ومستهدف الفوز (12,000 صوت)." />
-        <IndicatorCard number={4} title="احتمالية الفوز" value={`${data.winProbability}%`} subtitle="جاهزية الحصول على مقعد" icon={Brain} color="text-purple-600" bgColor="bg-purple-100" activationGuide="يقيس نسبة حصد المقعد بناءً على الأصوات الصافية المتحققة مقارنة بالعتبة المطلوبة." />
+        <IndicatorCard number={1} title="عدد الأصوات المتوقعة" value={(safe(d.expectedVotes) || safe(d.expectedVotesOnDay)).toLocaleString()} subtitle="صوت محتمل" icon={Vote} activationGuide="يُحسب تلقائياً من الأصوات الصافية للمفاتيح الانتخابية الموزعة حسب نسبة المشاركة التاريخية لذي قار." />
+        <IndicatorCard number={2} title="الأصوات المطلوبة للفوز" value={safe(d.votesNeededToWin, 12000).toLocaleString()} subtitle="العتبة المستهدفة للمقعد" icon={Award} color="text-amber-600" bgColor="bg-amber-100" />
+        <IndicatorCard number={3} title="مؤشر الفجوة الانتخابية" value={safe(d.electoralGap, 12000).toLocaleString()} subtitle="صوت للفوز" icon={AlertTriangle} color="text-red-600" bgColor="bg-red-100" activationGuide="هو الفرق المتبقي بين عدد الأصوات المتوقعة ومستهدف الفوز (12,000 صوت)." />
+        <IndicatorCard number={4} title="احتمالية الفوز" value={`${safe(d.winProbability, 0)}%`} subtitle="جاهزية الحصول على مقعد" icon={Brain} color="text-purple-600" bgColor="bg-purple-100" activationGuide="يقيس نسبة حصد المقعد بناءً على الأصوات الصافية المتحققة مقارنة بالعتبة المطلوبة." />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <IndicatorCard number={5} title="نسبة المشاركة المتوقعة" value={`${data.expectedTurnout}%`} subtitle="معدل مشاركة الناخبين" icon={Activity} activationGuide="يتم قراءته من بيانات سجلات المفوضية الموثقة في جدول IHECData للأقضية." />
-        <IndicatorCard number={6} title="المخاطر الانتخابية الشامل" value={data.overallRisk} subtitle="مستوى الخطر الكلي" icon={ShieldAlert} color="text-red-500" bgColor="bg-red-50" activationGuide="مؤشر يدمج متوسط خطرDefection للمفاتيح والتهديدات النشطة غير المعالجة." />
-        <IndicatorCard number={7} title="مؤشر الاستقرار الانتخابي" value={data.stability} subtitle="استقرار أصوات المفاتيح" icon={Shield} color="text-green-600" bgColor="bg-green-100" activationGuide="يقيس مدى التزام واستقرار ولاء المفاتيح ومعدلات الزيارات الدورية لهم." />
-        <IndicatorCard number={8} title="مؤشر الإنذار المبكر" value={data.earlyWarning} subtitle="التهديدات النشطة" icon={AlertTriangle} color="text-yellow-600" bgColor="bg-yellow-100" activationGuide="يتنبأ بالمشاكل السياسية والميدانية التي تسجلها الفرق الميدانية في قائمة التنبيهات." />
+        <IndicatorCard number={5} title="نسبة المشاركة المتوقعة" value={`${safe(d.expectedTurnout) || safe(d.expectedParticipation) || 58}%`} subtitle="معدل مشاركة الناخبين" icon={Activity} activationGuide="يتم قراءته من بيانات سجلات المفوضية الموثقة في جدول IHECData للأقضية." />
+        <IndicatorCard number={6} title="المخاطر الانتخابية الشامل" value={safe(d.overallRisk, 0)} subtitle="مستوى الخطر الكلي" icon={ShieldAlert} color="text-red-500" bgColor="bg-red-50" activationGuide="مؤشر يدمج متوسط خطرDefection للمفاتيح والتهديدات النشطة غير المعالجة." />
+        <IndicatorCard number={7} title="مؤشر الاستقرار الانتخابي" value={safe(d.stability, 0)} subtitle="استقرار أصوات المفاتيح" icon={Shield} color="text-green-600" bgColor="bg-green-100" activationGuide="يقيس مدى التزام واستقرار ولاء المفاتيح ومعدلات الزيارات الدورية لهم." />
+        <IndicatorCard number={8} title="مؤشر الإنذار المبكر" value={safe(d.earlyWarning, 0)} subtitle="التهديدات النشطة" icon={AlertTriangle} color="text-yellow-600" bgColor="bg-yellow-100" activationGuide="يتنبأ بالمشاكل السياسية والميدانية التي تسجلها الفرق الميدانية في قائمة التنبيهات." />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -238,14 +240,14 @@ function DecisiveTab({ data }: { data: any }) {
             نسبة المؤيدين والمحايدين والمعارضين
           </h3>
           <div className="h-6 w-full rounded-full overflow-hidden flex bg-el-surface-variant">
-            <div className="bg-green-500 h-full transition-all flex items-center justify-center text-white text-[11px] font-bold" style={{ width: `${data.supportersDistribution.supported || 33.3}%` }}>
-              {data.supportersDistribution.supported > 0 ? `${data.supportersDistribution.supported}% مؤيد` : 'بدون مؤيد'}
+            <div className="bg-green-500 h-full transition-all flex items-center justify-center text-white text-[11px] font-bold" style={{ width: `${(d.supportersDistribution?.supported || d.supportDistribution?.supported?.percentage || 33.3)}%` }}>
+              {(d.supportersDistribution?.supported || d.supportDistribution?.supported?.percentage || 0) > 0 ? `${d.supportersDistribution?.supported || d.supportDistribution?.supported?.percentage || 0}% مؤيد` : 'بدون مؤيد'}
             </div>
-            <div className="bg-yellow-400 h-full transition-all flex items-center justify-center text-yellow-900 text-[11px] font-bold" style={{ width: `${data.supportersDistribution.neutral || 33.3}%` }}>
-              {data.supportersDistribution.neutral > 0 ? `${data.supportersDistribution.neutral}% محايد` : 'بدون محايد'}
+            <div className="bg-yellow-400 h-full transition-all flex items-center justify-center text-yellow-900 text-[11px] font-bold" style={{ width: `${(d.supportersDistribution?.neutral || d.supportDistribution?.neutral?.percentage || 33.3)}%` }}>
+              {(d.supportersDistribution?.neutral || d.supportDistribution?.neutral?.percentage || 0) > 0 ? `${d.supportersDistribution?.neutral || d.supportDistribution?.neutral?.percentage || 0}% محايد` : 'بدون محايد'}
             </div>
-            <div className="bg-red-400 h-full transition-all flex items-center justify-center text-white text-[11px] font-bold" style={{ width: `${data.supportersDistribution.opponent || 33.3}%` }}>
-              {data.supportersDistribution.opponent > 0 ? `${data.supportersDistribution.opponent}% معارض` : 'بدون ضعيف'}
+            <div className="bg-red-400 h-full transition-all flex items-center justify-center text-white text-[11px] font-bold" style={{ width: `${(d.supportersDistribution?.opponent || d.supportDistribution?.weak?.percentage || 33.3)}%` }}>
+              {(d.supportersDistribution?.opponent || d.supportDistribution?.weak?.percentage || 0) > 0 ? `${d.supportersDistribution?.opponent || d.supportDistribution?.weak?.percentage || 0}% معارض` : 'بدون ضعيف'}
             </div>
           </div>
           <p className="text-[10px] text-el-on-surface-variant mt-2 italic">
@@ -259,7 +261,7 @@ function DecisiveTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-red-50 text-red-500">10</span>
             مؤشر خطر التسرب الانتخابي
           </h3>
-          <div className="text-[36px] font-bold font-mono text-red-500 leading-none">{data.defectionRisk}</div>
+          <div className="text-[36px] font-bold font-mono text-red-500 leading-none">{safe(d.defectionRisk) || safe(d.avgDRS, 0)}</div>
           <p className="text-[10px] text-el-on-surface-variant mt-1.5">
             يقيس احتمال خروج المفاتيح الانتخابية عن التحالف أو التراجع عن دعم المرشح بسبب الاحتياجات أو انقطاع الاتصال.
           </p>

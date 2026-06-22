@@ -73,7 +73,7 @@
 ![Login Flow WebP](C:/Users/SONY/.gemini/antigravity-ide/brain/4974392d-a779-4fa8-9046-63f83b17ff9e/login_flow_auth_1782090465346.webp)
 
 #### 🌐 رابط التشغيل العام والتحقق من النشر (Public URL Verification)
-* **رابط المنصة العام:** [منصة إدارة الماكينة الانتخابية لذي قار](https://election-system-production-30d4.up.railway.app)
+* **رابط المنصة العام:** [منصة إدارة الماكينة الانتخابية لذي قار](https://election-system-production-437f.up.railway.app)
 * **لقطة شاشة لبوابة الدخول باللغة العربية على الخادم العام:**
 ![Arabic Login Gate Public URL](C:/Users/SONY/.gemini/antigravity-ide/brain/4974392d-a779-4fa8-9046-63f83b17ff9e/login_gate_arabic_1782091138443.png)
 * **تتبع تفاعلي للتحقق من النشر العام:**

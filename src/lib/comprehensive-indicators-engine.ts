@@ -230,9 +230,24 @@ function calcDecisiveIndicators(
     return { district: d.district, color, strength: d.strength, netVotes: d.netVotes, keyCount: d.keyCount };
   });
 
+  const expectedVotes = expectedVotesOnDay;
+  const expectedTurnout = expectedParticipation;
+  const votesNeededToWin = 12000;
+  const electoralGap = Math.max(0, votesNeededToWin - expectedVotesOnDay);
+  const winProbability = totalNetVotes > 0 ? round1(clamp((totalNetVotes / (totalRegistered * avgParticipation / 100)) * 100)) : 0;
+  const overallRisk = Math.round(avgDRS * 0.6 + (100 - avgKRI) * 0.4);
+  const stability = Math.round(Math.min(100, avgKRI));
+  const earlyWarning = Math.round(avgDRS * 0.5);
+  const supportersDistribution = {
+    supported: supportDistribution.supported.percentage || 0,
+    neutral: supportDistribution.neutral.percentage || 0,
+    opponent: supportDistribution.weak.percentage || 0,
+  };
+
   return {
-    expectedVotesOnDay,
-    expectedParticipation,
+    expectedVotesOnDay, expectedVotes, expectedTurnout, expectedParticipation,
+    votesNeededToWin, electoralGap, winProbability, overallRisk, stability, earlyWarning,
+    supportDistribution, supportersDistribution,
     strongAreas,
     weakAreas,
     geoDistribution,
