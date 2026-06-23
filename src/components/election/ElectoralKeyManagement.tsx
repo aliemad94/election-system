@@ -93,10 +93,11 @@ const defaultForm = {
   tribeId: '', notes: '', socialFacebook: '', socialTelegram: '', socialWhatsApp: '',
 };
 
-const RatingBar = ({ value, onChange, labels, weight }: { value: number; onChange: (v: number) => void; labels: string[]; weight?: number }) => (
-  <div className="space-y-1">
-    <div className="flex items-center gap-2">
-      {weight && <span className="text-[10px] bg-el-primary/10 text-el-primary px-1.5 py-0.5 rounded font-bold">الوزن: {weight}</span>}
+const RatingBar = ({ value, onChange, labels, weight, field }: { value: number; onChange: (v: number) => void; labels: string[]; weight?: number; field?: string }) => (
+  <div className="space-y-1.5 bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-3">
+    <div className="flex items-center justify-between">
+      <span className="text-[12px] font-bold text-el-on-surface">{field || ''}</span>
+      {weight && <span className="text-[10px] bg-el-primary/10 text-el-primary px-1.5 py-0.5 rounded font-bold">الوزن: {weight}%</span>}
     </div>
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map((n) => (
@@ -765,15 +766,15 @@ export default function ElectoralKeyManagement() {
                   </div>
 
                   <div className="space-y-3">
-                    <RatingBar value={form.loyaltyLevel} onChange={v => setForm({ ...form, loyaltyLevel: v })} labels={LOYALTY_LABELS} weight={20} />
-                    <RatingBar value={form.influenceLevel} onChange={v => setForm({ ...form, influenceLevel: v })} labels={INFLUENCE_LABELS} weight={20} />
-                    <RatingBar value={form.mobilizationAbility} onChange={v => setForm({ ...form, mobilizationAbility: v })} labels={MOBILIZATION_LABELS} weight={15} />
-                    <RatingBar value={form.voteProtection} onChange={v => setForm({ ...form, voteProtection: v })} labels={VOTE_PROTECTION_LABELS} weight={15} />
-                    <RatingBar value={form.supportReason} onChange={v => setForm({ ...form, supportReason: v })} labels={SUPPORT_REASON_LABELS} weight={10} />
-                    <RatingBar value={form.needsLevel} onChange={v => setForm({ ...form, needsLevel: v })} labels={NEEDS_LABELS} weight={5} />
-                    <RatingBar value={form.politicalNote} onChange={v => setForm({ ...form, politicalNote: v })} labels={POLITICAL_NOTE_LABELS} weight={5} />
-                    <RatingBar value={form.organizationalNote} onChange={v => setForm({ ...form, organizationalNote: v })} labels={ORGANIZATIONAL_NOTE_LABELS} weight={5} />
-                    <RatingBar value={form.generalNote} onChange={v => setForm({ ...form, generalNote: v })} labels={GENERAL_NOTE_LABELS} weight={5} />
+                    <RatingBar field="مستوى الولاء" value={form.loyaltyLevel} onChange={v => setForm({ ...form, loyaltyLevel: v })} labels={LOYALTY_LABELS} weight={20} />
+                    <RatingBar field="مستوى التأثير" value={form.influenceLevel} onChange={v => setForm({ ...form, influenceLevel: v })} labels={INFLUENCE_LABELS} weight={20} />
+                    <RatingBar field="القدرة على التحشيد" value={form.mobilizationAbility} onChange={v => setForm({ ...form, mobilizationAbility: v })} labels={MOBILIZATION_LABELS} weight={15} />
+                    <RatingBar field="حماية الأصوات" value={form.voteProtection} onChange={v => setForm({ ...form, voteProtection: v })} labels={VOTE_PROTECTION_LABELS} weight={15} />
+                    <RatingBar field="أسباب الدعم" value={form.supportReason} onChange={v => setForm({ ...form, supportReason: v })} labels={SUPPORT_REASON_LABELS} weight={10} />
+                    <RatingBar field="الاحتياجات والمطالب" value={form.needsLevel} onChange={v => setForm({ ...form, needsLevel: v })} labels={NEEDS_LABELS} weight={5} />
+                    <RatingBar field="الملاحظات السياسية" value={form.politicalNote} onChange={v => setForm({ ...form, politicalNote: v })} labels={POLITICAL_NOTE_LABELS} weight={5} />
+                    <RatingBar field="الملاحظات التنظيمية" value={form.organizationalNote} onChange={v => setForm({ ...form, organizationalNote: v })} labels={ORGANIZATIONAL_NOTE_LABELS} weight={5} />
+                    <RatingBar field="الملاحظات العامة" value={form.generalNote} onChange={v => setForm({ ...form, generalNote: v })} labels={GENERAL_NOTE_LABELS} weight={5} />
                   </div>
 
                   {/* النتيجة النهائية */}
