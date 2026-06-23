@@ -336,11 +336,11 @@ function RegionsTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-green-100 text-green-600">13</span>
             🟢 مناطق القوة الانتخابية (قوة الأصوات &gt;= 50%)
           </h3>
-          {d.strongAreas.length === 0 ? (
+          {(d.strongAreas || []).length === 0 ? (
             <p className="text-[11px] text-green-800/60 italic">لا توجد أقضية مصنفة كمنطقة قوة حالياً.</p>
           ) : (
             <div className="space-y-1">
-              {d.strongAreas.map((a: any) => (
+              {(d.strongAreas || []).map((a: any) => (
                 <div key={a.district} className="flex justify-between text-[12px] font-medium text-green-800">
                   <span>{a.district}</span>
                   <span className="font-mono">{a.strength}% تأييد</span>
@@ -356,11 +356,11 @@ function RegionsTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-red-100 text-red-600">14</span>
             🔴 مناطق الضعف الانتخابية (قوة الأصوات &lt; 35%)
           </h3>
-          {d.weakAreas.length === 0 ? (
+          {(d.weakAreas || []).length === 0 ? (
             <p className="text-[11px] text-red-800/60 italic">لا توجد مناطق ضعف (جميعها مستقرة أو لم تسجل بعد).</p>
           ) : (
             <div className="space-y-1">
-              {d.weakAreas.map((a: any) => (
+              {(d.weakAreas || []).map((a: any) => (
                 <div key={a.district} className="flex justify-between text-[12px] font-medium text-red-800">
                   <span>{a.district}</span>
                   <span className="font-mono">{a.strength}% تأييد</span>
@@ -372,9 +372,9 @@ function RegionsTab({ data }: { data: any }) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <IndicatorCard number={15} title="مؤشر أولوية المنطقة" value={d.priorityIndex.length > 0 ? d.priorityIndex[0]?.district : 'N/A'} subtitle={d.priorityIndex.length > 0 ? `درجة الأولوية: ${d.priorityIndex[0]?.score}` : undefined} icon={MapPin} activationGuide="يحدد أولوية التدخل في المناطق التي تحتوي على كتل أصوات متأرجحة (محايد وضعيف) كبيرة." />
-        <IndicatorCard number={16} title="مؤشر القيمة السياسية للمنطقة" value={d.politicalValue.length > 0 ? d.politicalValue[0]?.district : 'N/A'} subtitle={d.politicalValue.length > 0 ? `القيمة: ${d.politicalValue[0]?.score}` : undefined} icon={Award} activationGuide="مؤشر يدمج عدد المسجلين الكليين للمفوضية وحجم التأييد المحرز للحملة." />
-        <IndicatorCard number={17} title="مؤشر المنافسة الانتخابية" value={d.competitionIndex.length > 0 ? d.competitionIndex[0]?.district : 'N/A'} subtitle={d.competitionIndex.length > 0 ? `قوة الخصوم: ${d.competitionIndex[0]?.score}` : undefined} icon={ShieldAlert} activationGuide="يُحسب بناءً على تحركات الخصوم المسجلين في قائمة المنافسين وقوتهم في القضاء." />
+        <IndicatorCard number={15} title="مؤشر أولوية المنطقة" value={(d.priorityIndex || []).length > 0 ? d.priorityIndex[0]?.district : 'N/A'} subtitle={(d.priorityIndex || []).length > 0 ? `درجة الأولوية: ${d.priorityIndex[0]?.score}` : undefined} icon={MapPin} activationGuide="يحدد أولوية التدخل في المناطق التي تحتوي على كتل أصوات متأرجحة (محايد وضعيف) كبيرة." />
+        <IndicatorCard number={16} title="مؤشر القيمة السياسية للمنطقة" value={(d.politicalValue || []).length > 0 ? d.politicalValue[0]?.district : 'N/A'} subtitle={(d.politicalValue || []).length > 0 ? `القيمة: ${d.politicalValue[0]?.score}` : undefined} icon={Award} activationGuide="مؤشر يدمج عدد المسجلين الكليين للمفوضية وحجم التأييد المحرز للحملة." />
+        <IndicatorCard number={17} title="مؤشر المنافسة الانتخابية" value={(d.competitionIndex || []).length > 0 ? d.competitionIndex[0]?.district : 'N/A'} subtitle={(d.competitionIndex || []).length > 0 ? `قوة الخصوم: ${d.competitionIndex[0]?.score}` : undefined} icon={ShieldAlert} activationGuide="يُحسب بناءً على تحركات الخصوم المسجلين في قائمة المنافسين وقوتهم في القضاء." />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
@@ -389,13 +389,13 @@ function RegionsTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">20</span>
             التغير في نسبة المشاركة التاريخية للأقضية
           </h3>
-          {d.turnoutChange.length === 0 ? (
+          {(d.turnoutChange || []).length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">
               يرجى إضافة نتائج انتخابات سابقة لجدول ElectionResult لعرض التحولات في المشاركة.
             </p>
           ) : (
             <div className="space-y-2">
-              {d.turnoutChange.map((item: any, idx: number) => (
+              {(d.turnoutChange || []).map((item: any, idx: number) => (
                 <div key={idx} className="flex justify-between text-[12px]">
                   <span>قضاء {item.district} ({item.year})</span>
                   <span className={`font-mono font-bold ${item.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -413,13 +413,13 @@ function RegionsTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">21</span>
             التحول في التصويت بين الانتخابات
           </h3>
-          {d.votingShift.length === 0 ? (
+          {(d.votingShift || []).length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">
               بانتظار توثيق تحولات القوى الحزبية التاريخية في قاعدة البيانات.
             </p>
           ) : (
             <div className="space-y-2">
-              {d.votingShift.map((item: any, idx: number) => (
+              {(d.votingShift || []).map((item: any, idx: number) => (
                 <div key={idx} className="flex justify-between text-[12px]">
                   <span>قضاء {item.district} - قائمة {item.party}</span>
                   <span className={`font-mono font-bold ${item.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -460,7 +460,7 @@ function KeysTab({ data }: { data: any }) {
               ترتيب المفاتيح الانتخابية (الأعلى وزناً وتأثيراً)
             </h3>
           </div>
-          {d.ranking.length === 0 ? (
+          {(d.ranking || []).length === 0 ? (
             <div className="p-6 text-center text-[12px] text-el-on-surface-variant/50">
               لا توجد مفاتيح مسجلة بعد. أضف وجهاء ومفاتيح في صفحة "المفاتيح الانتخابية" لتظهر هنا.
             </div>
@@ -476,7 +476,7 @@ function KeysTab({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-el-outline-variant/30">
-                {d.ranking.slice(0, 5).map((item: any) => (
+                {(d.ranking || []).slice(0, 5).map((item: any) => (
                   <tr key={item.rank} className="hover:bg-el-surface-container-low/40">
                     <td className="px-3 py-2 font-mono font-bold text-el-primary">{item.rank}</td>
                     <td className="px-3 py-2 font-mono text-el-on-surface-variant">{item.code}</td>
@@ -498,7 +498,7 @@ function KeysTab({ data }: { data: any }) {
               مؤشر القيمة الاستراتيجية للمفاتيح
             </h3>
           </div>
-          {d.strategicValue.length === 0 ? (
+          {(d.strategicValue || []).length === 0 ? (
             <div className="p-6 text-center text-[12px] text-el-on-surface-variant/50">
               بانتظار إدخال المفاتيح الانتخابية وحسابها تلقائياً.
             </div>
@@ -513,7 +513,7 @@ function KeysTab({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-el-outline-variant/30">
-                {d.strategicValue.slice(0, 5).map((item: any) => (
+                {(d.strategicValue || []).slice(0, 5).map((item: any) => (
                   <tr key={item.code} className="hover:bg-el-surface-container-low/40">
                     <td className="px-3 py-2 font-mono text-el-primary">{item.code}</td>
                     <td className="px-3 py-2 font-medium">{item.name}</td>
@@ -533,11 +533,11 @@ function KeysTab({ data }: { data: any }) {
           <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-red-50 text-red-500">28</span>
           مؤشر مخاطر فقدان المفاتيح (الأكثر خطورة بالتسرب)
         </h3>
-        {d.lossRisk.length === 0 ? (
+        {(d.lossRisk || []).length === 0 ? (
           <p className="text-[11px] text-el-on-surface-variant/60 italic">لا توجد مفاتيح في منطقة الخطر.</p>
         ) : (
           <div className="space-y-2">
-            {d.lossRisk.slice(0, 5).map((item: any) => (
+            {(d.lossRisk || []).slice(0, 5).map((item: any) => (
               <div key={item.code} className="flex justify-between items-center text-[12px] bg-red-50/30 p-2 border border-red-100 rounded-lg">
                 <span className="font-semibold text-red-800">{item.name} (قضاء {item.district})</span>
                 <span className="font-mono text-red-600 font-bold">خطر الفقدان: {item.risk}/100</span>
@@ -562,7 +562,7 @@ function AudienceTab({ data }: { data: any }) {
         <IndicatorCard number={32} title="نسبة الذكور" value={`${d.genderRatio.malePercentage}%`} subtitle={`${d.genderRatio.male} ناخب مسجل`} icon={Users} color="text-blue-600" bgColor="bg-blue-100" />
         <IndicatorCard number={32} title="نسبة الإناث" value={`${d.genderRatio.femalePercentage}%`} subtitle={`${d.genderRatio.female} ناخبة مسجلة`} icon={Users} color="text-pink-600" bgColor="bg-pink-100" />
         <IndicatorCard number={33} title="نسبة الجامعيين" value={`${d.graduatesRatio}%`} subtitle="حملة شهادة بكالوريوس وأعلى" icon={Award} color="text-purple-600" bgColor="bg-purple-100" activationGuide="يُقرأ من حقل المستوى التعليمي للناخب والمفتاح." />
-        <IndicatorCard number={36} title="شرائح الناخبين المفصلة" value={d.segmentation.length} subtitle="فئة مستهدفة حالياً" icon={UserCheck} activationGuide="شرائح مصنفة بالاعتماد على الأعمار والولاء الميداني." />
+        <IndicatorCard number={36} title="شرائح الناخبين المفصلة" value={(d.segmentation || []).length} subtitle="فئة مستهدفة حالياً" icon={UserCheck} activationGuide="شرائح مصنفة بالاعتماد على الأعمار والولاء الميداني." />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -572,10 +572,10 @@ function AudienceTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-green-100 text-green-600">29</span>
             🟢 الفئات العمرية الأكثر دعماً للحملة
           </h3>
-          {d.topAgeGroups.length === 0 ? (
+          {(d.topAgeGroups || []).length === 0 ? (
             <p className="text-[11px] text-green-800/60 italic">لا توجد بيانات كافية للحساب.</p>
           ) : (
-            d.topAgeGroups.map((g: any) => (
+            (d.topAgeGroups || []).map((g: any) => (
               <div key={g.group} className="flex justify-between text-[12px] font-semibold text-green-800 mb-1.5">
                 <span>فئة {g.group} سنة</span>
                 <span className="font-mono">{g.percentage}% تأييد</span>
@@ -590,10 +590,10 @@ function AudienceTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-yellow-100 text-yellow-600">30</span>
             🟡 الفئات العمرية الأكثر تردداً (محايدون)
           </h3>
-          {d.hesitantAgeGroups.length === 0 ? (
+          {(d.hesitantAgeGroups || []).length === 0 ? (
             <p className="text-[11px] text-yellow-800/60 italic">لا توجد بيانات كافية للحساب.</p>
           ) : (
-            d.hesitantAgeGroups.map((g: any) => (
+            (d.hesitantAgeGroups || []).map((g: any) => (
               <div key={g.group} className="flex justify-between text-[12px] font-semibold text-yellow-800 mb-1.5">
                 <span>فئة {g.group} سنة</span>
                 <span className="font-mono">{g.percentage}% حياد</span>
@@ -608,10 +608,10 @@ function AudienceTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-blue-100 text-blue-600">31</span>
             🔵 الفئات العمرية الأكثر التزاماً بالتصويت
           </h3>
-          {d.votingAgeGroups.length === 0 ? (
+          {(d.votingAgeGroups || []).length === 0 ? (
             <p className="text-[11px] text-blue-800/60 italic">لا توجد بيانات كافية للحساب.</p>
           ) : (
-            d.votingAgeGroups.map((g: any) => (
+            (d.votingAgeGroups || []).map((g: any) => (
               <div key={g.group} className="flex justify-between text-[12px] font-semibold text-blue-800 mb-1.5">
                 <span>فئة {g.group} سنة</span>
                 <span className="font-mono">{g.percentage}% تصويت</span>
@@ -628,11 +628,11 @@ function AudienceTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">34</span>
             تأثير التعليم على التصويت والتأييد
           </h3>
-          {d.educationImpact.length === 0 ? (
+          {(d.educationImpact || []).length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">بانتظار إدخال بيانات التحصيل الدراسي للناخبين.</p>
           ) : (
             <div className="space-y-2">
-              {d.educationImpact.filter((e: any) => e.level !== 'غيرحدد' && e.level !== 'غير محدد').map((e: any) => (
+              {(d.educationImpact || []).filter((e: any) => e.level !== 'غيرحدد' && e.level !== 'غير محدد').map((e: any) => (
                 <div key={e.level}>
                   <div className="flex justify-between text-[11px] mb-1">
                     <span className="font-medium">{e.level}</span>
@@ -651,11 +651,11 @@ function AudienceTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">35</span>
             المهن الأكثر تأييداً ودعماً للحملة الانتخابية
           </h3>
-          {d.topProfessions.length === 0 ? (
+          {(d.topProfessions || []).length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">أدخل مهن الناخبين في لوحة التسجيل لتصنيف الدعم حسب المهنة.</p>
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              {d.topProfessions.slice(0, 6).map((p: any) => (
+              {(d.topProfessions || []).slice(0, 6).map((p: any) => (
                 <div key={p.profession} className="bg-el-surface-container p-2 border border-el-outline-variant/60 rounded-lg flex justify-between items-center text-[12px]">
                   <span className="font-semibold text-el-on-surface">{p.profession}</span>
                   <span className="font-mono text-green-600 font-bold">{p.supportRate}%</span>
@@ -674,7 +674,7 @@ function AudienceTab({ data }: { data: any }) {
             القضايا الأكثر تأثيراً على المزاج الانتخابي للمواطنين
           </h3>
           <div className="space-y-2">
-            {d.topIssues.map((issue: any, idx: number) => (
+            {(d.topIssues || []).map((issue: any, idx: number) => (
               <div key={idx}>
                 <div className="flex justify-between text-[11px] mb-1">
                   <span className="font-semibold">{issue.issue}</span>
@@ -693,7 +693,7 @@ function AudienceTab({ data }: { data: any }) {
             نوع الخطاب المناسب لكل شريحة تصويتية
           </h3>
           <div className="space-y-2">
-            {d.segmentMessaging.map((m: any, idx: number) => (
+            {(d.segmentMessaging || []).map((m: any, idx: number) => (
               <div key={idx} className="p-2 border border-el-outline-variant/60 rounded-lg text-[12px] bg-el-surface-container">
                 <span className="font-bold text-el-primary">{m.segment}:</span>
                 <span className="text-el-on-surface-variant mr-1">{m.messageType}</span>
