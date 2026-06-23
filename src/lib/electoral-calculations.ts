@@ -68,19 +68,46 @@ export interface VoteData {
 }
 
 export interface RatingData {
-  loyaltyScore: number;       // 1-5
-  influenceLevel: number;     // 1-5
-  mobilizationCap: number;    // 1-5
-  voteProtection: number;     // 1-5 (protectionRating)
-  supportReason: number;      // 1-5 (supportRating)
-  needsLevel: number;         // 1-5 (needsRating)
-  politicalNote: number;      // 1-5 (politicalAlignmentRating)
-  organizationalNote: number; // 1-5 (organizationalRating)
-  generalNote: number;        // 1-5 (generalRating)
+  loyaltyScore: number;       // 1-5  [F1]
+  influenceLevel: number;     // 1-5  [F2]
+  mobilizationCap: number;    // 1-5  [F3]
+  voteProtection: number;     // 1-5  [F4]
+  supportReason: number;      // 1-5  [F5]
+  needsLevel: number;         // 1-5  [F6] مقلوب: احتياجات مرتفعة = درجة منخفضة
+  politicalNote: number;      // 1-5  [F7]
+  organizationalNote: number; // 1-5  [F8]
+  generalNote: number;        // 1-5  [F9]
+}
+
+/** نموذج التقييم الموسع — 11 حقلاً مع مضاعفات الدقة والتدريب */
+export interface RatingDataV2 extends RatingData {
+  dataAccuracy: number;       // 1-5  [F10] دقة المعلومات — مضاعف ثقة
+  trainingReadiness: number;  // 1-5  [F11] التدريب الانتخابي — مضاعف جاهزية
 }
 
 export interface ElectoralKeyData extends VoteData, RatingData {
   totalVotes: number;
+}
+
+export interface ElectoralKeyDataV2 extends VoteData, RatingDataV2 {
+  totalVotes: number;
+}
+
+/** نتيجة التقييم الموسع — نظام الفلترة الثنائية */
+export interface DoubleFilterResult {
+  netVoters: number;
+  claimedVoters: number;
+  filterOneLoss: number;
+  filterOneLossPercent: number;
+  efficiencyCoefficient: number;
+  classification: string;
+  rawEfficiency: number;
+  accuracyMultiplier: number;
+  trainingMultiplier: number;
+  actualBallots: number;
+  leakedVotes: number;
+  dimensionScores: Array<{ field: string; rating: number; weight: number; contribution: number }>;
+  recommendation: string;
 }
 
 export interface CalculationResult {
@@ -268,4 +295,112 @@ export function calculateVotesPerSeat(
 ): number {
   const expectedVotes = registeredVoters * participationRate;
   return Math.ceil(expectedVotes / DHI_QAR_CONSTANTS.PARLIAMENTARY_SEATS);
+}
+
+// ====================================================================
+// ═══ نظام الفلترة الثنائية — Double Filter (11 حقلاً) ═══
+// ====================================================================
+
+/** الخطوة 1: الفلتر الأول — الأصوات الصافية (Net Tonnage) */
+export function filterOneNetVoters(votes: VoteData): { netVoters: number; loss: number; lossPercent: number } {
+  const total = calculateTotalVotes(votes);
+  const net = calculateNetVotes(votes);
+  const loss = total - net;
+  return {
+    netVoters: Math.round(net * 100) / 100,
+    loss: Math.round(loss * 100) / 100,
+    lossPercent: total > 0 ? Math.round((loss / total) * 1000) / 10 : 0,
+  };
+}
+
+/** الخطوة 2: الفلتر الثاني — معامل كفاءة المفتاح (11 حقلاً) */
+export function filterTwoEfficiencyCoefficient(ratings: RatingDataV2): {
+  coefficient: number; classification: string; rawEfficiency: number;
+  accuracyMultiplier: number; trainingMultiplier: number;
+  dimensionScores: Array<{ field: string; rating: number; weight: number; contribution: number }>;
+} {
+  const dims = [
+    { field: 'مستوى الولاء [F1]', rating: ratings.loyaltyScore, weight: 20, contribution: 0 },
+    { field: 'مستوى التأثير [F2]', rating: ratings.influenceLevel, weight: 20, contribution: 0 },
+    { field: 'القدرة على التحشيد [F3]', rating: ratings.mobilizationCap, weight: 15, contribution: 0 },
+    { field: 'حماية الأصوات [F4]', rating: ratings.voteProtection, weight: 15, contribution: 0 },
+    { field: 'أسباب الدعم [F5]', rating: ratings.supportReason, weight: 10, contribution: 0 },
+    { field: 'الاحتياجات [F6]', rating: ratings.needsLevel, weight: 5, contribution: 0 },
+    { field: 'الملاحظات السياسية [F7]', rating: ratings.politicalNote, weight: 5, contribution: 0 },
+    { field: 'الملاحظات التنظيمية [F8]', rating: ratings.organizationalNote, weight: 5, contribution: 0 },
+    { field: 'الملاحظات العامة [F9]', rating: ratings.generalNote, weight: 5, contribution: 0 },
+  ];
+  let raw = 0;
+  for (const d of dims) { d.contribution = Math.round((d.rating / 5) * d.weight * 100) / 100; raw += d.contribution; }
+  const am = ratings.dataAccuracy / 5;
+  const tm = ratings.trainingReadiness / 5;
+  const coeff = Math.round(raw * am * tm * 100) / 100;
+  let cls = coeff < 20 ? 'ضعيف' : coeff < 50 ? 'مقبول' : coeff <= 100 ? 'جيد' : 'قوي جداً';
+  return { coefficient: coeff, classification: cls, rawEfficiency: Math.round(raw * 100) / 100,
+    accuracyMultiplier: Math.round(am * 100) / 100, trainingMultiplier: Math.round(tm * 100) / 100, dimensionScores: dims };
+}
+
+/** الخطوة 3: الحساب السيادي — الأصوات المضمونة والمتسربة */
+export function finalSovereignCalculation(netVoters: number, efficiency: number) {
+  const actual = Math.round(netVoters * (efficiency / 100) * 100) / 100;
+  const leaked = Math.round((netVoters - actual) * 100) / 100;
+  return { actualBallots: actual, leakedVotes: leaked, leakPercent: netVoters > 0 ? Math.round((leaked / netVoters) * 1000) / 10 : 0 };
+}
+
+/** التقييم الشامل — الفلترة الثنائية الكاملة */
+export function evaluateKeyDoubleFilter(
+  keyName: string, votes: VoteData & { totalVotes: number }, ratings: RatingDataV2,
+): DoubleFilterResult {
+  const f1 = filterOneNetVoters(votes);
+  const f2 = filterTwoEfficiencyCoefficient(ratings);
+  const f3 = finalSovereignCalculation(f1.netVoters, f2.coefficient);
+  const weak: string[] = [];
+  if (ratings.loyaltyScore <= 2) weak.push('الولاء');
+  if (ratings.influenceLevel <= 2) weak.push('التأثير');
+  if (ratings.mobilizationCap <= 2) weak.push('التحشيد');
+  if (ratings.voteProtection <= 2) weak.push('حماية الأصوات');
+  if (ratings.dataAccuracy <= 2) weak.push('دقة المعلومات');
+  if (ratings.trainingReadiness <= 2) weak.push('التدريب');
+  let rec = f2.classification === 'قوي جداً' || f2.classification === 'جيد'
+    ? 'المفتاح موثوق. عدد الأصوات المضمونة مرتفع.'
+    : f2.classification === 'مقبول'
+    ? `يحتاج تحسين في: ${weak.join('، ') || 'الأداء العام'}.`
+    : `ضعيف — ${weak.length ? 'تركيز الجهود على: ' + weak.join('، ') : 'إعادة تقييم الجدوى'}.`;
+  if (f3.leakedVotes > 50) rec += ` ${Math.round(f3.leakedVotes)} صوت معرض للتسرب — تأمينهم عبر متابعة يوم الاقتراع.`;
+  return { netVoters: f1.netVoters, claimedVoters: votes.totalVotes, filterOneLoss: f1.loss,
+    filterOneLossPercent: f1.lossPercent, efficiencyCoefficient: f2.coefficient, classification: f2.classification,
+    rawEfficiency: f2.rawEfficiency, accuracyMultiplier: f2.accuracyMultiplier, trainingMultiplier: f2.trainingMultiplier,
+    actualBallots: f3.actualBallots, leakedVotes: f3.leakedVotes, dimensionScores: f2.dimensionScores, recommendation: rec };
+}
+
+/** توليد تقرير Markdown شامل */
+export function generateDoubleFilterReport(keyName: string, r: DoubleFilterResult): string {
+  const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
+  return [
+    '# 📊 تقرير تقييم المفتاح الانتخابي', '',
+    '## 1. الملخص التنفيذي', '',
+    `| البند | القيمة |`, `|-------|--------|`,
+    `| اسم المفتاح | **${keyName}** |`, `| التصنيف | **${r.classification}** |`,
+    `| الأصوات المُدّعاة | ${r.claimedVoters.toLocaleString()} |`,
+    `| الأصوات المضمونة فعلياً | **${r.actualBallots.toLocaleString()}** |`,
+    `| معامل الكفاءة | ${r.efficiencyCoefficient}% |`, '',
+    '## 2. الفلتر الأول — تنقية الأصوات الخام', '',
+    `صافي الأصوات = (مؤيد × 0.80) + (محايد × 0.50) + (ضعيف × 0.30)`, '',
+    `| النوع | المعامل |`, `|-------|---------|`,
+    `| مؤيد | × 0.80  |`, `| محايد | × 0.50 |`, `| ضعيف | × 0.30 |`,
+    `| **صافي الأصوات** | **${r.netVoters.toLocaleString()}** |`,
+    `| نسبة التسرب من الفلتر الأول | ${r.filterOneLossPercent}% |`, '',
+    '## 3. الفلتر الثاني — معامل كفاءة المفتاح (11 حقلاً)', '',
+    `| الحقل | التقييم | الوزن | المساهمة |`, `|-------|---------|-------|----------|`,
+    ...r.dimensionScores.map(d => `| ${d.field} | ${stars(d.rating)} (${d.rating}/5) | ${d.weight}% | ${d.contribution}% |`),
+    `| **المجموع الخام** | | **100%** | **${r.rawEfficiency}%** |`,
+    `| مضاعف دقة المعلومات [F10] | ${stars(5)}/5 | — | × ${r.accuracyMultiplier} |`,
+    `| مضاعف التدريب [F11] | ${stars(5)}/5 | — | × ${r.trainingMultiplier} |`,
+    `| **معامل الكفاءة النهائي** | | | **${r.efficiencyCoefficient}%** |`, '',
+    '## 4. النتيجة السيادية النهائية', '',
+    `| البند | القيمة |`, `|-------|--------|`,
+    `| 🗳️ الأصوات المضمونة في الصندوق | **${r.actualBallots.toLocaleString()} صوت** |`,
+    `| 📉 الأصوات المتوقعة للتسرب | ${r.leakedVotes.toLocaleString()} صوت`,
+    `| 💡 التوصية | ${r.recommendation} |`,
+  ].join('\n');
 }
