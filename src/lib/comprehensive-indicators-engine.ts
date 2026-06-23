@@ -796,9 +796,18 @@ export async function calculateComprehensiveIndicators() {
     prisma.sentimentTrend.findMany(),
   ]);
 
+  // تجميع الناخبين حسب keyId في Map — O(N) بدل O(N×M)
+  const votersByKeyId = new Map<string, typeof rawVoters>();
+  for (const v of rawVoters) {
+    if (!v.keyId) continue;
+    const list = votersByKeyId.get(v.keyId);
+    if (list) list.push(v);
+    else votersByKeyId.set(v.keyId, [v]);
+  }
+
   // إثراء المفاتيح باستخدام enrichElectoralKey الموجود
   const enrichedKeys: EnrichedKey[] = rawKeys.map((key) =>
-    enrichElectoralKey(key, rawVoters, rawSentiments)
+    enrichElectoralKey(key, votersByKeyId.get(key.id) ?? [], rawSentiments)
   );
 
   // تحويل المفاتيح المُثراة إلى KeyData
