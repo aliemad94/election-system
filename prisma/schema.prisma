@@ -66,6 +66,7 @@ model Tribe {
   influenceRating Int           @default(3) // تصنيف التأثير (1-5)
   population      Int?          // التعداد التقريبي
   notes           String?
+  deletedAt      DateTime?     // سلة مهملات (soft delete)
   subTribes       SubTribe[]
   voters          Voter[]
   electionKeys    ElectionKey[]
@@ -84,6 +85,7 @@ model SubTribe {
   tribe        Tribe         @relation(fields: [tribeId], references: [id])
   voters       Voter[]
   electionKeys ElectionKey[]
+  deletedAt    DateTime?   // سلة مهملات (soft delete)
 
   @@unique([name, tribeId])
   @@index([tribeId])
@@ -115,6 +117,7 @@ model ElectionKey {
   mobilizationCap Int         @default(1) // (1-5)
   loyaltyScore    Int         @default(3) // (1-5)
   riskLevel       Int         @default(1) // (1-5)
+  deletedAt       DateTime?   // سلة مهملات (soft delete)
 
   // محرك المعايرة الذكية لنسب الانحياز (Dynamic Calibration Engine)
   keyAccuracyScore Float      @default(1.0) // معامل الدقة التاريخية (0.0 - 1.0)
@@ -269,6 +272,7 @@ model Voter {
   services            Service[]
   tasks               Task[]
   confidenceLogs      ConfidenceLog[]
+  deletedAt           DateTime?   // سلة مهملات (soft delete)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -304,6 +308,7 @@ model Service {
   voter                Voter?       @relation(fields: [voterId], references: [id])
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
+  deletedAt            DateTime?    // سلة مهملات (soft delete)
 
   @@index([keyId])
   @@index([voterId])
