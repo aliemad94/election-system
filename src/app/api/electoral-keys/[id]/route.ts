@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
+import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 import { updateElectionKeySchema, formatZodError } from "@/lib/validators";
 import { calculateAll } from "@/lib/electoral-calculations";
 
@@ -102,6 +103,8 @@ async function putHandler(
       details: { fields: Object.keys(parsed.data).join(', ') },
     });
 
+    invalidateComprehensiveIndicatorsCache();
+
     return NextResponse.json(updated);
   } catch (error) {
     return handleApiError(error, "electoral-keys-put");
@@ -136,6 +139,8 @@ async function deleteHandler(
       entityId: params.id,
       details: { keyCode: existing.keyCode, name: existing.firstName },
     });
+
+    invalidateComprehensiveIndicatorsCache();
 
     return NextResponse.json({ success: true });
   } catch (error) {
