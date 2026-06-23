@@ -276,13 +276,13 @@ function DecisiveTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">11</span>
             خريطة المناطق الانتخابية (أخضر / أصفر / أحمر)
           </h3>
-          {data.areaMap.length === 0 ? (
+          {d.areaMap.length === 0 ? (
             <div className="text-center py-6 text-[12px] text-el-on-surface-variant/50">
               لا توجد مناطق لعرض قوتها. يرجى إدخال بيانات المفاتيح الانتخابية وتخصيص الأقضية لها.
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              {data.areaMap.map((area: any) => (
+              {d.areaMap.map((area: any) => (
                 <div key={area.district} className={`p-2.5 border rounded-lg flex justify-between items-center ${
                   area.color === 'green' ? 'bg-green-50 border-green-200 text-green-800' :
                   area.color === 'yellow' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
@@ -302,13 +302,13 @@ function DecisiveTab({ data }: { data: any }) {
             <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">12</span>
             توزيع القوة الجغرافية (صافي الأصوات ونسبتها)
           </h3>
-          {data.geoDistribution.length === 0 ? (
+          {d.geoDistribution.length === 0 ? (
             <div className="text-center py-6 text-[12px] text-el-on-surface-variant/50">
               بانتظار إدخال المفاتيح وتوزيع أصواتهم جغرافياً.
             </div>
           ) : (
             <div className="space-y-2">
-              {data.geoDistribution.map((geo: any) => (
+              {d.geoDistribution.map((geo: any) => (
                 <div key={geo.district} className="flex justify-between items-center text-[12px]">
                   <span className="font-semibold">{geo.district}</span>
                   <span className="font-mono text-el-on-surface-variant">{geo.netVotes} صوت ({geo.percentage}%)</span>
