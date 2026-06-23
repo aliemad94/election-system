@@ -46,6 +46,18 @@ interface CommissionDataRecord {
   expectedTurnout: number | null;
 }
 
+interface ProvinceReference {
+  province: string;
+  totalRegisteredVoters: number;
+  districtsCount: number;
+  subDistrictsCount: number;
+  pollingCentersCount: number;
+  ballotStationsCount: number;
+  historicalTurnout: number;
+  allocatedSeats: number;
+  lastRegistryUpdate: string | null;
+}
+
 const defaultForm = {
   province: 'ذي قار',
   district: 'الناصرية',
@@ -59,6 +71,7 @@ const defaultForm = {
 
 export default function CommissionManagement() {
   const [records, setRecords] = useState<CommissionDataRecord[]>([]);
+  const [reference, setReference] = useState<ProvinceReference | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -71,7 +84,10 @@ export default function CommissionManagement() {
     try {
       const res = await fetch('/api/commission');
       const data = await res.json();
-      if (Array.isArray(data)) {
+      if (data.list && Array.isArray(data.list)) {
+        setRecords(data.list);
+        setReference(data.reference || null);
+      } else if (Array.isArray(data)) {
         setRecords(data);
       } else {
         setRecords([]);
@@ -197,6 +213,51 @@ export default function CommissionManagement() {
           <span className="text-[14px] leading-[20px] font-medium">إضافة مركز/محطة اقتراع</span>
         </button>
       </div>
+
+      {/* المرجعية الثابتة للمحافظة (Read-Only) */}
+      {reference && (
+        <div className="bg-gradient-to-l from-el-primary to-[#0a2a5e] text-white rounded-lg p-4 shadow-sm border border-el-primary/30">
+          <div className="flex items-center gap-2 mb-3">
+            <MapPin className="w-5 h-5 text-el-secondary" />
+            <h2 className="text-[16px] font-bold">المؤشرات المرجعية لمحافظة {reference.province}</h2>
+            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">بيانات ثابتة — للقراءة فقط</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+            <div className="bg-white/10 rounded-lg p-2.5 text-center">
+              <div className="text-[11px] opacity-70">إجمالي الناخبين</div>
+              <div className="text-[18px] font-bold">{reference.totalRegisteredVoters.toLocaleString()}</div>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5 text-center">
+              <div className="text-[11px] opacity-70">عدد الأقضية</div>
+              <div className="text-[18px] font-bold">{reference.districtsCount}</div>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5 text-center">
+              <div className="text-[11px] opacity-70">عدد النواحي</div>
+              <div className="text-[18px] font-bold">{reference.subDistrictsCount}</div>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5 text-center">
+              <div className="text-[11px] opacity-70">مراكز الاقتراع</div>
+              <div className="text-[18px] font-bold">{reference.pollingCentersCount.toLocaleString()}</div>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5 text-center">
+              <div className="text-[11px] opacity-70">محطات الاقتراع</div>
+              <div className="text-[18px] font-bold">{reference.ballotStationsCount.toLocaleString()}</div>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5 text-center">
+              <div className="text-[11px] opacity-70">المشاركة التاريخية</div>
+              <div className="text-[18px] font-bold">{reference.historicalTurnout}%</div>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5 text-center">
+              <div className="text-[11px] opacity-70">المقاعد المخصصة</div>
+              <div className="text-[18px] font-bold">{reference.allocatedSeats}</div>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5 text-center">
+              <div className="text-[11px] opacity-70">آخر تحديث للسجل</div>
+              <div className="text-[13px] font-bold">{reference.lastRegistryUpdate ? new Date(reference.lastRegistryUpdate).toLocaleDateString('ar-IQ') : '—'}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
