@@ -119,7 +119,7 @@ function IndicatorCard({
       {activationGuide && showGuide && (
         <div className="absolute inset-0 bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 z-10 text-[10px] text-el-on-surface-variant leading-relaxed flex flex-col justify-between">
           <p className="font-semibold text-el-primary flex items-center gap-1">
-            <Brain className="w-3 h-3" /> دليل التفعيل البرمجي:
+            <Brain className="w-3 h-3" /> دليل المؤشر:
           </p>
           <p className="mt-1">{activationGuide}</p>
           <button 
@@ -208,8 +208,8 @@ export default function DataAnalysis() {
       </div>
 
       <div className="text-[12px] text-el-on-surface-variant bg-el-surface-container p-3 rounded-lg border border-el-outline-variant flex items-center gap-2">
-        <span className="font-bold text-el-primary">💡 دليل المشتري لتجربة النظام:</span>
-        <span>جميع البيانات تم تصفيرها لتجربة إدخال نظيفة 100%. انقر على أيقونة المساعدة <HelpCircle className="w-3.5 h-3.5 inline text-el-primary" /> بجوار أي مؤشر تظهر قيمته كـ (0) لمعرفة نوع البيانات المطلوب إدخالها ميدانياً لتفعيله.</span>
+        <span className="font-bold text-el-primary">📊 لوحة المؤشرات المركزية:</span>
+        <span>جميع المؤشرات جاهزة لاستقبال البيانات الميدانية. انقر على أيقونة المساعدة <HelpCircle className="w-3.5 h-3.5 inline text-el-primary" /> بجوار أي مؤشر لمعرفة نوع البيانات المطلوب إدخالها ميدانياً لتفعيله.</span>
       </div>
 
       {/* محتوى التبويبات */}
