@@ -9,6 +9,24 @@ import {
 } from 'lucide-react';
 import { safeMerge, EMPTY_DECISIVE } from '@/lib/safedata';
 
+/** دالة حماية عامة لأي تبويب — تضمن إن كل المصفوفات موجودة */
+function safeTab(data: any): any {
+  if (!data || typeof data !== 'object') return {};
+  // Deep clone simple objects, wrap arrays
+  const out: any = {};
+  for (const key of Object.keys(data)) {
+    const v = data[key];
+    if (v === null || v === undefined) {
+      out[key] = Array.isArray(data[key]) ? [] : 0;
+    } else if (Array.isArray(v)) {
+      out[key] = v.length > 0 ? v : [];
+    } else {
+      out[key] = v;
+    }
+  }
+  return out;
+}
+
 type TabId =
   | 'decisive'
   | 'regions'
@@ -197,15 +215,15 @@ export default function DataAnalysis() {
       {/* محتوى التبويبات */}
       <div className="min-h-[400px]">
         {activeTab === 'decisive' && <DecisiveTab data={safeMerge(data.decisive, EMPTY_DECISIVE)} />}
-        {activeTab === 'regions' && <RegionsTab data={data.regions} />}
-        {activeTab === 'keys' && <KeysTab data={data.keys} />}
-        {activeTab === 'audience' && <AudienceTab data={data.audience} />}
-        {activeTab === 'influence' && <InfluenceTab data={data.influence} />}
-        {activeTab === 'performance' && <PerformanceTab data={data.performance} />}
-        {activeTab === 'media' && <MediaTab data={data.media} />}
-        {activeTab === 'investment' && <InvestmentTab data={data.investment} />}
-        {activeTab === 'pollingDay' && <PollingDayTab data={data.pollingDay} />}
-        {activeTab === 'strategic' && <StrategicTab data={data.strategic} />}
+        {activeTab === 'regions' && <RegionsTab data={safeTab(data.regions)} />}
+        {activeTab === 'keys' && <KeysTab data={safeTab(data.keys)} />}
+        {activeTab === 'audience' && <AudienceTab data={safeTab(data.audience)} />}
+        {activeTab === 'influence' && <InfluenceTab data={safeTab(data.influence)} />}
+        {activeTab === 'performance' && <PerformanceTab data={safeTab(data.performance)} />}
+        {activeTab === 'media' && <MediaTab data={safeTab(data.media)} />}
+        {activeTab === 'investment' && <InvestmentTab data={safeTab(data.investment)} />}
+        {activeTab === 'pollingDay' && <PollingDayTab data={safeTab(data.pollingDay)} />}
+        {activeTab === 'strategic' && <StrategicTab data={safeTab(data.strategic)} />}
       </div>
     </div>
   );
