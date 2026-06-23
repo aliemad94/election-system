@@ -11,9 +11,10 @@ interface LayoutProps {
   isOwner?: boolean;
   onOwnerPanelOpen?: () => void;
   onLogout?: () => void;
+  excelToolbar?: React.ReactNode;
 }
 
-export default function Layout({ activePage, onPageChange, children, isOwner, onOwnerPanelOpen, onLogout }: LayoutProps) {
+export default function Layout({ activePage, onPageChange, children, isOwner, onOwnerPanelOpen, onLogout, excelToolbar }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -31,6 +32,11 @@ export default function Layout({ activePage, onPageChange, children, isOwner, on
         onLogout={onLogout}
       />
       <main className="flex-1 mt-12 md:mr-64 p-4 bg-el-background w-full">
+        {excelToolbar && (
+          <div className="mb-3 flex justify-end">
+            {excelToolbar}
+          </div>
+        )}
         {children}
       </main>
     </div>

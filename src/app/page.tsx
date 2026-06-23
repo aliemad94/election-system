@@ -6,6 +6,7 @@ import Layout from '@/components/election/Layout';
 import LoginGate from '@/components/election/LoginGate';
 import OwnerPanel from '@/components/election/OwnerPanel';
 import { ErrorBoundary } from '@/components/election/errorboundary';
+import ExcelToolbar from '@/components/election/ExcelToolbar';
 
 const ExecutiveDashboard = dynamic(() => import('@/components/election/ExecutiveDashboard'), { ssr: false });
 const TaskTracking = dynamic(() => import('@/components/election/TaskTracking'), { ssr: false });
@@ -210,6 +211,7 @@ export default function Home() {
         isOwner={authState.isOwner}
         onOwnerPanelOpen={() => setShowOwnerPanel(true)}
         onLogout={handleLogout}
+        excelToolbar={<ExcelToolbar />}
       >
         <ErrorBoundary>{renderPage()}</ErrorBoundary>
       </Layout>
