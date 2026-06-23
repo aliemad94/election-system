@@ -19,6 +19,8 @@ import {
   Filter,
   Eye,
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import EvaluateKeyPage from './evaluatekeypage';
 
 const DISTRICTS = ['الناصرية', 'الشطرة', 'سوق الشيوخ', 'الرفاعي', 'قلعة سكر', 'عشيرة', 'البطحاء'];
 const EDUCATION_LEVELS = ['يقرا ويكتب', 'ابتدائية', 'متوسطة', 'اعدادية', 'دبلوم', 'بكالوريوس', 'ماجستير', 'دكتوراه'];
@@ -131,6 +133,8 @@ export default function ElectoralKeyManagement() {
   const [filterClassification, setFilterClassification] = useState('');
   const [form, setForm] = useState(defaultForm);
   const [tribes, setTribes] = useState<{ id: string; name: string }[]>([]);
+  const [showEvaluate, setShowEvaluate] = useState(false);
+  const [evalKeyId, setEvalKeyId] = useState<string | null>(null);
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -488,9 +492,14 @@ export default function ElectoralKeyManagement() {
                       </span>
                     </td>
                     <td className="px-3 py-1 text-center">
-                      <button onClick={() => setSelectedKey(key)} className="text-el-primary hover:text-el-secondary transition-colors">
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => setSelectedKey(key)} className="text-el-primary hover:text-el-secondary transition-colors" title="عرض التفاصيل">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => { setEvalKeyId(key.id); setShowEvaluate(true); }} className="text-yellow-400 hover:text-yellow-300 transition-colors" title="تقييم النفوذ والتأثير">
+                          <Shield className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -978,6 +987,25 @@ export default function ElectoralKeyManagement() {
           </div>
         );
       })()}
+
+      {/* صفحة تقييم النفوذ والتأثير (مستقلة) */}
+      {showEvaluate && (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
+          <div className="bg-slate-950 rounded-lg border border-slate-700 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-slate-950 border-b border-slate-700 p-4 flex justify-between items-center z-10">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Shield className="w-5 h-5 text-yellow-400" /> تقييم النفوذ والتأثير
+              </h3>
+              <button onClick={() => { setShowEvaluate(false); setEvalKeyId(null); }} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <EvaluateKeyPage preselectedKey={keys.find(k => k.id === evalKeyId) || null} onClose={() => { setShowEvaluate(false); setEvalKeyId(null); }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

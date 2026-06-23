@@ -128,16 +128,18 @@ async function postHandler(req: NextRequest, { user }: any) {
     const d = parsed.data;
     const birthDate = d.dateOfBirth ? new Date(d.dateOfBirth) : new Date("1990-01-01");
 
-    // التحقق من وجود المفتاح
-    const keyExists = await prisma.electionKey.findUnique({
-      where: { id: d.keyId },
-      select: { id: true },
-    });
-    if (!keyExists) {
-      return NextResponse.json(
-        { error: "المفتاح الانتخابي المحدد غير موجود" },
-        { status: 400 }
-      );
+    // التحقق من وجود المفتاح (اختياري الآن)
+    if (d.keyId) {
+      const keyExists = await prisma.electionKey.findUnique({
+        where: { id: d.keyId },
+        select: { id: true },
+      });
+      if (!keyExists) {
+        return NextResponse.json(
+          { error: "المفتاح الانتخابي المحدد غير موجود" },
+          { status: 400 }
+        );
+      }
     }
 
     const voter = await prisma.voter.create({
@@ -148,14 +150,14 @@ async function postHandler(req: NextRequest, { user }: any) {
         fourthName: d.fourthName,
         gender: d.gender,
         birthDate,
-        phone: d.phone || null,
+        phone: d.phone ?? undefined,
         nationalId: d.nationalId || null,
         district: d.district,
         subDistrict: d.subDistrict,
         area: d.area || null,
         pollingCenter: d.pollingCenter,
         ballotStation: d.ballotStation,
-        keyId: d.keyId,
+        keyId: d.keyId ?? '',
         tribeId: d.tribeId || null,
         subTribeId: d.subTribeId || null,
         status: d.status,
@@ -197,7 +199,7 @@ async function postHandler(req: NextRequest, { user }: any) {
       .trim();
 
     return NextResponse.json(
-      { ...voter, fullName, tribeName: voter.tribe?.name || "غير محدد" },
+      { ...voter, fullName, tribeName: (voter as any).tribe?.name || "غير محدد" },
       { status: 201 }
     );
   } catch (error) {
