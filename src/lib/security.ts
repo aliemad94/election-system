@@ -3,6 +3,7 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 import { prisma as db } from "./prisma";
 
 // ==================== RBAC ====================
@@ -95,6 +96,15 @@ export async function auditLog(params: AuditLogParams): Promise<void> {
         ipAddress: params.ipAddress || null,
       },
     });
+
+    // إبطال الكاش عند العمليات الكتابية على البيانات الأساسية
+    const writeActions = ["CREATE", "UPDATE", "DELETE", "TOGGLE_ACCESS"];
+    const cacheEntities = ["Voter", "ElectionKey", "Tribe", "Service", "CommissionData", "Competitor", "Volunteer"];
+    if (writeActions.includes(params.action) && cacheEntities.includes(params.entity || "")) {
+      try {
+        invalidateComprehensiveIndicatorsCache();
+      } catch { /* silent - cache invalidation should never break the main flow */ }
+    }
   } catch (error) {
     console.error("Failed to save audit log to DB:", error);
   }
