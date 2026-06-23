@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Layout from '@/components/election/Layout';
 import LoginGate from '@/components/election/LoginGate';
 import OwnerPanel from '@/components/election/OwnerPanel';
+import { ErrorBoundary } from '@/components/election/errorboundary';
 
 const ExecutiveDashboard = dynamic(() => import('@/components/election/ExecutiveDashboard'), { ssr: false });
 const TaskTracking = dynamic(() => import('@/components/election/TaskTracking'), { ssr: false });
@@ -210,7 +211,7 @@ export default function Home() {
         onOwnerPanelOpen={() => setShowOwnerPanel(true)}
         onLogout={handleLogout}
       >
-        {renderPage()}
+        <ErrorBoundary>{renderPage()}</ErrorBoundary>
       </Layout>
       <OwnerPanel
         isOpen={showOwnerPanel}
