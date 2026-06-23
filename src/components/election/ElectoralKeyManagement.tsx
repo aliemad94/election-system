@@ -334,7 +334,10 @@ export default function ElectoralKeyManagement() {
     totalNetVotes: keys.reduce((s, k) => s + k.netVotes, 0),
     avgWeighted: keys.length ? Math.round(keys.reduce((s, k) => s + k.weightedScore, 0) / keys.length) : 0,
     totalPower: Math.round(keys.reduce((s, k) => s + k.weightedScore, 0)),
-    strongCount: keys.filter(k => k.classification === 'قوي').length,
+    // الأصوات المضمونة فعلياً بعد الفلترة الثنائية
+    totalGuaranteed: keys.reduce((s, k) => s + Math.round(k.netVotes * (k.weightedScore / 100)), 0),
+    avgGuaranteed: keys.length ? Math.round(keys.reduce((s, k) => s + Math.round(k.netVotes * (k.weightedScore / 100)), 0) / keys.length) : 0,
+    strongCount: keys.filter(k => k.classification === 'قوي' || k.classification === 'قوي جداً').length,
     goodCount: keys.filter(k => k.classification === 'جيد').length,
     acceptableCount: keys.filter(k => k.classification === 'مقبول').length,
     weakCount: keys.filter(k => k.classification === 'ضعيف').length,
@@ -375,23 +378,23 @@ export default function ElectoralKeyManagement() {
         </div>
         <div className="bg-el-outline-variant/10 border border-el-outline-variant/30 p-1 rounded-[1.25rem] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5">
           <div className="bg-el-surface-container-lowest rounded-[calc(1.25rem-0.25rem)] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">صافي الأصوات (معادلة)</div>
+            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">صافي الأصوات (قبل التقييم)</div>
             <div className="text-[32px] font-bold text-el-secondary mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.totalNetVotes.toLocaleString()}</div>
             <div className="text-[10px] text-el-on-surface-variant mt-1">(مؤيد×0.8 + محايد×0.5 + ضعيف×0.3)</div>
           </div>
         </div>
         <div className="bg-el-outline-variant/10 border border-el-outline-variant/30 p-1 rounded-[1.25rem] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5">
           <div className="bg-el-surface-container-lowest rounded-[calc(1.25rem-0.25rem)] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">متوسط القوة النهائية</div>
-            <div className="text-[32px] font-bold text-el-on-surface mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.avgWeighted}</div>
-            <div className="text-[10px] text-el-on-surface-variant mt-1">Σ(البُعد×الوزن) × (الأصوات÷50)</div>
+            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">متوسط الأصوات المضمونة</div>
+            <div className="text-[32px] font-bold text-el-on-surface mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.avgGuaranteed.toLocaleString()}</div>
+            <div className="text-[10px] text-el-on-surface-variant mt-1">للمفتاح الواحد بعد الفلترة الثنائية</div>
           </div>
         </div>
         <div className="bg-el-outline-variant/10 border border-el-outline-variant/30 p-1 rounded-[1.25rem] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5">
           <div className="bg-el-surface-container-lowest rounded-[calc(1.25rem-0.25rem)] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">إجمالي القوة النهائية</div>
-            <div className="text-[32px] font-bold text-el-primary mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.totalPower.toLocaleString()}</div>
-            <div className="text-[10px] text-el-on-surface-variant mt-1">مجموع قوة كل المفاتيح</div>
+            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">إجمالي الأصوات المضمونة</div>
+            <div className="text-[32px] font-bold text-el-primary mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.totalGuaranteed.toLocaleString()}</div>
+            <div className="text-[10px] text-el-on-surface-variant mt-1">الأصوات المتوقعة في الصندوق</div>
           </div>
         </div>
       </section>
