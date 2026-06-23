@@ -70,9 +70,18 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
       prisma.commissionData.findMany(),
     ]);
 
-  // 2. إثراء المفاتيح
+  // 2. تجميع الناخبين حسب keyId — O(N) بدل O(N×M)
+  const votersByKeyId = new Map<string, typeof voters>();
+  for (const v of voters) {
+    if (!v.keyId) continue;
+    const list = votersByKeyId.get(v.keyId);
+    if (list) list.push(v);
+    else votersByKeyId.set(v.keyId, [v]);
+  }
+
+  // 3. إثراء المفاتيح
   const enrichedKeys = keys.map((key) =>
-    enrichElectoralKey(key, voters, sentimentTrends)
+    enrichElectoralKey(key, votersByKeyId.get(key.id) ?? [], sentimentTrends)
   );
 
   // 3. دالة حساب مقاييس منطقة معيّنة
