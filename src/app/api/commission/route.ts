@@ -97,23 +97,6 @@ async function postHandler(req: NextRequest, { user }: any) {
   }
 }
 
-async function deleteHandler(req: NextRequest, { params, user }: { params: any; user: any }) {
-  try {
-    const { id } = params;
-    await prisma.commissionData.delete({ where: { id } });
-    await auditLog({
-      userId: user.userId,
-      username: user.username,
-      action: "DELETE",
-      entity: "CommissionData",
-      entityId: id,
-    });
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return handleApiError(error, "commission-delete");
-  }
-}
-
 export const GET = withAuth(getHandler, {
   GET: ["ADMIN", "KEY_USER", "OBSERVER"],
 });
