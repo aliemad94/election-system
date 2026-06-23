@@ -18,6 +18,7 @@ import {
   Award,
   Filter,
   Eye,
+  Trash2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import EvaluateKeyPage from './evaluatekeypage';
@@ -135,6 +136,11 @@ export default function ElectoralKeyManagement() {
   const [tribes, setTribes] = useState<{ id: string; name: string }[]>([]);
   const [showEvaluate, setShowEvaluate] = useState(false);
   const [evalKeyId, setEvalKeyId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearText, setClearText] = useState('');
+  const [clearPwd, setClearPwd] = useState('');
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string; value: string } | null>(null);
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -239,6 +245,50 @@ export default function ElectoralKeyManagement() {
     } catch (err) {
       console.error('Error saving key:', err);
     }
+  };
+
+  // === الحذف الجماعي ===
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`هل أنت متأكد من حذف ${selectedIds.size} مفتاح؟`)) return;
+    try {
+      for (const id of selectedIds) {
+        await fetch(`/api/electoral-keys/${id}`, { method: 'DELETE' });
+      }
+      setSelectedIds(new Set());
+      fetchKeys();
+    } catch (e) { console.error('Bulk delete error:', e); }
+  };
+
+  // === مسح الكل ===
+  const handleClearAll = async () => {
+    if (clearText !== 'حذف') return;
+    try {
+      const res = await fetch('/api/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: clearText, password: clearPwd }),
+      });
+      if (res.ok) {
+        setShowClearConfirm(false);
+        setClearText('');
+        setClearPwd('');
+        fetchKeys();
+      }
+    } catch (e) { console.error('Clear all error:', e); }
+  };
+
+  // === تحرير مباشر ===
+  const handleInlineSave = async (id: string, field: string, value: string) => {
+    try {
+      await fetch(`/api/electoral-keys/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+      setEditingCell(null);
+      fetchKeys();
+    } catch (e) { console.error('Inline save error:', e); }
   };
 
   const handleStartEdit = (key: ElectoralKeyData) => {
@@ -442,6 +492,61 @@ export default function ElectoralKeyManagement() {
         </div>
       </div>
 
+      {/* شريط أدوات الحذف الجماعي */}
+      {keys.length > 0 && (
+        <div className="flex items-center gap-3 mb-3">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded text-[12px] font-bold flex items-center gap-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> حذف المحدد ({selectedIds.size})
+            </button>
+          )}
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="bg-red-900/50 hover:bg-red-800 text-red-300 px-3 py-1.5 rounded text-[12px] font-bold border border-red-700/50"
+          >
+            مسح الكل
+          </button>
+        </div>
+      )}
+
+      {/* نافذة تأكيد المسح الشامل */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4">
+          <div className="bg-el-surface-container-lowest rounded-lg border border-red-700 p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-red-400 mb-4">⚠️ مسح جميع المفاتيح</h3>
+            <p className="text-[13px] text-el-on-surface-variant mb-4">لا يمكن التراجع. اكتب "حذف" + كلمة سر المالك:</p>
+            <input
+              type="text"
+              placeholder='اكتب "حذف"'
+              value={clearText}
+              onChange={e => setClearText(e.target.value)}
+              className="w-full bg-el-surface border border-el-outline-variant rounded px-3 py-2 text-sm mb-2"
+            />
+            <input
+              type="password"
+              placeholder="كلمة سر المالك"
+              value={clearPwd}
+              onChange={e => setClearPwd(e.target.value)}
+              className="w-full bg-el-surface border border-el-outline-variant rounded px-3 py-2 text-sm mb-4"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleClearAll}
+                disabled={clearText !== 'حذف' || !clearPwd}
+                className="flex-1 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:opacity-50 text-white px-4 py-2 rounded text-sm font-bold"
+              >مسح نهائي</button>
+              <button
+                onClick={() => { setShowClearConfirm(false); setClearText(''); setClearPwd(''); }}
+                className="flex-1 bg-el-surface border border-el-outline-variant px-4 py-2 rounded text-sm"
+              >إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* جدول المفاتيح */}
       {loading ? (
         <div className="flex items-center justify-center h-64 text-el-on-surface-variant">جاري التحميل...</div>
@@ -456,6 +561,20 @@ export default function ElectoralKeyManagement() {
             <table className="w-full text-right text-[12px] leading-[16px]">
               <thead className="bg-el-surface-container border-b border-el-outline-variant text-el-on-surface-variant text-[11px] font-bold tracking-wider uppercase">
                 <tr>
+                  <th className="px-2 py-2 font-normal w-8">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === keys.length && keys.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds(new Set(keys.map(k => k.id)));
+                        } else {
+                          setSelectedIds(new Set());
+                        }
+                      }}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                  </th>
                   <th className="px-3 py-2 font-normal">الكود</th>
                   <th className="px-3 py-2 font-normal">الاسم</th>
                   <th className="px-3 py-2 font-normal">اللقب/العشيرة</th>
@@ -473,8 +592,36 @@ export default function ElectoralKeyManagement() {
               <tbody className="divide-y divide-el-outline-variant/50">
                 {keys.map((key, idx) => (
                   <tr key={key.id} className={`hover:bg-el-surface-container-lowest/50 transition-colors h-10 ${idx % 2 === 1 ? 'bg-el-surface-container-low/30' : ''}`}>
+                    <td className="px-2 py-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(key.id)}
+                        onChange={(e) => {
+                          const next = new Set(selectedIds);
+                          if (e.target.checked) next.add(key.id);
+                          else next.delete(key.id);
+                          setSelectedIds(next);
+                        }}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-3 py-1 font-mono text-el-primary font-semibold">{key.code}</td>
-                    <td className="px-3 py-1 text-el-on-surface font-medium">{key.firstName} {key.fatherName || ''}</td>
+                    <td
+                      className="px-3 py-1 text-el-on-surface font-medium cursor-pointer"
+                      onDoubleClick={() => setEditingCell({ id: key.id, field: 'firstName', value: key.firstName })}
+                    >
+                      {editingCell?.id === key.id && editingCell.field === 'firstName' ? (
+                        <input
+                          autoFocus
+                          defaultValue={key.firstName}
+                          onBlur={e => handleInlineSave(key.id, 'firstName', e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') handleInlineSave(key.id, 'firstName', (e.target as HTMLInputElement).value); if (e.key === 'Escape') setEditingCell(null); }}
+                          className="bg-el-surface border border-el-primary rounded px-1 py-0.5 text-[12px] w-full"
+                        />
+                      ) : (
+                        <span>{key.firstName} {key.fatherName || ''}</span>
+                      )}
+                    </td>
                     <td className="px-3 py-1 text-el-on-surface-variant">{key.nickname || key.tribe?.name || '-'}</td>
                     <td className="px-3 py-1 text-el-on-surface-variant">{key.district || '-'}</td>
                     <td className="px-3 py-1 text-center font-mono">{key.totalVotes}</td>
