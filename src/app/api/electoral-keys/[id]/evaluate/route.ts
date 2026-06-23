@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
-import { calculateAll, type ElectoralKeyData } from "@/lib/electoral-calculations";
+import { evaluateKeyDoubleFilter, generateDoubleFilterReport, type RatingDataV2 } from "@/lib/electoral-calculations";
 
 async function postHandler(
   request: NextRequest,
@@ -25,12 +25,15 @@ async function postHandler(
       );
     }
 
-    // إعداد بيانات الحساب
-    const data: ElectoralKeyData = {
+    // إعداد بيانات الحساب — النظام الجديد: 11 حقلاً
+    const votes = {
       supportedVotes: key.supportedVotes,
       neutralVotes: key.neutralVotes,
       weakVotes: key.weakVotes,
       totalVotes: key.totalVotes,
+    };
+
+    const ratings: RatingDataV2 = {
       loyaltyScore: key.loyaltyScore,
       influenceLevel: key.influenceLevel,
       mobilizationCap: key.mobilizationCap,
@@ -40,29 +43,27 @@ async function postHandler(
       politicalNote: key.politicalNote,
       organizationalNote: key.organizationalNote,
       generalNote: key.generalNote,
+      dataAccuracy: (key as any).dataAccuracy ? parseInt((key as any).dataAccuracy) || 3 : 3,
+      trainingReadiness: (key as any).trainingStatus === 'مكتمل' ? 5 : (key as any).trainingStatus === 'جاري' ? 3 : 1,
     };
 
-    // حساب جميع المعادلات
-    const result = calculateAll(data);
+    const fullName = [key.firstName, key.fatherName, key.grandfatherName]
+      .filter(Boolean).join(' ') || key.keyCode;
 
-    // حساب تكلفة الصوت
-    const costPerVote = result.netVotes > 0
-      ? Math.round((key.totalInvestment / result.netVotes) * 100) / 100
-      : 0;
+    // الفلترة الثنائية الكاملة
+    const result = evaluateKeyDoubleFilter(fullName, votes, ratings);
+    const report = generateDoubleFilterReport(fullName, result);
 
     // تحديث المفتاح بالقيم المحسوبة
     const updated = await prisma.electionKey.update({
       where: { id },
       data: {
-        netVotes: Math.round(result.netVotes),
-        totalVotes: result.totalVotes,
-        weightedScore: result.weightedScore,
+        netVotes: Math.round(result.netVoters),
+        weightedScore: result.efficiencyCoefficient,
         classification: result.classification,
-        costPerVote,
       },
     });
 
-    // تسجيل في سجل التدقيق
     await prisma.auditLog.create({
       data: {
         userId: user.userId,
@@ -70,17 +71,15 @@ async function postHandler(
         action: "UPDATE",
         entity: "ElectionKey",
         entityId: id,
-        details: JSON.stringify({ action: "EVALUATE", result: { score: result.weightedScore, class: result.classification } }),
+        details: JSON.stringify({ action: "EVALUATE_V2", class: result.classification, actualBallots: result.actualBallots }),
       },
     });
 
     return NextResponse.json({
       success: true,
       key: updated,
-      calculations: {
-        ...result,
-        costPerVote,
-      },
+      report,
+      result,
     });
   } catch (error) {
     console.error("Error evaluating key:", error);
