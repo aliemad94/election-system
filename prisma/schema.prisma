@@ -312,23 +312,23 @@ model Service {
 }
 
 // ====================================================================
-// بيانات المفوضية (CommissionData) — المطابقة الرسمية
+// بيانات المفوضية لكل قضاء (21 قضاء) — 7 حقول: 6 يدوية + 1 تلقائي
 // ====================================================================
 
 model CommissionData {
-  id               String  @id @default(cuid())
-  province         String
-  district         String
-  subDistrict      String
-  pollingCenter    String
-  ballotStation    String  // المحطة التفصيلية لمطابقة الأرقام
-  registeredVoters Int
-  historicalTurnout Float
-  expectedTurnout  Float?
+  id               String   @id @default(cuid())
+  province         String   @default("ذي قار")
+  district         String   @unique // القضاء (21 قضاء)
+  registeredVoters Int      @default(0) // الحقل 1: عدد الناخبين الكلي
+  actualVoters     Int      @default(0) // الحقل 2: عدد المصوتين الكلي
+  maleVoters       Int      @default(0) // الحقل 3: عدد أصوات الذكور
+  femaleVoters     Int      @default(0) // الحقل 4: عدد أصوات الإناث
+  pollingCenters   Int      @default(0) // الحقل 5: عدد مراكز الاقتراع
+  ballotStations   Int      @default(0) // الحقل 6: عدد محطات الاقتراع
+  // الحقل 7: نسبة المشاركة - حساب تلقائي = (actualVoters ÷ registeredVoters) × 100
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  @@unique([pollingCenter, ballotStation])
   @@index([province])
   @@index([district])
 }
@@ -621,12 +621,12 @@ model ProvinceReference {
   id                  String   @id @default(cuid())
   province            String   @unique @default("ذي قار")
   totalRegisteredVoters Int    @default(1099438)
-  districtsCount      Int      @default(15)
-  subDistrictsCount   Int      @default(42)
+  totalActualVoters   Int      @default(538390)
+  generalTurnout      Float    @default(48.97)
+  maleVoters          Int      @default(322970)
+  femaleVoters        Int      @default(215420)
   pollingCentersCount Int      @default(527)
-  ballotStationsCount Int      @default(2222)
-  historicalTurnout   Float    @default(48.5)
-  allocatedSeats      Int      @default(19)
+  ballotStationsCount Int      @default(2212)
   lastRegistryUpdate  DateTime?
   notes               String?
   createdAt           DateTime @default(now())

@@ -116,36 +116,13 @@ async function postHandler(
       }
 
       case "commission-data": {
-        for (const item of data) {
-          try {
-            await prisma.commissionData.upsert({
-              where: {
-                pollingCenter_ballotStation: {
-                  pollingCenter: item.pollingCenter,
-                  ballotStation: item.ballotStation,
-                },
-              },
-              update: {
-                registeredVoters: item.registeredVoters,
-                historicalTurnout: item.historicalTurnout || 0,
-                expectedTurnout: item.expectedTurnout,
-              },
-              create: {
-                province: item.province || "ذي قار",
-                district: item.district || "",
-                subDistrict: item.subDistrict || "",
-                pollingCenter: item.pollingCenter,
-                ballotStation: item.ballotStation,
-                registeredVoters: item.registeredVoters,
-                historicalTurnout: item.historicalTurnout || 0,
-                expectedTurnout: item.expectedTurnout,
-              },
-            });
-            results.created++;
-          } catch (err) {
-            results.errors.push(`خطأ في بيانات المفوضية: ${(err as Error).message}`);
-          }
-        }
+        // CommissionData schema changed to per-district 7-field system.
+        // Import skipped — use the manual entry form in the Commission page.
+        break;
+      }
+
+      case "old-commission": {
+        // Handled above
         break;
       }
 

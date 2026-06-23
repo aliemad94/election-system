@@ -171,16 +171,16 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
       new Set(
         commissionData
           .filter((c) => c.district === areaName || areaName === "ذي قار")
-          .map((c) => c.pollingCenter)
+          .map((c) => c.pollingCenters)
       )
     );
     const distinctCentersInKeys = Array.from(
-      new Set(areaKeys.map((k) => k.pollingCenter).filter(Boolean))
+      new Set(areaKeys.map((k) => k.pollingCenters).filter(Boolean))
     );
     const coverage =
       distinctCentersInCommission.length > 0
         ? (distinctCentersInKeys.filter((c) =>
-            distinctCentersInCommission.includes(c)
+            distinctCentersInCommission.includes(c as any)
           ).length /
           distinctCentersInCommission.length) *
           100
