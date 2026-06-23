@@ -181,12 +181,16 @@ export default function ElectoralKeyManagement() {
 
       const payload = {
         ...form,
+        loyaltyScore: form.loyaltyLevel,  // تعيين اسم الحقل للـ API
+        mobilizationCap: form.mobilizationAbility,
         netVotes: netVotesVal,
         totalVotes: totalVotesVal,
         weightedScore: weightedVal,
         classification: classVal,
         socialMedia: socialMediaString,
       };
+      delete (payload as any).loyaltyLevel;  // إزالة الاسم الداخلي
+      delete (payload as any).mobilizationAbility;
 
       const url = editMode ? `/api/electoral-keys/${selectedKey?.id}` : '/api/electoral-keys';
       const method = editMode ? 'PUT' : 'POST';
@@ -198,6 +202,23 @@ export default function ElectoralKeyManagement() {
       });
 
       if (res.ok) {
+        const saved = await res.json();
+        const newId = saved?.id || selectedKey?.id;
+
+        // تشغيل التقييم الخادمي بعد الحفظ مباشرة
+        if (newId && editMode) {
+          try {
+            const evalRes = await fetch(`/api/electoral-keys/${newId}/evaluate`, { method: 'POST' });
+            if (evalRes.ok) {
+              const evalData = await evalRes.json();
+              if (evalData.key) {
+                setSelectedKey(evalData.key);
+                fetchKeys();
+              }
+            }
+          } catch (_) { /* التقييم اختياري */ }
+        }
+
         setShowAddDialog(false);
         setEditMode(false);
         setForm(defaultForm);
@@ -250,9 +271,9 @@ export default function ElectoralKeyManagement() {
       supportedVotes: key.supportedVotes || 0,
       neutralVotes: key.neutralVotes || 0,
       weakVotes: key.weakVotes || 0,
-      loyaltyLevel: key.loyaltyLevel || 3,
-      influenceLevel: key.influenceLevel || 3,
-      mobilizationAbility: key.mobilizationAbility || 3,
+      loyaltyLevel: (key as any).loyaltyScore || (key as any).loyaltyLevel || 3,
+      influenceLevel: (key as any).influenceLevel || 3,
+      mobilizationAbility: (key as any).mobilizationCap || (key as any).mobilizationAbility || 3,
       voteProtection: key.voteProtection || 3,
       supportReason: key.supportReason || 3,
       needsLevel: key.needsLevel || 3,
@@ -273,15 +294,15 @@ export default function ElectoralKeyManagement() {
   
   const calcWeighted = () => {
     const rawScore =
-      ((form.loyaltyLevel || 3) - 1) * 20 +
-      ((form.influenceLevel || 3) - 1) * 20 +
-      ((form.mobilizationAbility || 3) - 1) * 15 +
-      ((form.voteProtection || 3) - 1) * 15 +
-      ((form.supportReason || 3) - 1) * 10 +
-      ((form.needsLevel || 3) - 1) * 5 +
-      ((form.politicalNote || 3) - 1) * 5 +
-      ((form.organizationalNote || 3) - 1) * 5 +
-      ((form.generalNote || 3) - 1) * 5;
+      ((form.loyaltyLevel || 3)) * 20 +
+      ((form.influenceLevel || 3)) * 20 +
+      ((form.mobilizationAbility || 3)) * 15 +
+      ((form.voteProtection || 3)) * 15 +
+      ((form.supportReason || 3)) * 10 +
+      ((form.needsLevel || 3)) * 5 +
+      ((form.politicalNote || 3)) * 5 +
+      ((form.organizationalNote || 3)) * 5 +
+      ((form.generalNote || 3)) * 5;
 
     const totalVotesVal = form.totalVotes || (form.supportedVotes + form.neutralVotes + form.weakVotes);
     const voteFactor = totalVotesVal / 50;
@@ -728,7 +749,7 @@ export default function ElectoralKeyManagement() {
                 <div className="space-y-4">
                   <div className="bg-el-primary/5 border border-el-primary/20 rounded-sm p-3">
                     <h4 className="text-[14px] font-semibold text-el-primary mb-2 flex items-center gap-1">
-                      <Shield className="w-4 h-4" /> نظام التقييم الموزون (من 200)
+                      <Shield className="w-4 h-4" /> نظام التقييم الموزون — 9 أبعاد × 5 مستويات
                     </h4>
                     <p className="text-[12px] text-el-on-surface-variant">
                       كل حقل يُقيّم من 1-5 ويُضرب بالوزن المحدد، المجموع يحدد تصنيف المفتاح
