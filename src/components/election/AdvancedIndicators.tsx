@@ -505,7 +505,7 @@ export default function AdvancedIndicators() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.districts.map((d) => (
+                {(data.districts || []).map((d) => (
                   <TableRow
                     key={d.id}
                     className="hover:bg-[var(--el-surface-container-low)]"

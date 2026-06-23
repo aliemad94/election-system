@@ -4,12 +4,11 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { withAuth } from "@/lib/auth-guard";
 
-const prisma = new PrismaClient();
-
-export async function GET(
-  request: NextRequest,
+async function getHandler(
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -30,13 +29,14 @@ export async function GET(
   }
 }
 
-export async function POST(
+async function postHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params, user }: { params: Promise<{ id: string }>; user: any }
 ) {
   try {
     const { id } = await params;
-    const { newScore, reason, changedBy } = await request.json();
+    const { newScore, reason } = await request.json();
+    const changedBy = user.username;
 
     if (newScore === undefined || newScore < 0 || newScore > 100) {
       return NextResponse.json(
@@ -45,7 +45,6 @@ export async function POST(
       );
     }
 
-    // الحصول على الدرجة الحالية
     const voter = await prisma.voter.findUnique({
       where: { id },
       select: { confidenceScore: true },
@@ -61,7 +60,6 @@ export async function POST(
     const oldScore = voter.confidenceScore;
     const change = newScore - oldScore;
 
-    // تحديث درجة الثقة وإنشاء سجل في معاملة واحدة
     const [updatedVoter, log] = await prisma.$transaction([
       prisma.voter.update({
         where: { id },
@@ -92,3 +90,10 @@ export async function POST(
     );
   }
 }
+
+export const GET = withAuth(getHandler, {
+  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+});
+export const POST = withAuth(postHandler, {
+  POST: ["ADMIN", "KEY_USER"],
+});
