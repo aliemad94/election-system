@@ -538,13 +538,71 @@ function calcInfluenceIndicators(
     totalReachable: hasPhone,
   };
 
+  // 37. تصنيف المفاتيح حسب القوة النهائية (نظام النفوذ والتأثير)
+  const classificationStats = {
+    weak: keys.filter(k => classifyByScore(k.weightedScore) === 'ضعيف').length,
+    acceptable: keys.filter(k => classifyByScore(k.weightedScore) === 'مقبول').length,
+    good: keys.filter(k => classifyByScore(k.weightedScore) === 'جيد').length,
+    strong: keys.filter(k => classifyByScore(k.weightedScore) === 'قوي').length,
+    total: keys.length,
+  };
+
+  // 38. أعلى المفاتيح من حيث الدرجة المرجّحة
+  const topInfluenceKeys = [...keys]
+    .sort((a, b) => b.weightedScore - a.weightedScore || b.netVotes - a.netVotes)
+    .slice(0, 15)
+    .map(k => ({
+      id: k.id,
+      name: k.firstName || 'غير معروف',
+      district: k.district,
+      weightedScore: k.weightedScore,
+      classification: classifyByScore(k.weightedScore),
+      netVotes: k.netVotes,
+      loyaltyLevel: k.loyaltyLevel,
+      influenceLevel: k.influenceLevel,
+      mobilizationAbility: k.mobilizationAbility,
+      voteProtection: (k as any).voteProtection || 3,
+      supportReason: (k as any).supportReason || 3,
+      needsLevel: (k as any).needsLevel || 3,
+      politicalNote: (k as any).politicalNote || 3,
+      organizationalNote: (k as any).organizationalNote || 3,
+      generalNote: (k as any).generalNote || 3,
+    }));
+
+  // 39. توزيع الأبعاد التسعة للمفاتيح
+  const dimensionAverages = keys.length > 0 ? {
+    loyalty: round1(keys.reduce((s, k) => s + k.loyaltyLevel, 0) / keys.length),
+    influence: round1(keys.reduce((s, k) => s + k.influenceLevel, 0) / keys.length),
+    mobilization: round1(keys.reduce((s, k) => s + k.mobilizationAbility, 0) / keys.length),
+    protection: round1(keys.reduce((s, k) => s + ((k as any).voteProtection || 3), 0) / keys.length),
+    support: round1(keys.reduce((s, k) => s + ((k as any).supportReason || 3), 0) / keys.length),
+    needs: round1(keys.reduce((s, k) => s + ((k as any).needsLevel || 3), 0) / keys.length),
+    political: round1(keys.reduce((s, k) => s + ((k as any).politicalNote || 3), 0) / keys.length),
+    organizational: round1(keys.reduce((s, k) => s + ((k as any).organizationalNote || 3), 0) / keys.length),
+    general: round1(keys.reduce((s, k) => s + ((k as any).generalNote || 3), 0) / keys.length),
+  } : null;
+
+  // 40. متوسط الدرجة المرجّحة
+  const avgWeightedScore = keys.length > 0 ? round1(keys.reduce((s, k) => s + k.weightedScore, 0) / keys.length) : 0;
+
   return {
     tribalVoting, topSupportingTribes, neutralTribes, competingTribes,
     tribalInfluenceIndex, professionalInfluence,
+    classificationStats,
+    topInfluenceKeys,
+    dimensionAverages,
+    avgWeightedScore,
     competitorAnalysis: { available: false, message: 'يحتاج بيانات المرشحين المنافسين' },
     digitalInfluence: { available: false, message: 'يحتاج بيانات حملات إلكترونية' },
     digitalReach,
   };
+}
+
+function classifyByScore(score: number): string {
+  if (score < 20) return 'ضعيف';
+  if (score < 50) return 'مقبول';
+  if (score < 100) return 'جيد';
+  return 'قوي';
 }
 
 // ═══════════════════════════════════════════════════════════════
