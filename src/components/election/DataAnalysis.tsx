@@ -7,6 +7,7 @@ import {
   DollarSign, Megaphone, UserCheck, Clock, Zap,
   Crown, Briefcase, Globe, Phone, HelpCircle, FileText, CheckCircle2, ShieldAlert, Vote, Wrench
 } from 'lucide-react';
+import { safeMerge, EMPTY_DECISIVE } from '@/lib/safedata';
 
 type TabId =
   | 'decisive'
@@ -195,7 +196,7 @@ export default function DataAnalysis() {
 
       {/* محتوى التبويبات */}
       <div className="min-h-[400px]">
-        {activeTab === 'decisive' && <DecisiveTab data={data.decisive} />}
+        {activeTab === 'decisive' && <DecisiveTab data={safeMerge(data.decisive, EMPTY_DECISIVE)} />}
         {activeTab === 'regions' && <RegionsTab data={data.regions} />}
         {activeTab === 'keys' && <KeysTab data={data.keys} />}
         {activeTab === 'audience' && <AudienceTab data={data.audience} />}
