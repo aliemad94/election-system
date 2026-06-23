@@ -128,7 +128,7 @@ export default function FieldAgentPortal() {
           بوابة الوكلاء الميدانيين
         </h2>
         <p className="text-sm text-[var(--el-on-surface-variant)] mt-1">
-          {total} ناخب بانتظار التصويت — تسجيل حضور سريع idempotent
+          {total} ناخب بانتظار التصويت — تسجيل حضور سريع وموثوق
         </p>
       </div>
 
