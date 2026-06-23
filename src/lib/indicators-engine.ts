@@ -62,9 +62,7 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
       prisma.electionKey.findMany({
         include: { tribe: true, services: true },
       }),
-      prisma.voter.findMany({
-        include: { tribe: true, electionKey: true },
-      }),
+      prisma.voter.findMany(),
       prisma.sentimentTrend.findMany(),
       prisma.competitor.findMany(),
       prisma.commissionData.findMany(),

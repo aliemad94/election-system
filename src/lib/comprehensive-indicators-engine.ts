@@ -782,9 +782,7 @@ export async function calculateComprehensiveIndicators() {
     prisma.electionKey.findMany({
       include: { tribe: true, services: true },
     }),
-    prisma.voter.findMany({
-      include: { tribe: true, electionKey: true },
-    }),
+    prisma.voter.findMany(),
     prisma.tribe.findMany({
       include: {
         _count: { select: { voters: true, electionKeys: true } },
