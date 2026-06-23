@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
+import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 import { updateVoterSchema, formatZodError } from "@/lib/validators";
 
 async function putHandler(
@@ -56,6 +57,8 @@ async function putHandler(
       details: { fields: Object.keys(parsed.data).join(', ') },
     });
 
+    invalidateComprehensiveIndicatorsCache();
+
     return NextResponse.json(updated);
   } catch (error) {
     return handleApiError(error, "voters-put");
@@ -88,6 +91,8 @@ async function deleteHandler(
       entityId: params.id,
       details: { name: existing.firstName },
     });
+
+    invalidateComprehensiveIndicatorsCache();
 
     return NextResponse.json({ success: true });
   } catch (error) {
