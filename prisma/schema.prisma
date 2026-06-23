@@ -613,3 +613,23 @@ model ElectionResult {
   @@index([district])
 }
 
+// ====================================================================
+// البيانات المرجعية للمحافظة (Read-Only) — المؤشرات العامة لمحافظة ذي قار
+// ====================================================================
+
+model ProvinceReference {
+  id                  String   @id @default(cuid())
+  province            String   @unique @default("ذي قار")
+  totalRegisteredVoters Int    @default(1099438)
+  districtsCount      Int      @default(15)
+  subDistrictsCount   Int      @default(42)
+  pollingCentersCount Int      @default(527)
+  ballotStationsCount Int      @default(2222)
+  historicalTurnout   Float    @default(48.5)
+  allocatedSeats      Int      @default(19)
+  lastRegistryUpdate  DateTime?
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+

@@ -116,6 +116,23 @@ async function main() {
     create: { id: 'system', enabled: true },
   });
 
+  // تهيئة البيانات المرجعية للمحافظة (Read-Only)
+  console.log('📊 تهيئة البيانات المرجعية لمحافظة ذي قار...');
+  await prisma.provinceReference.upsert({
+    where: { province: 'ذي قار' },
+    update: {},
+    create: {
+      province: 'ذي قار',
+      totalRegisteredVoters: 1099438,
+      districtsCount: 15,
+      subDistrictsCount: 42,
+      pollingCentersCount: 527,
+      ballotStationsCount: 2222,
+      historicalTurnout: 48.5,
+      allocatedSeats: 19,
+    },
+  });
+
   console.log('✅ تم تهيئة قاعدة البيانات بنجاح بدون بيانات وهمية!');
 }
 

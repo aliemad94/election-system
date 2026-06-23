@@ -9,13 +9,16 @@ import { handleApiError, auditLog } from "@/lib/security";
 
 async function getHandler(_req: NextRequest) {
   try {
-    let list = await prisma.commissionData.findMany({
-      orderBy: { district: "asc" },
-    });
+    const [list, reference] = await Promise.all([
+      prisma.commissionData.findMany({
+        orderBy: { district: "asc" },
+      }),
+      prisma.provinceReference.findFirst({
+        where: { province: "ذي قار" },
+      }),
+    ]);
 
-    // لا توجد بيانات افتراضية — المستخدم يدخل البيانات الحقيقية بنفسه
-
-    return NextResponse.json(list);
+    return NextResponse.json({ list, reference });
   } catch (error) {
     return handleApiError(error, "commission-get");
   }
