@@ -888,8 +888,8 @@ export async function calculateComprehensiveIndicators() {
   const ihec: IHECRecord[] = rawCommission.map(c => ({
     district: c.district,
     registeredVoters: c.registeredVoters,
-    actualParticipants: Math.round(c.registeredVoters * ((c.historicalTurnout || 50) / 100)),
-    participationRate: c.historicalTurnout > 1 ? c.historicalTurnout : (c.historicalTurnout || 0.5) * 100,
+    actualParticipants: Math.round(c.registeredVoters * ((c.registeredVoters > 0 ? (c.actualVoters / c.registeredVoters) * 100 : 50) / 100)),
+    participationRate: c.registeredVoters > 0 ? (c.actualVoters / c.registeredVoters) * 100 : 50,
     maleVoters: 0,
     femaleVoters: 0,
     pollingCenters: 1,

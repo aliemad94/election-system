@@ -1,5 +1,5 @@
 // ====================================================================
-// /api/commission — بيانات المفوضية (GET + POST)
+// /api/commission — بيانات المفوضية (مرجعية المحافظة + إدخال الأقضية)
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -18,7 +18,15 @@ async function getHandler(_req: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({ list, reference });
+    // حساب نسبة المشاركة تلقائياً لكل قضاء
+    const enriched = list.map((d) => ({
+      ...d,
+      turnout: d.registeredVoters > 0
+        ? parseFloat(((d.actualVoters / d.registeredVoters) * 100).toFixed(2))
+        : 0,
+    }));
+
+    return NextResponse.json({ list: enriched, reference });
   } catch (error) {
     return handleApiError(error, "commission-get");
   }
@@ -28,35 +36,51 @@ async function postHandler(req: NextRequest, { user }: any) {
   try {
     const body = await req.json();
     const {
-      province,
       district,
-      subDistrict,
-      pollingCenter,
-      ballotStation,
       registeredVoters,
-      historicalTurnout,
-      expectedTurnout,
+      actualVoters,
+      maleVoters,
+      femaleVoters,
+      pollingCenters,
+      ballotStations,
     } = body;
 
-    if (!district || !pollingCenter || !ballotStation) {
+    if (!district) {
       return NextResponse.json(
-        { error: "القضاء، مركز الاقتراع، والمحطة حقول مطلوبة" },
+        { error: "القضاء حقل مطلوب" },
         { status: 400 }
       );
     }
 
-    const created = await prisma.commissionData.create({
-      data: {
-        province: province || "ذي قار",
+    // الحقل السابع (نسبة المشاركة) يُحسب تلقائياً بمعادلة:
+    // (عدد المصوتين الكلي ÷ عدد الناخبين الكلي) × 100
+    // يحسب في الـ GET handler، لا يُخزّن
+
+    const created = await prisma.commissionData.upsert({
+      where: { district },
+      update: {
+        registeredVoters: registeredVoters || 0,
+        actualVoters: actualVoters || 0,
+        maleVoters: maleVoters || 0,
+        femaleVoters: femaleVoters || 0,
+        pollingCenters: pollingCenters || 0,
+        ballotStations: ballotStations || 0,
+      },
+      create: {
+        province: "ذي قار",
         district,
-        subDistrict: subDistrict || "المركز",
-        pollingCenter,
-        ballotStation,
-        registeredVoters: parseInt(registeredVoters) || 0,
-        historicalTurnout: parseFloat(historicalTurnout) || 0.0,
-        expectedTurnout: expectedTurnout ? parseFloat(expectedTurnout) : null,
+        registeredVoters: registeredVoters || 0,
+        actualVoters: actualVoters || 0,
+        maleVoters: maleVoters || 0,
+        femaleVoters: femaleVoters || 0,
+        pollingCenters: pollingCenters || 0,
+        ballotStations: ballotStations || 0,
       },
     });
+
+    const turnout = created.registeredVoters > 0
+      ? parseFloat(((created.actualVoters / created.registeredVoters) * 100).toFixed(2))
+      : 0;
 
     await auditLog({
       userId: user.userId,
@@ -64,17 +88,35 @@ async function postHandler(req: NextRequest, { user }: any) {
       action: "CREATE",
       entity: "CommissionData",
       entityId: created.id,
-      details: { district, pollingCenter },
+      details: { district, registeredVoters, actualVoters, turnout },
     });
 
-    return NextResponse.json(created, { status: 201 });
+    return NextResponse.json({ ...created, turnout }, { status: 201 });
   } catch (error) {
     return handleApiError(error, "commission-post");
+  }
+}
+
+async function deleteHandler(req: NextRequest, { params, user }: { params: any; user: any }) {
+  try {
+    const { id } = params;
+    await prisma.commissionData.delete({ where: { id } });
+    await auditLog({
+      userId: user.userId,
+      username: user.username,
+      action: "DELETE",
+      entity: "CommissionData",
+      entityId: id,
+    });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return handleApiError(error, "commission-delete");
   }
 }
 
 export const GET = withAuth(getHandler, {
   GET: ["ADMIN", "KEY_USER", "OBSERVER"],
 });
-export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
-
+export const POST = withAuth(postHandler, {
+  POST: ["ADMIN", "KEY_USER"],
+});

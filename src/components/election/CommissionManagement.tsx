@@ -1,521 +1,301 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  FileText,
-  Plus,
-  Search,
-  ChevronDown,
-  X,
-  MapPin,
-  TrendingUp,
-  Award,
-  Vote,
-  Edit2,
-  Trash2,
-  Percent,
-  Calculator,
-} from 'lucide-react';
+import { FileText, Plus, X, MapPin, Calculator, TrendingUp, Percent, Users, UserCheck, UserRoundCheck, UserRound, Building2, Hash } from 'lucide-react';
 
-const DISTRICTS = [
-  'الناصرية',
-  'الشطرة',
-  'سوق الشيوخ',
-  'الرفاعي',
-  'الجبايش',
-  'قلعة سكر',
-  'الغراف',
-  'النصر',
-  'الفجر',
-  'الفهود',
-  'البطحاء',
-  'سيد دخيل',
-  'الإصلاح',
-  'الدواية',
+// القائمة المعتمدة لـ 21 قضاء في محافظة ذي قار
+const DISTRICTS_21 = [
+  'الناصرية', 'الشطرة', 'سوق الشيوخ', 'الرفاعي', 'الجبايش',
+  'قلعة سكر', 'الغراف', 'النصر', 'الفجر', 'الفهود',
+  'البطحاء', 'سيد دخيل', 'الإصلاح', 'الدواية', 'الطار',
+  'الكرامة', 'أور', 'الحمّار', 'العكيكة', 'الشنافية', 'الخضر',
 ];
 
-interface CommissionDataRecord {
+interface CommissionRecord {
   id: string;
-  province: string;
   district: string;
-  subDistrict: string;
-  pollingCenter: string;
-  ballotStation: string;
   registeredVoters: number;
-  historicalTurnout: number;
-  expectedTurnout: number | null;
+  actualVoters: number;
+  maleVoters: number;
+  femaleVoters: number;
+  pollingCenters: number;
+  ballotStations: number;
+  turnout: number;
 }
 
-interface ProvinceReference {
+interface ProvinceRef {
   province: string;
   totalRegisteredVoters: number;
-  districtsCount: number;
-  subDistrictsCount: number;
+  totalActualVoters: number;
+  generalTurnout: number;
+  maleVoters: number;
+  femaleVoters: number;
   pollingCentersCount: number;
   ballotStationsCount: number;
-  historicalTurnout: number;
-  allocatedSeats: number;
-  lastRegistryUpdate: string | null;
 }
 
-const defaultForm = {
-  province: 'ذي قار',
-  district: 'الناصرية',
-  subDistrict: '',
-  pollingCenter: '',
-  ballotStation: '',
-  registeredVoters: 0,
-  historicalTurnout: 0,
-  expectedTurnout: '',
+interface DistrictForm {
+  district: string;
+  registeredVoters: string;
+  actualVoters: string;
+  maleVoters: string;
+  femaleVoters: string;
+  pollingCenters: string;
+  ballotStations: string;
+}
+
+const emptyForm: DistrictForm = {
+  district: '',
+  registeredVoters: '',
+  actualVoters: '',
+  maleVoters: '',
+  femaleVoters: '',
+  pollingCenters: '',
+  ballotStations: '',
 };
 
 export default function CommissionManagement() {
-  const [records, setRecords] = useState<CommissionDataRecord[]>([]);
-  const [reference, setReference] = useState<ProvinceReference | null>(null);
+  const [records, setRecords] = useState<CommissionRecord[]>([]);
+  const [reference, setReference] = useState<ProvinceRef | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterDistrict, setFilterDistrict] = useState('');
-  const [form, setForm] = useState(defaultForm);
+  const [showDialog, setShowDialog] = useState(false);
+  const [form, setForm] = useState<DistrictForm>(emptyForm);
 
-  const fetchRecords = useCallback(async () => {
+  // إحصاءات المقارنة
+  const computedTurnout = form.registeredVoters && form.actualVoters
+    ? ((Number(form.actualVoters) / Number(form.registeredVoters)) * 100).toFixed(2)
+    : '0.00';
+
+  const availableDistricts = DISTRICTS_21.filter(
+    (d) => !records.find((r) => r.district === d)
+  );
+
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch('/api/commission');
       const data = await res.json();
       if (data.list && Array.isArray(data.list)) {
         setRecords(data.list);
         setReference(data.reference || null);
-      } else if (Array.isArray(data)) {
-        setRecords(data);
-      } else {
-        setRecords([]);
       }
     } catch (err) {
-      console.error('Error fetching commission records:', err);
-      setRecords([]);
+      console.error('Error:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleSaveRecord = async () => {
+  const handleSave = async () => {
+    if (!form.district) return;
     try {
-      const payload = {
-        ...form,
-        expectedTurnout: form.expectedTurnout ? parseFloat(form.expectedTurnout) : null,
-      };
-
-      const url = editMode ? `/api/commission/${editingId}` : '/api/commission';
-      const method = editMode ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
+      const res = await fetch('/api/commission', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          district: form.district,
+          registeredVoters: Number(form.registeredVoters) || 0,
+          actualVoters: Number(form.actualVoters) || 0,
+          maleVoters: Number(form.maleVoters) || 0,
+          femaleVoters: Number(form.femaleVoters) || 0,
+          pollingCenters: Number(form.pollingCenters) || 0,
+          ballotStations: Number(form.ballotStations) || 0,
+        }),
       });
-
       if (res.ok) {
-        setShowAddDialog(false);
-        setEditMode(false);
-        setEditingId(null);
-        setForm(defaultForm);
-        fetchRecords();
-      } else {
-        const err = await res.json();
-        alert(err.error || 'فشل في حفظ البيانات');
+        setForm(emptyForm);
+        setShowDialog(false);
+        fetchData();
       }
     } catch (err) {
-      console.error('Error saving commission record:', err);
+      console.error('Save error:', err);
     }
   };
 
-  const handleStartEdit = (rec: CommissionDataRecord) => {
-    setForm({
-      province: rec.province,
-      district: rec.district,
-      subDistrict: rec.subDistrict || '',
-      pollingCenter: rec.pollingCenter || '',
-      ballotStation: rec.ballotStation || '',
-      registeredVoters: rec.registeredVoters || 0,
-      historicalTurnout: rec.historicalTurnout || 0,
-      expectedTurnout: rec.expectedTurnout !== null ? String(rec.expectedTurnout) : '',
-    });
-    setEditingId(rec.id);
-    setEditMode(true);
-    setShowAddDialog(true);
-  };
-
-  const handleDeleteRecord = async (id: string) => {
-    if (!confirm('هل أنت متأكد من رغبتك في حذف هذا السجل الانتخابي؟')) return;
-
+  const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/commission/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchRecords();
-      } else {
-        alert('فشل في حذف السجل');
-      }
+      await fetch(`/api/commission/${id}`, { method: 'DELETE' });
+      fetchData();
     } catch (err) {
-      console.error('Error deleting record:', err);
+      console.error('Delete error:', err);
     }
   };
 
-  const filteredRecords = records.filter((r) => {
-    const matchesSearch =
-      r.district.includes(searchQuery) ||
-      r.pollingCenter.includes(searchQuery) ||
-      r.subDistrict.includes(searchQuery);
-    const matchesDistrict = filterDistrict ? r.district === filterDistrict : true;
-    return matchesSearch && matchesDistrict;
-  });
+  // تجميعات المقارنة
+  const totalReg = records.reduce((s, r) => s + r.registeredVoters, 0);
+  const totalAct = records.reduce((s, r) => s + r.actualVoters, 0);
+  const totalM = records.reduce((s, r) => s + r.maleVoters, 0);
+  const totalF = records.reduce((s, r) => s + r.femaleVoters, 0);
 
-  // Calculate totals
-  const totalRegistered = filteredRecords.reduce((sum, r) => sum + r.registeredVoters, 0);
-  const avgTurnout =
-    filteredRecords.length > 0
-      ? filteredRecords.reduce((sum, r) => sum + (r.expectedTurnout ?? r.historicalTurnout), 0) /
-        filteredRecords.length
-      : 0;
-  const totalExpectedVoters = Math.round(
-    filteredRecords.reduce(
-      (sum, r) => sum + r.registeredVoters * ((r.expectedTurnout ?? r.historicalTurnout) / 100),
-      0
-    )
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 gap-3">
+        <FileText className="w-6 h-6 animate-pulse text-el-primary" />
+        <span className="text-el-on-surface-variant">جاري تحميل بيانات المفوضية...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 max-w-[1440px] mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-[24px] leading-[32px] font-bold text-el-primary flex items-center gap-2">
+          <h1 className="text-[24px] font-bold text-el-primary flex items-center gap-2">
             <FileText className="w-6 h-6" /> بيانات المفوضية المستقلة للانتخابات
           </h1>
-          <p className="text-[12px] leading-[16px] text-el-on-surface-variant mt-1">
-            إدارة أعداد الناخبين المسجلين، ونسب المشاركة، ومحطات الاقتراع الموزعة على أقضية ذي قار
+          <p className="text-[12px] text-el-on-surface-variant mt-1">
+            إدارة بيانات الأقضية الانتخابية — 21 قضاءً في محافظة ذي قار
           </p>
         </div>
         <button
-          onClick={() => {
-            setEditMode(false);
-            setForm(defaultForm);
-            setShowAddDialog(true);
-          }}
-          className="bg-el-primary text-el-on-primary px-4 py-2 rounded flex items-center gap-2 hover:opacity-90 transition-all shadow-sm"
+          onClick={() => { setForm(emptyForm); setShowDialog(true); }}
+          className="bg-el-primary text-el-on-primary px-5 py-2.5 rounded-lg flex items-center gap-2 hover:opacity-90 transition-all shadow-sm font-bold text-[14px]"
         >
-          <Plus className="w-[18px] h-[18px]" />
-          <span className="text-[14px] leading-[20px] font-medium">إضافة مركز/محطة اقتراع</span>
+          <Plus className="w-[18px] h-[18px]" /> إضافة بيانات
         </button>
       </div>
 
       {/* المرجعية الثابتة للمحافظة (Read-Only) */}
       {reference && (
-        <div className="bg-gradient-to-l from-el-primary to-[#0a2a5e] text-white rounded-lg p-4 shadow-sm border border-el-primary/30">
+        <div className="bg-gradient-to-l from-el-primary to-[#0a2a5e] text-white rounded-lg p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-3">
             <MapPin className="w-5 h-5 text-el-secondary" />
-            <h2 className="text-[16px] font-bold">المؤشرات المرجعية لمحافظة {reference.province}</h2>
-            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">بيانات ثابتة — للقراءة فقط</span>
+            <h2 className="text-[16px] font-bold">المرجعية الثابتة — محافظة {reference.province}</h2>
+            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">للقراءة فقط</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-            <div className="bg-white/10 rounded-lg p-2.5 text-center">
-              <div className="text-[11px] opacity-70">إجمالي الناخبين</div>
-              <div className="text-[18px] font-bold">{reference.totalRegisteredVoters.toLocaleString()}</div>
-            </div>
-            <div className="bg-white/10 rounded-lg p-2.5 text-center">
-              <div className="text-[11px] opacity-70">عدد الأقضية</div>
-              <div className="text-[18px] font-bold">{reference.districtsCount}</div>
-            </div>
-            <div className="bg-white/10 rounded-lg p-2.5 text-center">
-              <div className="text-[11px] opacity-70">عدد النواحي</div>
-              <div className="text-[18px] font-bold">{reference.subDistrictsCount}</div>
-            </div>
-            <div className="bg-white/10 rounded-lg p-2.5 text-center">
-              <div className="text-[11px] opacity-70">مراكز الاقتراع</div>
-              <div className="text-[18px] font-bold">{reference.pollingCentersCount.toLocaleString()}</div>
-            </div>
-            <div className="bg-white/10 rounded-lg p-2.5 text-center">
-              <div className="text-[11px] opacity-70">محطات الاقتراع</div>
-              <div className="text-[18px] font-bold">{reference.ballotStationsCount.toLocaleString()}</div>
-            </div>
-            <div className="bg-white/10 rounded-lg p-2.5 text-center">
-              <div className="text-[11px] opacity-70">المشاركة التاريخية</div>
-              <div className="text-[18px] font-bold">{reference.historicalTurnout}%</div>
-            </div>
-            <div className="bg-white/10 rounded-lg p-2.5 text-center">
-              <div className="text-[11px] opacity-70">المقاعد المخصصة</div>
-              <div className="text-[18px] font-bold">{reference.allocatedSeats}</div>
-            </div>
-            <div className="bg-white/10 rounded-lg p-2.5 text-center">
-              <div className="text-[11px] opacity-70">آخر تحديث للسجل</div>
-              <div className="text-[13px] font-bold">{reference.lastRegistryUpdate ? new Date(reference.lastRegistryUpdate).toLocaleDateString('ar-IQ') : '—'}</div>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+            <RefCard label="عدد الناخبين الكلي" value={reference.totalRegisteredVoters.toLocaleString()} />
+            <RefCard label="عدد المصوتين الكلي" value={reference.totalActualVoters.toLocaleString()} />
+            <RefCard label="نسبة المشاركة العامة" value={`${reference.generalTurnout}%`} />
+            <RefCard label="المصوتين (ذكور)" value={reference.maleVoters.toLocaleString()} />
+            <RefCard label="المصوتين (إناث)" value={reference.femaleVoters.toLocaleString()} />
+            <RefCard label="مراكز الاقتراع" value={reference.pollingCentersCount.toLocaleString()} />
+            <RefCard label="محطات الاقتراع" value={reference.ballotStationsCount.toLocaleString()} />
           </div>
         </div>
       )}
 
-      {/* Summary Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded p-4">
-          <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider">الناخبون المسجلون كلياً</div>
-          <div
-            className="text-[28px] font-bold text-el-primary mt-1"
-            style={{ fontFamily: 'var(--font-geist-mono)' }}
-          >
-            {totalRegistered.toLocaleString()}
+      {/* جدول بيانات الأقضية + المقارنات */}
+      {records.length > 0 && (
+        <>
+          {/* صف المجاميع */}
+          <div className="bg-el-primary/5 border border-el-primary/20 rounded-lg p-3 flex flex-wrap gap-4 text-[12px]">
+            <span className="font-bold text-el-primary">إجمالي ما تم إدخاله:</span>
+            <span>📋 {records.length} قضاء</span>
+            <span>👥 ناخبين: {totalReg.toLocaleString()}</span>
+            <span>🗳️ مصوتين: {totalAct.toLocaleString()}</span>
+            <span>👨 ذكور: {totalM.toLocaleString()}</span>
+            <span>👩 إناث: {totalF.toLocaleString()}</span>
+            <span>📊 مشاركة: {totalReg > 0 ? ((totalAct / totalReg) * 100).toFixed(2) : '0.00'}%</span>
           </div>
-          <div className="text-[10px] text-el-on-surface-variant mt-1">إجمالي الناخبين في السجلات المختارة</div>
-        </div>
 
-        <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded p-4">
-          <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider">متوسط نسبة المشاركة المتوقعة</div>
-          <div
-            className="text-[28px] font-bold text-el-secondary mt-1"
-            style={{ fontFamily: 'var(--font-geist-mono)' }}
-          >
-            {avgTurnout.toFixed(2)}%
-          </div>
-          <div className="text-[10px] text-el-on-surface-variant mt-1">بناءً على التحديثات والمشاركة التاريخية</div>
-        </div>
-
-        <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded p-4">
-          <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider">المصوتون المتوقع حضورهم</div>
-          <div
-            className="text-[28px] font-bold text-green-600 mt-1"
-            style={{ fontFamily: 'var(--font-geist-mono)' }}
-          >
-            {totalExpectedVoters.toLocaleString()}
-          </div>
-          <div className="text-[10px] text-el-on-surface-variant mt-1">إجمالي الحضور التقريبي يوم الاقتراع</div>
-        </div>
-      </section>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-el-outline w-4 h-4" />
-          <input
-            className="w-full bg-el-surface-container-lowest border border-el-outline-variant rounded h-8 pl-3 pr-8 text-[12px] focus:outline-none focus:border-el-primary"
-            placeholder="بحث بالقضاء، اسم المركز أو الناحية..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="relative">
-          <select
-            className="appearance-none bg-el-surface-container border border-el-outline-variant text-[12px] rounded pl-8 pr-3 py-1 h-8 focus:outline-none focus:border-el-primary cursor-pointer"
-            value={filterDistrict}
-            onChange={(e) => setFilterDistrict(e.target.value)}
-          >
-            <option value="">جميع الأقضية</option>
-            {DISTRICTS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-el-outline pointer-events-none" />
-        </div>
-      </div>
-
-      {/* Grid of Data */}
-      {loading ? (
-        <div className="flex items-center justify-center h-64 text-el-on-surface-variant">جاري التحميل...</div>
-      ) : filteredRecords.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 text-el-on-surface-variant gap-3">
-          <FileText className="w-12 h-12 opacity-30" />
-          <p>لا توجد بيانات مسجلة لمفوضية الانتخابات</p>
-        </div>
-      ) : (
-        <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-[12px] leading-[16px]">
-              <thead className="bg-el-surface-container border-b border-el-outline-variant text-el-on-surface-variant text-[11px] font-bold">
+          {/* جدول المقارنة */}
+          <div className="overflow-x-auto border border-el-outline-variant rounded-lg">
+            <table className="w-full text-[12px]">
+              <thead className="bg-el-surface-container">
                 <tr>
-                  <th className="px-3 py-2">المحافظة</th>
-                  <th className="px-3 py-2">القضاء</th>
-                  <th className="px-3 py-2">الناحية</th>
-                  <th className="px-3 py-2">مركز الاقتراع</th>
-                  <th className="px-3 py-2 text-center">المحطة</th>
-                  <th className="px-3 py-2 text-center">الناخبون المسجلون</th>
-                  <th className="px-3 py-2 text-center">نسبة المشاركة التاريخية</th>
-                  <th className="px-3 py-2 text-center">نسبة المشاركة المتوقعة</th>
-                  <th className="px-3 py-2 w-16 text-center">خيارات</th>
+                  <th className="p-2 text-right">القضاء</th>
+                  <th className="p-2 text-center">الناخبين</th>
+                  <th className="p-2 text-center">المصوتين</th>
+                  <th className="p-2 text-center">ذكور</th>
+                  <th className="p-2 text-center">إناث</th>
+                  <th className="p-2 text-center">مراكز</th>
+                  <th className="p-2 text-center">محطات</th>
+                  <th className="p-2 text-center bg-el-primary/10">نسبة المشاركة %</th>
+                  <th className="p-2 text-center">حذف</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-el-outline-variant/50">
-                {filteredRecords.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-el-surface-container-low/20 transition-colors">
-                    <td className="px-3 py-2">{rec.province}</td>
-                    <td className="px-3 py-2 font-bold text-el-primary">{rec.district}</td>
-                    <td className="px-3 py-2">{rec.subDistrict || '-'}</td>
-                    <td className="px-3 py-2">{rec.pollingCenter}</td>
-                    <td className="px-3 py-2 text-center font-mono">{rec.ballotStation}</td>
-                    <td className="px-3 py-2 text-center font-mono font-bold">{rec.registeredVoters.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-center font-mono">{rec.historicalTurnout}%</td>
-                    <td className="px-3 py-2 text-center font-mono text-el-secondary font-bold">
-                      {rec.expectedTurnout !== null ? `${rec.expectedTurnout}%` : '-'}
+              <tbody>
+                {records.map((r) => (
+                  <tr key={r.id} className="border-t border-el-outline-variant hover:bg-el-surface-container-lowest">
+                    <td className="p-2 font-bold">{r.district}</td>
+                    <td className="p-2 text-center font-mono">{r.registeredVoters.toLocaleString()}</td>
+                    <td className="p-2 text-center font-mono">{r.actualVoters.toLocaleString()}</td>
+                    <td className="p-2 text-center font-mono">{r.maleVoters.toLocaleString()}</td>
+                    <td className="p-2 text-center font-mono">{r.femaleVoters.toLocaleString()}</td>
+                    <td className="p-2 text-center font-mono">{r.pollingCenters}</td>
+                    <td className="p-2 text-center font-mono">{r.ballotStations}</td>
+                    <td className="p-2 text-center font-mono font-bold bg-el-primary/5 text-el-primary">
+                      {r.turnout}%
                     </td>
-                    <td className="px-3 py-2 text-center flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleStartEdit(rec)}
-                        className="text-el-secondary hover:text-el-primary transition-colors"
-                        title="تعديل"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRecord(rec.id)}
-                        className="text-red-500 hover:text-red-700 transition-colors"
-                        title="حذف"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <td className="p-2 text-center">
+                      <button onClick={() => handleDelete(r.id)} className="text-red-500 hover:text-red-700 text-[10px] cursor-pointer">✕</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </>
       )}
 
-      {/* Add/Edit Dialog */}
-      {showAddDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-el-surface-container-lowest rounded border border-el-outline-variant w-full max-w-lg">
-            <div className="flex justify-between items-center p-4 border-b border-el-outline-variant">
-              <h3 className="text-[18px] font-semibold text-el-on-surface flex items-center gap-2">
-                <FileText className="w-5 h-5 text-el-primary" />
-                {editMode ? 'تعديل السجل الانتخابي' : 'إضافة سجل اقتراع للمفوضية'}
+      {/* نافذة إضافة بيانات قضاء */}
+      {showDialog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowDialog(false)}>
+          <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-xl shadow-2xl w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-[16px] font-bold text-el-primary flex items-center gap-2">
+                <Calculator className="w-5 h-5" /> إضافة بيانات قضاء
               </h3>
-              <button
-                onClick={() => {
-                  setShowAddDialog(false);
-                  setForm(defaultForm);
-                }}
-                className="text-el-on-surface-variant hover:text-el-on-surface"
-              >
+              <button onClick={() => setShowDialog(false)} className="text-el-on-surface-variant hover:text-el-primary cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="flex flex-col gap-3">
+              {/* اختيار القضاء */}
+              <div>
+                <label className="text-[11px] font-bold text-el-on-surface-variant mb-1 block">اختيار القضاء المستهدف</label>
+                <select
+                  value={form.district}
+                  onChange={(e) => setForm({ ...form, district: e.target.value })}
+                  className="w-full border border-el-outline-variant rounded-lg p-2.5 text-[13px] bg-el-surface-container"
+                >
+                  <option value="">— اختر القضاء —</option>
+                  {availableDistricts.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                  {records.find((r) => r.district === form.district) && (
+                    <option value="" disabled>تم إدخال هذا القضاء مسبقاً</option>
+                  )}
+                </select>
+              </div>
+
+              {/* الحقول الستة اليدوية */}
               <div className="grid grid-cols-2 gap-3">
+                <NumField label="عدد الناخبين الكلي" icon={Users} value={form.registeredVoters} onChange={(v) => setForm({ ...form, registeredVoters: v })} />
+                <NumField label="عدد المصوتين الكلي" icon={UserCheck} value={form.actualVoters} onChange={(v) => setForm({ ...form, actualVoters: v })} />
+                <NumField label="عدد أصوات الذكور" icon={UserRound} value={form.maleVoters} onChange={(v) => setForm({ ...form, maleVoters: v })} />
+                <NumField label="عدد أصوات الإناث" icon={UserRoundCheck} value={form.femaleVoters} onChange={(v) => setForm({ ...form, femaleVoters: v })} />
+                <NumField label="عدد مراكز الاقتراع" icon={Building2} value={form.pollingCenters} onChange={(v) => setForm({ ...form, pollingCenters: v })} />
+                <NumField label="عدد محطات الاقتراع" icon={Hash} value={form.ballotStations} onChange={(v) => setForm({ ...form, ballotStations: v })} />
+              </div>
+
+              {/* الحقل السابع — حساب تلقائي */}
+              <div className="bg-el-primary/5 border border-el-primary/20 rounded-lg p-3 flex items-center gap-3">
+                <TrendingUp className="w-5 h-5 text-el-primary shrink-0" />
                 <div>
-                  <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">المحافظة</label>
-                  <input
-                    className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary"
-                    value={form.province}
-                    onChange={(e) => setForm({ ...form, province: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">القضاء *</label>
-                  <select
-                    className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary cursor-pointer"
-                    value={form.district}
-                    onChange={(e) => setForm({ ...form, district: e.target.value })}
-                  >
-                    {DISTRICTS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="text-[11px] text-el-on-surface-variant">نسبة المشاركة في القضاء (حساب تلقائي)</div>
+                  <div className="text-[20px] font-bold text-el-primary font-mono">{computedTurnout}%</div>
+                  <div className="text-[9px] text-el-on-surface-variant/50 mt-0.5">
+                    المعادلة: (عدد المصوتين ÷ عدد الناخبين) × 100
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">الناحية/المنطقة</label>
-                  <input
-                    className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary"
-                    placeholder="مثال: المركز"
-                    value={form.subDistrict}
-                    onChange={(e) => setForm({ ...form, subDistrict: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">مركز الاقتراع *</label>
-                  <input
-                    className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary"
-                    placeholder="مثال: مدرسة بابل"
-                    value={form.pollingCenter}
-                    onChange={(e) => setForm({ ...form, pollingCenter: e.target.value })}
-                  />
-                </div>
+              {/* أزرار الحفظ */}
+              <div className="flex gap-2 justify-end mt-2">
+                <button onClick={() => setShowDialog(false)} className="px-4 py-2 text-[13px] border border-el-outline-variant rounded-lg hover:bg-el-surface-container cursor-pointer">إلغاء</button>
+                <button
+                  onClick={handleSave}
+                  disabled={!form.district}
+                  className="px-6 py-2 bg-el-primary text-el-on-primary rounded-lg text-[13px] font-bold hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  حفظ البيانات
+                </button>
               </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">رقم المحطة *</label>
-                  <input
-                    className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary"
-                    placeholder="مثال: 1"
-                    value={form.ballotStation}
-                    onChange={(e) => setForm({ ...form, ballotStation: e.target.value })}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">عدد الناخبين الكلي</label>
-                  <input
-                    type="number"
-                    className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                    value={form.registeredVoters || ''}
-                    onChange={(e) => setForm({ ...form, registeredVoters: parseInt(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">نسبة المشاركة التاريخية (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                    placeholder="مثال: 48.97"
-                    value={form.historicalTurnout || ''}
-                    onChange={(e) => setForm({ ...form, historicalTurnout: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">نسبة المشاركة المتوقعة (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                    placeholder="اختياري"
-                    value={form.expectedTurnout}
-                    onChange={(e) => setForm({ ...form, expectedTurnout: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2 p-4 border-t border-el-outline-variant bg-el-surface-container-lowest">
-              <button
-                onClick={handleSaveRecord}
-                disabled={!form.pollingCenter || !form.ballotStation}
-                className="flex-1 bg-el-primary text-el-on-primary py-2 rounded text-[14px] font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {editMode ? 'حفظ التعديلات' : 'إضافة السجل'}
-              </button>
-              <button
-                onClick={() => {
-                  setShowAddDialog(false);
-                  setForm(defaultForm);
-                }}
-                className="flex-1 border border-el-outline-variant text-el-on-surface-variant py-2 rounded text-[14px] hover:bg-el-surface-container"
-              >
-                إلغاء
-              </button>
             </div>
           </div>
         </div>
@@ -524,3 +304,32 @@ export default function CommissionManagement() {
   );
 }
 
+/** بطاقة مرجعية صغيرة */
+function RefCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white/10 rounded-lg p-2.5 text-center">
+      <div className="text-[10px] opacity-70 leading-tight">{label}</div>
+      <div className="text-[16px] font-bold mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+/** حقل إدخال رقمي */
+function NumField({ label, icon: Icon, value, onChange }: { label: string; icon: any; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="text-[10px] font-bold text-el-on-surface-variant mb-1 block">{label}</label>
+      <div className="relative">
+        <Icon className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-el-on-surface-variant/40" />
+        <input
+          type="number"
+          min="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="0"
+          className="w-full border border-el-outline-variant rounded-lg p-2.5 pr-8 text-[13px] font-mono bg-el-surface-container text-right"
+        />
+      </div>
+    </div>
+  );
+}

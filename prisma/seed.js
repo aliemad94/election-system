@@ -124,12 +124,12 @@ async function main() {
     create: {
       province: 'ذي قار',
       totalRegisteredVoters: 1099438,
-      districtsCount: 15,
-      subDistrictsCount: 42,
+      totalActualVoters: 538390,
+      generalTurnout: 48.97,
+      maleVoters: 322970,
+      femaleVoters: 215420,
       pollingCentersCount: 527,
-      ballotStationsCount: 2222,
-      historicalTurnout: 48.5,
-      allocatedSeats: 19,
+      ballotStationsCount: 2212,
     },
   });
 
