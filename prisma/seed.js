@@ -44,8 +44,8 @@ async function main() {
   console.log('🌱 بدء تهيئة قاعدة البيانات الشاملة (JS)...');
 
   // 1. قراءة وإعداد كلمات المرور الافتراضية
-  const adminPassword = process.env.ADMIN_PASSWORD || "DqAdmin2024!Owner";
-  const userPassword = process.env.USER_PASSWORD || "DqElection2024!Secure";
+  const adminPassword = process.env.ADMIN_PASSWORD || "Admin12345!";
+  const userPassword = process.env.USER_PASSWORD || "User12345!";
 
   console.log('👤 تهيئة المستخدمين...');
   // إنشاء/تحديث مستخدم المدير (admin)
@@ -87,8 +87,8 @@ async function main() {
   });
 
   console.log('🔒 تهيئة سجلات التحكم بالوصول (AccessControl)...');
-  const visitorAccessHash = await bcrypt.hash("DqElection2024!Secure", 12);
-  const ownerAccessHash = await bcrypt.hash("DqAdmin2024!Owner", 12);
+  const visitorAccessHash = await bcrypt.hash(userPassword, 12);
+  const ownerAccessHash = await bcrypt.hash(adminPassword, 12);
 
   await prisma.accessControl.upsert({
     where: { label: 'زائر' },

@@ -51,8 +51,8 @@ async function main() {
   console.log("🌱 بدء تهيئة قاعدة البيانات (Electoral Machine)...");
 
   // ---- 1. التحقق من متغيرات البيئة ----
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  const userPassword = process.env.USER_PASSWORD;
+  const adminPassword = process.env.ADMIN_PASSWORD || "Admin12345!";
+  const userPassword = process.env.USER_PASSWORD || "User12345!";
 
   if (!adminPassword || adminPassword.length < 8) {
     console.error("❌ ADMIN_PASSWORD يجب أن تكون 8 أحرف على الأقل");
