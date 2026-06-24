@@ -177,11 +177,11 @@ export default function Home() {
       case 'tasks':
         return <TaskTracking />;
       case 'volunteers':
-        return <VolunteersManagement />;
+        return <VolunteersManagement role={authState.userRole as any} />;
       case 'public-opinion':
         return <PublicOpinion />;
       case 'competitors':
-        return <CompetitorsManagement />;
+        return <CompetitorsManagement role={authState.userRole as any} />;
       case 'data-analysis':
         return <DataAnalysis />;
       case 'early-warnings':
