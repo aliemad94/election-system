@@ -15,7 +15,7 @@ function req(path, method, body, cookie) {
       res.on('data', c => d += c);
       res.on('end', () => resolve({ 
         status: res.statusCode, 
-        body: d.substring(0, 500), 
+        body: d, 
         cookie: res.headers['set-cookie'] 
       }));
     });
@@ -104,9 +104,16 @@ function req(path, method, body, cookie) {
   // Get the key ID
   let keyId = null;
   if (key.status === 201 || key.status === 200) {
-    try { keyId = JSON.parse(key.body).id; } catch(e) {}
+    try { 
+      const parsedKey = JSON.parse(key.body);
+      keyId = parsedKey.id;
+      console.log('Parsed Key ID:', keyId);
+    } catch(e) {
+      console.error('Failed to parse key body:', e.message, 'body was:', key.body);
+    }
   }
   
+  console.log('Sending voter payload with keyId:', keyId || 'dummy-id');
   // Create voter
   const voter = await req('/api/voters', 'POST', {
     firstName: 'ناخب',
@@ -124,7 +131,7 @@ function req(path, method, body, cookie) {
   console.log('Create voter:', voter.status, voter.body.substring(0, 100));
   
   // Cleanup
-  const reset = await req('/api/reset', 'POST', {}, cookie);
+  const reset = await req('/api/reset', 'POST', { confirmReset: 'CONFIRM_RESET_ALL_DATA' }, cookie);
   console.log('Reset:', reset.status);
   
   console.log('\n=== FINAL SCORE ===');
