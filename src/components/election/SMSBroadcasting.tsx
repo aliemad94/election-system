@@ -5,6 +5,7 @@ import {
   Radio,
   Send,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Tribe {
   id: string;
@@ -35,6 +36,7 @@ export default function SMSBroadcasting() {
         if (!cancelled) setTribes(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching tribes:', err);
+        toast.error('تعذّر تحميل القبائل، يرجى التحقق من الاتصال بالشبكة');
       }
     }
     loadTribes();

@@ -59,12 +59,14 @@ async function getHandler(req: NextRequest, { user }: any) {
 
     if (page && limit) {
       findOptions.skip = (page - 1) * limit;
-      findOptions.take = limit;
+      findOptions.take = Math.min(limit, 100);
+    } else {
+      findOptions.take = 1000; // حد أقصى للحماية لمنع استنزاف الذاكرة
     }
 
     const [keys, total] = await Promise.all([
       prisma.electionKey.findMany(findOptions),
-      page && limit ? prisma.electionKey.count({ where }) : Promise.resolve(0),
+      prisma.electionKey.count({ where }),
     ]);
 
     const result = (keys as any[]).map((k) => ({

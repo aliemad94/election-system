@@ -43,7 +43,7 @@ export const createElectionKeySchema = z.object({
   // === حقول إضافية تمت ترقيتها للتوافق الشامل ===
   nickname: z.string().optional().nullable(),
   phone2: z.string().optional().nullable(),
-  email: z.string().optional().nullable(),
+  email: z.string().email().optional().nullable().or(z.literal("")),
   address: z.string().optional().nullable(),
   neighborhood: z.string().optional().nullable(),
   pollingStation: z.string().optional().nullable(),

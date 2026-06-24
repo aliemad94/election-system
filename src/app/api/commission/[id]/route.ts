@@ -36,5 +36,5 @@ async function deleteHandler(
 }
 
 export const DELETE = withAuth(deleteHandler, {
-  DELETE: ["ADMIN", "KEY_USER"],
+  DELETE: ["ADMIN"],
 });

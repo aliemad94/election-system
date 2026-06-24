@@ -234,7 +234,8 @@ function calcDecisiveIndicators(
   const expectedTurnout = expectedParticipation;
   const votesNeededToWin = 12000;
   const electoralGap = Math.max(0, votesNeededToWin - expectedVotesOnDay);
-  const winProbability = totalNetVotes > 0 ? round1(clamp((totalNetVotes / (totalRegistered * avgParticipation / 100)) * 100)) : 0;
+  const baseParticipation = (totalRegistered * avgParticipation) / 100;
+  const winProbability = (totalNetVotes > 0 && baseParticipation > 0) ? round1(clamp((totalNetVotes / baseParticipation) * 100)) : 0;
   const overallRisk = Math.round(avgDRS * 0.6 + (100 - avgKRI) * 0.4);
   const stability = Math.round(Math.min(100, avgKRI));
   const earlyWarning = Math.round(avgDRS * 0.5);
@@ -257,7 +258,7 @@ function calcDecisiveIndicators(
     areaMap,
     totalNetVotes,
     totalRegistered,
-    projectedSeats: round1(totalNetVotes > 0 ? (totalNetVotes / (totalRegistered * avgParticipation / 100)) * 18 : 0),
+    projectedSeats: round1((totalNetVotes > 0 && baseParticipation > 0) ? (totalNetVotes / baseParticipation) * 18 : 0),
   };
 }
 

@@ -38,10 +38,10 @@ export const DIMENSION_WEIGHTS = {
  * عتبات التصنيف
  */
 export const CLASSIFICATION_THRESHOLDS = {
-  WEAK: 20,       // أقل من 20: ضعيف
-  ACCEPTABLE: 50, // 20 إلى أقل من 50: مقبول
-  GOOD: 100,      // 50 إلى أقل من 100: جيد
-  // 100 فأكثر: قوي
+  WEAK: 45,       // أقل من 45: ضعيف
+  ACCEPTABLE: 60, // 45 إلى أقل من 60: مقبول
+  GOOD: 75,      // 60 إلى أقل من 75: جيد
+  // 75 فأكثر: قوي
 } as const;
 
 /**
