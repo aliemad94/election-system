@@ -321,7 +321,7 @@ NEXT_TELEMETRY_DISABLED=1
 
 ### الرابط العام:
 ```
-https://election-system-production-30d4.up.railway.app
+https://election-system-production-437f.up.railway.app
 ```
 
 ---
