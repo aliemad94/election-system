@@ -276,13 +276,15 @@ export function validatePassword(password: string): PasswordValidation {
  * استخراج عنوان IP للعميل من الطلب
  */
 export function getClientIp(request: NextRequest): string {
-  return (
-    request.headers
-      .get("x-forwarded-for")
-      ?.split(",")[0]
-      ?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown"
-  );
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const firstIp = forwardedFor.split(",")[0]?.trim();
+    if (firstIp) return firstIp;
+  }
+
+  return "unknown";
 }
 
