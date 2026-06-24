@@ -1,16 +1,26 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ShieldAlert, Plus, TrendingUp, Users, Target, FileText, Trash2, X } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { ToastAction } from '@/components/ui/toast';
+import { ShieldAlert, Plus, TrendingUp, Users, Target, FileText, Trash2, X, SlidersHorizontal } from 'lucide-react';
+import { useToast } from '@/components/election/toastprovider';
+import { canEdit, canDelete, type Role } from '@/lib/permissions';
+import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 
-export default function CompetitorsManagement() {
+interface CompetitorsManagementProps {
+  role?: Role;
+}
+
+export default function CompetitorsManagement({ role = 'OBSERVER' }: CompetitorsManagementProps) {
   const [competitors, setCompetitors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  
+  // Filter states
   const [search, setSearch] = useState('');
+  const [strengthFilter, setStrengthFilter] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
+
   const [formData, setFormData] = useState({
     candidateName: '',
     partyOrList: '',
@@ -23,21 +33,9 @@ export default function CompetitorsManagement() {
     counterStrategy: '',
   });
 
-  const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchCompetitors();
-    return () => {
-      // Execute any pending deletes immediately on unmount
-      Object.keys(timeoutsRef.current).forEach(id => {
-        clearTimeout(timeoutsRef.current[id]);
-        fetch(`/api/competitors/${id}`, { method: 'DELETE' }).catch(console.error);
-      });
-    };
-  }, []);
-
-  const fetchCompetitors = async () => {
+  const fetchCompetitors = useCallback(async () => {
     try {
       const res = await fetch('/api/competitors');
       const data = await res.json();
@@ -47,7 +45,36 @@ export default function CompetitorsManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Hook-based Multi-Timer Undo Delete
+  const onConfirmDelete = useCallback(async (item: any) => {
+    const res = await fetch(`/api/competitors/${item.id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+  }, []);
+
+  const onRestore = useCallback((item: any) => {
+    setCompetitors(prev => {
+      if (prev.some(c => c.id === item.id)) return prev;
+      return [item, ...prev];
+    });
+  }, []);
+
+  const onDeleteFailed = useCallback((item: any, _error: unknown) => {
+    onRestore(item);
+    toast(`فشل حذف المنافس ${item.candidateName} — تحقق من الاتصال وحاول مجدداً`, 'error');
+  }, [onRestore, toast]);
+
+  const { requestDelete, undoDelete } = useUndoableDelete<any>(
+    onConfirmDelete,
+    onRestore,
+    onDeleteFailed,
+    5000
+  );
+
+  useEffect(() => {
+    fetchCompetitors();
+  }, [fetchCompetitors]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +85,7 @@ export default function CompetitorsManagement() {
         body: JSON.stringify(formData),
       });
       if (res.ok) {
-        toast({ title: 'نجاح', description: 'تم تسجيل المرشح المنافس بنجاح' });
+        toast('تم تسجيل المرشح المنافس بنجاح', 'success');
         setShowAddForm(false);
         setFormData({
           candidateName: '',
@@ -78,57 +105,42 @@ export default function CompetitorsManagement() {
     }
   };
 
-  const handleDelete = (id: string, name: string) => {
-    const competitorToRestore = competitors.find(c => c.id === id);
-    if (!competitorToRestore) return;
-
+  const handleDelete = (comp: any) => {
     // Remove from UI optimistically
-    setCompetitors(prev => prev.filter(c => c.id !== id));
+    setCompetitors(prev => prev.filter(c => c.id !== comp.id));
 
-    const timeoutId = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/competitors/${id}`, { method: 'DELETE' });
-        if (!res.ok) {
-          toast({ title: 'خطأ', description: `فشل حذف المنافس ${name}`, variant: 'destructive' });
-          fetchCompetitors();
+    // Request delete via hook
+    requestDelete(comp);
+
+    toast(
+      `تم حذف المنافس ${comp.candidateName}.`,
+      'success',
+      {
+        label: 'تراجع',
+        onClick: () => {
+          undoDelete(comp.id);
         }
-      } catch (err) {
-        toast({ title: 'خطأ', description: 'تعذر الاتصال بالخادم لحذف المنافس', variant: 'destructive' });
-        fetchCompetitors();
-      }
-      delete timeoutsRef.current[id];
-    }, 5000);
-
-    timeoutsRef.current[id] = timeoutId;
-
-    toast({
-      title: 'تم حذف المنافس مؤقتاً',
-      description: `تم حذف المنافس ${name} من القائمة.`,
-      action: (
-        <ToastAction
-          altText="تراجع"
-          onClick={() => {
-            if (timeoutsRef.current[id]) {
-              clearTimeout(timeoutsRef.current[id]);
-              delete timeoutsRef.current[id];
-            }
-            setCompetitors(prev => {
-              if (prev.some(c => c.id === id)) return prev;
-              return [competitorToRestore, ...prev];
-            });
-            toast({ title: 'تم التراجع', description: `تم استعادة المنافس ${name}` });
-          }}
-        >
-          تراجع
-        </ToastAction>
-      ),
-    });
+      },
+      5000,
+      `delete-comp-${comp.id}`
+    );
   };
 
-  const filteredCompetitors = competitors.filter(comp =>
-    comp.candidateName.toLowerCase().includes(search.toLowerCase()) ||
-    comp.partyOrList.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleResetFilters = () => {
+    setSearch('');
+    setStrengthFilter('');
+    setDistrictFilter('');
+  };
+
+  const filteredCompetitors = competitors.filter(comp => {
+    const matchesSearch = comp.candidateName.toLowerCase().includes(search.toLowerCase()) ||
+      comp.partyOrList.toLowerCase().includes(search.toLowerCase());
+    const matchesStrength = strengthFilter ? String(comp.strengthLevel) === strengthFilter : true;
+    const matchesDistrict = districtFilter ? comp.district === districtFilter : true;
+    return matchesSearch && matchesStrength && matchesDistrict;
+  });
+
+  const uniqueDistricts = Array.from(new Set(competitors.map(c => c.district).filter(Boolean)));
 
   return (
     <div className="space-y-6">
@@ -137,16 +149,18 @@ export default function CompetitorsManagement() {
           <h2 className="text-[28px] leading-[36px] font-bold text-el-primary">نظام تتبع المنافسين والخصوم</h2>
           <p className="text-el-on-surface-variant text-[14px]">رصد تحركات المرشحين المنافسين في دوائر ذي قار الانتخابية وصياغة الخطط المضادة</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-el-primary text-el-on-primary py-2 px-4 rounded flex items-center gap-2 text-[14px] font-medium shadow active:scale-95 transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          إضافة مرشح منافس جديد
-        </button>
+        {canEdit(role) && (
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="bg-el-primary text-el-on-primary py-2 px-4 rounded flex items-center gap-2 text-[14px] font-medium shadow active:scale-95 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            إضافة مرشح منافس جديد
+          </button>
+        )}
       </div>
 
-      {showAddForm && (
+      {showAddForm && canEdit(role) && (
         <Card className="border-el-outline-variant bg-el-surface-container">
           <CardHeader>
             <CardTitle className="text-[18px]">تسجيل مرشح منافس</CardTitle>
@@ -277,30 +291,72 @@ export default function CompetitorsManagement() {
         </Card>
       )}
 
-      {/* Search Input with Clear Button */}
-      <div className="relative max-w-md">
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="بحث عن منافس بالاسم أو القائمة..."
-          className="bg-el-surface border border-el-outline rounded p-2 pr-9 pl-8 text-[14px] w-full"
-        />
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-el-on-surface-variant"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        {search && (
-          <button
-            onClick={() => setSearch('')}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-el-on-surface-variant hover:text-el-on-surface p-0.5 rounded-full hover:bg-el-surface-container cursor-pointer"
+      {/* Filters and Search reset */}
+      <div className="bg-el-surface-container border border-el-outline-variant p-4 rounded flex flex-col md:flex-row gap-4 items-end">
+        <div className="flex-1 flex flex-col gap-1 w-full">
+          <label className="text-xs font-bold text-el-on-surface-variant">بحث نصي</label>
+          <div className="relative w-full">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="بحث عن منافس بالاسم أو القائمة..."
+              className="bg-el-surface border border-el-outline rounded p-2 pr-9 pl-8 text-[14px] w-full"
+            />
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-el-on-surface-variant"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-el-on-surface-variant hover:text-el-on-surface p-0.5 rounded-full hover:bg-el-surface-container cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="w-full md:w-48 flex flex-col gap-1">
+          <label className="text-xs font-bold text-el-on-surface-variant">مستوى الخطورة</label>
+          <select
+            value={strengthFilter}
+            onChange={e => setStrengthFilter(e.target.value)}
+            className="bg-el-surface border border-el-outline rounded p-2 text-[14px] w-full"
           >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+            <option value="">الكل</option>
+            <option value="1">1 - ضعيف جداً</option>
+            <option value="2">2 - محدود التأثير</option>
+            <option value="3">3 - متوسط القوة</option>
+            <option value="4">4 - قوي ومؤثر</option>
+            <option value="5">5 - خطير جداً</option>
+          </select>
+        </div>
+
+        <div className="w-full md:w-48 flex flex-col gap-1">
+          <label className="text-xs font-bold text-el-on-surface-variant">القضاء</label>
+          <select
+            value={districtFilter}
+            onChange={e => setDistrictFilter(e.target.value)}
+            className="bg-el-surface border border-el-outline rounded p-2 text-[14px] w-full"
+          >
+            <option value="">الكل</option>
+            {uniqueDistricts.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={handleResetFilters}
+          className="px-4 py-2 border border-el-outline rounded text-[14px] font-bold bg-el-surface hover:bg-el-surface-container-high transition-colors w-full md:w-auto"
+        >
+          إعادة تعيين الفلاتر
+        </button>
       </div>
 
       {loading ? (
         <div className="text-center py-10">جاري تحميل بيانات المنافسين...</div>
       ) : filteredCompetitors.length === 0 ? (
-        <div className="text-center py-10 text-el-on-surface-variant">لا توجد سجلات منافسين مطابقة للبحث.</div>
+        <div className="text-center py-10 text-el-on-surface-variant">لا توجد سجلات منافسين مطابقة للبحث والفلاتر.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredCompetitors.map((comp: any) => (
@@ -313,17 +369,19 @@ export default function CompetitorsManagement() {
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] font-bold text-zinc-500">{comp.partyOrList}</span>
-                    <button
-                      onClick={() => handleDelete(comp.id, comp.candidateName)}
-                      className="p-1 text-zinc-400 hover:text-rose-600 transition-colors rounded hover:bg-rose-500/10 cursor-pointer"
-                      title="حذف المنافس"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {canDelete(role) && (
+                      <button
+                        onClick={() => handleDelete(comp)}
+                        className="p-1 text-zinc-400 hover:text-rose-600 transition-colors rounded hover:bg-rose-500/10 cursor-pointer"
+                        title="حذف المنافس"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
                 <CardTitle className="text-[18px] leading-[26px] mt-3 text-rose-950 font-bold">{comp.candidateName}</CardTitle>
-                <CardDescription className="text-[12px]">القضاء: {comp.district || 'غير محدد'} | المنطقة: {comp.primaryArea || 'غير محدد'}</CardDescription>
+                <CardDescription className="text-[12px]">القضاء: {comp.district || 'غير حدد'} | المنطقة: {comp.primaryArea || 'غير حدد'}</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 text-[13px] space-y-3 border-t border-el-outline-variant/60">
                 <div className="flex items-center gap-2">
@@ -355,5 +413,6 @@ export default function CompetitorsManagement() {
     </div>
   );
 }
+
 
 
