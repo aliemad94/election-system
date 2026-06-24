@@ -16,6 +16,16 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getSystemConfig, setSystemConfig } from "@/lib/config-store";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
+
+const accessActionSchema = z.object({
+  action: z.enum(["login", "owner-login", "logout", "toggle-access", "change-password"]),
+  password: z.string().max(128).optional(),
+  ownerPassword: z.string().max(128).optional(),
+  currentPassword: z.string().max(128).optional(),
+  newPassword: z.string().max(128).optional(),
+  enabled: z.boolean().optional(),
+});
 
 // GET /api/access — هل وصول الزوار مفعّل؟
 export async function GET() {
@@ -26,7 +36,14 @@ export async function GET() {
 // POST /api/access — معالجة كل إجراءات المصادقة
 export async function POST(req: NextRequest) {
   try {
-    const rawBody = await req.json();
+    const rawBody = await req.json().catch(() => ({}));
+    const parsed = accessActionSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, message: "بيانات الطلب غير صالحة" },
+        { status: 400 }
+      );
+    }
     const {
       action,
       password,
@@ -34,7 +51,7 @@ export async function POST(req: NextRequest) {
       currentPassword,
       newPassword,
       enabled,
-    } = rawBody;
+    } = parsed.data;
     const clientIp = getClientIp(req);
 
     // ===== تحديد المعدل للإجراءات الحساسة =====
