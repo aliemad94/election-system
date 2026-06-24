@@ -26,7 +26,7 @@ async function main() {
     path: '/api/access',
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
-  }, { action: 'owner-login', ownerPassword: 'Admin12345!' });
+  }, { action: 'owner-login', ownerPassword: 'YOUR_ADMIN_PASSWORD' });
   
   console.log('   Status:', loginRes.status);
   console.log('   Body:', loginRes.body);

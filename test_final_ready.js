@@ -28,12 +28,12 @@ function req(path, method, body, cookie) {
 (async () => {
   // Login via /api/access (the actual login flow used by the frontend)
   console.log('=== Testing /api/access (owner login) ===');
-  const login = await req('/api/access', 'POST', { action: 'owner-login', ownerPassword: 'Admin12345!' });
+  const login = await req('/api/access', 'POST', { action: 'owner-login', ownerPassword: 'YOUR_ADMIN_PASSWORD' });
   console.log('Owner login:', login.status, login.body.substring(0, 200));
   
   if (login.status !== 200) {
     // Try as visitor
-    const visitorLogin = await req('/api/access', 'POST', { action: 'login', password: 'User12345!' });
+    const visitorLogin = await req('/api/access', 'POST', { action: 'login', password: 'YOUR_USER_PASSWORD' });
     console.log('Visitor login:', visitorLogin.status, visitorLogin.body.substring(0, 200));
     return;
   }

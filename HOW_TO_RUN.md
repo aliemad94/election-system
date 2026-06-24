@@ -43,9 +43,9 @@ npm run dev
 ثم افتح المتصفح على: http://localhost:3000
 
 ## بيانات الدخول الافتراضية (بعد الـ seed)
-- المستخدم: `admin` — كلمة المرور: قيمة `ADMIN_PASSWORD` في `.env` (Admin12345!)
-- المستخدم: `observer` — كلمة المرور: قيمة `USER_PASSWORD` (User12345!)
-- المستخدم: `key_user` — كلمة المرور: قيمة `USER_PASSWORD` (User12345!)
+- المستخدم: `admin` — كلمة المرور: قيمة `ADMIN_PASSWORD` في `.env` (YOUR_ADMIN_PASSWORD)
+- المستخدم: `observer` — كلمة المرور: قيمة `USER_PASSWORD` (YOUR_USER_PASSWORD)
+- المستخدم: `key_user` — كلمة المرور: قيمة `USER_PASSWORD` (YOUR_USER_PASSWORD)
 
 ⚠️ جميع الحسابات مطالبة بتغيير كلمة المرور عند أول تسجيل دخول. يُنصح بتغيير كلمات المرور في `.env` قبل التشغيل الفعلي.
 

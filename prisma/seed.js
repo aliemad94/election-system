@@ -44,8 +44,8 @@ async function main() {
   console.log('🌱 بدء تهيئة قاعدة البيانات الشاملة (JS)...');
 
   // 1. قراءة وإعداد كلمات المرور الافتراضية
-  const adminPassword = process.env.ADMIN_PASSWORD || "Admin12345!";
-  const userPassword = process.env.USER_PASSWORD || "User12345!";
+  const adminPassword = process.env.ADMIN_PASSWORD || "YOUR_ADMIN_PASSWORD";
+  const userPassword = process.env.USER_PASSWORD || "YOUR_USER_PASSWORD";
 
   console.log('👤 تهيئة المستخدمين...');
   // إنشاء/تحديث مستخدم المدير (admin)
