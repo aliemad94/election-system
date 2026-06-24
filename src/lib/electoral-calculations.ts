@@ -132,7 +132,7 @@ export function calculateNetVotes(data: VoteData): number {
     (data.neutralVotes * VOTE_WEIGHTS.neutral) +
     (data.weakVotes * VOTE_WEIGHTS.weak);
 
-  return Math.round(netVotes * 100) / 100; // تقريب لرقمين عشريين
+  return Math.round(netVotes * 10) / 10; // تقريب الصافي لرقم عشري واحد
 }
 
 /**
@@ -166,39 +166,36 @@ export function calculateRawScore(ratings: RatingData): number {
 }
 
 /**
- * حساب الدرجة المرجّحة (Weighted Score)
- * المعادلة: weightedScore = rawScore × (totalVotes / 50)
- * يربط الجودة بالكم: مفتاح بدرجة عالية لكن بأصوات قليلة لا يتفوق على مفتاح بدرجة متوسطة بأصوات كثيرة
+ * حساب التقييم كنسبة مئوية حقيقية من الأصوات الكلية
+ * المعادلة: weightedScore = (netVotes / totalVotes) * 100
  */
-export function calculateWeightedScore(ratings: RatingData, totalVotes: number): number {
-  const rawScore = calculateRawScore(ratings);
-  const voteFactor = totalVotes / 50;
-  const weightedScore = rawScore * voteFactor;
-
-  return Math.round(weightedScore * 100) / 100;
+export function calculateWeightedScore(netVotes: number, totalVotes: number): number {
+  if (totalVotes <= 0) return 0;
+  const evaluation = (netVotes / totalVotes) * 100;
+  return Math.round(evaluation * 10) / 10;
 }
 
 /**
- * تحديد التصنيف بناءً على الدرجة المرجّحة
+ * تحديد التصنيف بناءً على النسبة المئوية للتقييم
  *
- * | الدرجة المرجّحة | التصنيف |
+ * | النسبة المئوية للتقييم | التصنيف |
  * |---|---|
- * | أقل من 20 | ضعيف |
- * | 20 إلى أقل من 50 | مقبول |
- * | 50 إلى أقل من 100 | جيد |
- * | 100 فأكثر | قوي |
+ * | أقل من 45 | ضعيف |
+ * | 45 إلى أقل من 60 | مقبول |
+ * | 60 إلى أقل من 75 | جيد |
+ * | 75 فأكثر | قوي |
  */
 export function classifyKey(weightedScore: number): ClassificationLabel {
-  if (weightedScore < CLASSIFICATION_THRESHOLDS.WEAK) {
-    return CLASSIFICATION_LABELS.WEAK;
+  if (weightedScore >= 75) {
+    return CLASSIFICATION_LABELS.STRONG;
   }
-  if (weightedScore < CLASSIFICATION_THRESHOLDS.ACCEPTABLE) {
-    return CLASSIFICATION_LABELS.ACCEPTABLE;
-  }
-  if (weightedScore < CLASSIFICATION_THRESHOLDS.GOOD) {
+  if (weightedScore >= 60) {
     return CLASSIFICATION_LABELS.GOOD;
   }
-  return CLASSIFICATION_LABELS.STRONG;
+  if (weightedScore >= 45) {
+    return CLASSIFICATION_LABELS.ACCEPTABLE;
+  }
+  return CLASSIFICATION_LABELS.WEAK;
 }
 
 /**
@@ -209,7 +206,7 @@ export function calculateAll(data: ElectoralKeyData): CalculationResult {
   const totalVotes = data.totalVotes || calculateTotalVotes(data);
   const netVotes = calculateNetVotes(data);
   const rawScore = calculateRawScore(data);
-  const weightedScore = calculateWeightedScore(data, totalVotes);
+  const weightedScore = calculateWeightedScore(netVotes, totalVotes);
   const classification = classifyKey(weightedScore);
 
   return {

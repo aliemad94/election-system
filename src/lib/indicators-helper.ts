@@ -73,28 +73,16 @@ export function enrichElectoralKey(
     totalVotes = exp;
   }
 
-  const netVotes = Math.round(
-    supportedVotes * 0.8 + neutralVotes * 0.5 + weakVotes * 0.3
-  );
+  const net = supportedVotes * 0.8 + neutralVotes * 0.5 + weakVotes * 0.3;
+  const netVotes = Math.round(net * 10) / 10;
 
   // ===== 2. التقييم الموزون (Weighted Score) =====
-  const rawScore =
-    ((key.loyaltyScore || 3) - 1) * 20 +
-    ((key.influenceLevel || 1) - 1) * 20 +
-    ((key.mobilizationCap || 1) - 1) * 15 +
-    ((key.voteProtection || 3) - 1) * 15 +
-    ((key.supportReason || 3) - 1) * 10 +
-    ((key.needsLevel || 3) - 1) * 5 +
-    ((key.politicalNote || 3) - 1) * 5 +
-    ((key.organizationalNote || 3) - 1) * 5 +
-    ((key.generalNote || 3) - 1) * 5;
-  const weightedScore = Math.round(rawScore / 2);
+  const weightedScore = totalVotes > 0 ? Math.round(((netVotes / totalVotes) * 100) * 10) / 10 : 0;
 
-  let classification = "مقبول";
-  if (weightedScore < 20) classification = "ضعيف";
-  else if (weightedScore <= 50) classification = "مقبول";
-  else if (weightedScore <= 100) classification = "جيد";
-  else classification = "قوي";
+  let classification = "ضعيف";
+  if (weightedScore >= 75) classification = "قوي";
+  else if (weightedScore >= 60) classification = "جيد";
+  else if (weightedScore >= 45) classification = "مقبول";
 
   // ===== 3. EII (Electoral Impact Index) =====
   // = (تقييم موزون × 30%) + (نسبة أصوات صافية × 25%) + (نفوذ × 25%) + (تحشيد × 20%)
