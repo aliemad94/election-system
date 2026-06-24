@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ShieldAlert, Plus, TrendingUp, Users, Target, FileText } from 'lucide-react';
+import { ShieldAlert, Plus, TrendingUp, Users, Target, FileText, Trash2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 
 export default function CompetitorsManagement() {
   const [competitors, setCompetitors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [search, setSearch] = useState('');
   const [formData, setFormData] = useState({
     candidateName: '',
     partyOrList: '',
@@ -21,10 +23,18 @@ export default function CompetitorsManagement() {
     counterStrategy: '',
   });
 
+  const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
   const { toast } = useToast();
 
   useEffect(() => {
     fetchCompetitors();
+    return () => {
+      // Execute any pending deletes immediately on unmount
+      Object.keys(timeoutsRef.current).forEach(id => {
+        clearTimeout(timeoutsRef.current[id]);
+        fetch(`/api/competitors/${id}`, { method: 'DELETE' }).catch(console.error);
+      });
+    };
   }, []);
 
   const fetchCompetitors = async () => {
@@ -67,6 +77,58 @@ export default function CompetitorsManagement() {
       console.error(err);
     }
   };
+
+  const handleDelete = (id: string, name: string) => {
+    const competitorToRestore = competitors.find(c => c.id === id);
+    if (!competitorToRestore) return;
+
+    // Remove from UI optimistically
+    setCompetitors(prev => prev.filter(c => c.id !== id));
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/competitors/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          toast({ title: 'خطأ', description: `فشل حذف المنافس ${name}`, variant: 'destructive' });
+          fetchCompetitors();
+        }
+      } catch (err) {
+        toast({ title: 'خطأ', description: 'تعذر الاتصال بالخادم لحذف المنافس', variant: 'destructive' });
+        fetchCompetitors();
+      }
+      delete timeoutsRef.current[id];
+    }, 5000);
+
+    timeoutsRef.current[id] = timeoutId;
+
+    toast({
+      title: 'تم حذف المنافس مؤقتاً',
+      description: `تم حذف المنافس ${name} من القائمة.`,
+      action: (
+        <ToastAction
+          altText="تراجع"
+          onClick={() => {
+            if (timeoutsRef.current[id]) {
+              clearTimeout(timeoutsRef.current[id]);
+              delete timeoutsRef.current[id];
+            }
+            setCompetitors(prev => {
+              if (prev.some(c => c.id === id)) return prev;
+              return [competitorToRestore, ...prev];
+            });
+            toast({ title: 'تم التراجع', description: `تم استعادة المنافس ${name}` });
+          }}
+        >
+          تراجع
+        </ToastAction>
+      ),
+    });
+  };
+
+  const filteredCompetitors = competitors.filter(comp =>
+    comp.candidateName.toLowerCase().includes(search.toLowerCase()) ||
+    comp.partyOrList.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -215,11 +277,33 @@ export default function CompetitorsManagement() {
         </Card>
       )}
 
+      {/* Search Input with Clear Button */}
+      <div className="relative max-w-md">
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="بحث عن منافس بالاسم أو القائمة..."
+          className="bg-el-surface border border-el-outline rounded p-2 pr-9 pl-8 text-[14px] w-full"
+        />
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-el-on-surface-variant"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-el-on-surface-variant hover:text-el-on-surface p-0.5 rounded-full hover:bg-el-surface-container cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {loading ? (
         <div className="text-center py-10">جاري تحميل بيانات المنافسين...</div>
+      ) : filteredCompetitors.length === 0 ? (
+        <div className="text-center py-10 text-el-on-surface-variant">لا توجد سجلات منافسين مطابقة للبحث.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {competitors.map((comp: any) => (
+          {filteredCompetitors.map((comp: any) => (
             <Card key={comp.id} className="border-el-outline-variant hover:shadow-lg transition-all">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
@@ -227,7 +311,16 @@ export default function CompetitorsManagement() {
                     <ShieldAlert className="w-3.5 h-3.5" />
                     مستوى خطورة {comp.strengthLevel}/5
                   </span>
-                  <span className="text-[13px] font-bold text-zinc-500">{comp.partyOrList}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-bold text-zinc-500">{comp.partyOrList}</span>
+                    <button
+                      onClick={() => handleDelete(comp.id, comp.candidateName)}
+                      className="p-1 text-zinc-400 hover:text-rose-600 transition-colors rounded hover:bg-rose-500/10 cursor-pointer"
+                      title="حذف المنافس"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <CardTitle className="text-[18px] leading-[26px] mt-3 text-rose-950 font-bold">{comp.candidateName}</CardTitle>
                 <CardDescription className="text-[12px]">القضاء: {comp.district || 'غير محدد'} | المنطقة: {comp.primaryArea || 'غير محدد'}</CardDescription>
@@ -236,23 +329,23 @@ export default function CompetitorsManagement() {
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-rose-500" />
                   <span className="font-bold">قاعدة الأصوات التقديرية:</span>
-                  <span className="text-rose-700 font-bold">{(comp.estimatedVotesBase || 0).toLocaleString()} صوت</span>
+                  <span className="text-rose-700 font-bold">{(Number(comp.estimatedVotesBase) || 0).toLocaleString()} صوت</span>
                 </div>
 
-                <div className="bg-zinc-50 p-2.5 rounded border border-zinc-100 space-y-1.5">
+                <div className="bg-zinc-50 p-2.5 rounded border border-zinc-100 space-y-1.5 dark:bg-el-surface-container dark:border-el-outline-variant">
                   <div>
                     <span className="text-[11px] text-emerald-600 font-bold">💪 نقاط القوة: </span>
-                    <span className="text-[13px] text-zinc-800">{comp.keyStrengths || 'غير موثقة'}</span>
+                    <span className="text-[13px] text-zinc-800 dark:text-el-on-surface">{comp.keyStrengths || 'غير موثقة'}</span>
                   </div>
                   <div>
                     <span className="text-[11px] text-rose-500 font-bold">⚠️ نقاط الضعف: </span>
-                    <span className="text-[13px] text-zinc-800">{comp.keyWeaknesses || 'غير موثقة'}</span>
+                    <span className="text-[13px] text-zinc-800 dark:text-el-on-surface">{comp.keyWeaknesses || 'غير موثقة'}</span>
                   </div>
                 </div>
 
-                <div className="bg-amber-50 p-3 rounded border border-amber-100">
-                  <span className="text-[12px] font-bold text-amber-900 block mb-1">🎯 الإستراتيجية المضادة:</span>
-                  <p className="text-[13px] text-amber-950 leading-[18px] font-medium">{comp.counterStrategy || 'لم تحدد بعد'}</p>
+                <div className="bg-amber-50 p-3 rounded border border-amber-100 dark:bg-el-surface-container-low dark:border-el-outline-variant">
+                  <span className="text-[12px] font-bold text-amber-900 dark:text-amber-400 block mb-1">🎯 الإستراتيجية المضادة:</span>
+                  <p className="text-[13px] text-amber-950 dark:text-el-on-surface leading-[18px] font-medium">{comp.counterStrategy || 'لم تحدد بعد'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -262,4 +355,5 @@ export default function CompetitorsManagement() {
     </div>
   );
 }
+
 
