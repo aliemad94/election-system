@@ -345,32 +345,24 @@ export default function ElectoralKeyManagement() {
     setShowAddDialog(true);
   };
 
-  const calcNetVotes = (s: number, n: number, w: number) => Math.round(s * 0.8 + n * 0.5 + w * 0.3);
+  const calcNetVotes = (s: number, n: number, w: number) => {
+    const net = s * 0.8 + n * 0.5 + w * 0.3;
+    return Math.round(net * 10) / 10;
+  };
   
   const calcWeighted = () => {
-    const rawScore =
-      ((form.loyaltyLevel || 3)) * 20 +
-      ((form.influenceLevel || 3)) * 20 +
-      ((form.mobilizationAbility || 3)) * 15 +
-      ((form.voteProtection || 3)) * 15 +
-      ((form.supportReason || 3)) * 10 +
-      ((form.needsLevel || 3)) * 5 +
-      ((form.politicalNote || 3)) * 5 +
-      ((form.organizationalNote || 3)) * 5 +
-      ((form.generalNote || 3)) * 5;
-
     const totalVotesVal = form.totalVotes || (form.supportedVotes + form.neutralVotes + form.weakVotes);
-    const voteFactor = totalVotesVal / 50;
-    const weightedScore = rawScore * voteFactor;
-
-    return Math.round(weightedScore * 100) / 100;
+    if (totalVotesVal <= 0) return 0;
+    const netVal = calcNetVotes(form.supportedVotes, form.neutralVotes, form.weakVotes);
+    const evaluation = (netVal / totalVotesVal) * 100;
+    return Math.round(evaluation * 10) / 10;
   };
 
   const getClassification = (score: number) => {
-    if (score < 20) return 'ضعيف';
-    if (score < 50) return 'مقبول';
-    if (score < 100) return 'جيد';
-    return 'قوي';
+    if (score >= 75) return 'قوي';
+    if (score >= 60) return 'جيد';
+    if (score >= 45) return 'مقبول';
+    return 'ضعيف';
   };
 
   const getClassColor = (c: string) => {
@@ -384,14 +376,17 @@ export default function ElectoralKeyManagement() {
   };
 
   // ملخص الإحصائيات
+  const totalNetVotes = keys.reduce((s, k) => s + k.netVotes, 0);
+  const totalGuaranteed = Math.round(totalNetVotes);
+  const avgGuaranteed = keys.length ? parseFloat((totalNetVotes / keys.length).toFixed(1)) : 0;
+
   const stats = {
     total: keys.length,
-    totalNetVotes: keys.reduce((s, k) => s + k.netVotes, 0),
+    totalNetVotes: totalNetVotes,
     avgWeighted: keys.length ? Math.round(keys.reduce((s, k) => s + k.weightedScore, 0) / keys.length) : 0,
     totalPower: Math.round(keys.reduce((s, k) => s + k.weightedScore, 0)),
-    // الأصوات المضمونة فعلياً بعد الفلترة الثنائية
-    totalGuaranteed: keys.reduce((s, k) => s + Math.round(k.netVotes * (k.weightedScore / 100)), 0),
-    avgGuaranteed: keys.length ? Math.round(keys.reduce((s, k) => s + Math.round(k.netVotes * (k.weightedScore / 100)), 0) / keys.length) : 0,
+    totalGuaranteed: totalGuaranteed,
+    avgGuaranteed: avgGuaranteed,
     strongCount: keys.filter(k => k.classification === 'قوي' || k.classification === 'قوي جداً').length,
     goodCount: keys.filter(k => k.classification === 'جيد').length,
     acceptableCount: keys.filter(k => k.classification === 'مقبول').length,
@@ -630,8 +625,7 @@ export default function ElectoralKeyManagement() {
                     <td className="px-3 py-1 text-center font-mono text-red-600">{key.weakVotes}</td>
                     <td className="px-3 py-1 text-center font-mono font-bold text-el-primary">{key.netVotes}</td>
                     <td className="px-3 py-1 text-center">
-                      <span className="font-mono font-bold">{key.weightedScore}</span>
-                      <span className="text-el-on-surface-variant text-[10px]">/100</span>
+                      <span className="font-mono font-bold">{key.weightedScore}%</span>
                     </td>
                     <td className="px-3 py-1 text-center">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getClassColor(key.classification)}`}>
