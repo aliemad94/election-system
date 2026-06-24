@@ -1,14 +1,13 @@
 // ====================================================================
-// Proxy — حماية API Routes + حقن security headers
+// Middleware — حماية API Routes + حقن security headers
 // يحمي كل /api/* ما عدا /api/access و /api/health
-// (Next.js 16: proxy.ts يحل محل middleware.ts)
 // ====================================================================
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // حماية كل /api/ ما عدا نقاط الدخول العامة
