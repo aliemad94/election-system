@@ -142,9 +142,9 @@ npm run dev
 ### بيانات الدخول:
 | المستخدم | اسم المستخدم | كلمة المرور | الدور |
 |----------|-------------|-------------|-------|
-| مدير النظام | `admin` | `Admin12345!` | ADMIN |
-| المراقب | `observer` | `User12345!` | OBSERVER |
-| مفتاح انتخابي | `key_user` | `User12345!` | KEY_USER |
+| مدير النظام | `admin` | `DhiQarOwner2026!` | ADMIN |
+| المراقب | `observer` | `DhiQarUser2026!` | OBSERVER |
+| مفتاح انتخابي | `key_user` | `DhiQarUser2026!` | KEY_USER |
 
 ---
 
@@ -434,7 +434,7 @@ npm run dev
 
 # 8. فتح المتصفح
 # http://localhost:3000
-# الدخول بـ: admin / Admin12345!
+# الدخول بـ: admin / DhiQarOwner2026!
 ```
 
 ---

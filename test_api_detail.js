@@ -16,7 +16,7 @@ function req(options, body) {
 }
 async function main() {
   const host = 'election-system-production-437f.up.railway.app';
-  const login = await req({hostname:host,path:'/api/access',method:'POST',headers:{'Content-Type':'application/json'}},{action:'owner-login',ownerPassword:'Admin12345!'});
+  const login = await req({hostname:host,path:'/api/access',method:'POST',headers:{'Content-Type':'application/json'}},{action:'owner-login',ownerPassword:'DhiQarOwner2026!'});
   const c = login.cookies.find(x=>x&&x.startsWith('election_auth='));
   if (!c) { console.log('Cookie not found! Headers:', login.cookies); return; }
   const cv = c.split(';')[0];

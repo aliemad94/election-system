@@ -19,8 +19,8 @@ npm install
 ```
 DATABASE_URL="file:./dev.db"
 JWT_SECRET="local-dev-jwt-secret-please-change-this-1234567890ab"
-ADMIN_PASSWORD="Admin12345!"
-USER_PASSWORD="User12345!"
+ADMIN_PASSWORD="DhiQarOwner2026!"
+USER_PASSWORD="DhiQarUser2026!"
 NODE_ENV="development"
 ```
 يفضّل توليد JWT_SECRET خاص بك (32+ حرف عشوائي):
@@ -43,9 +43,9 @@ npm run dev
 ثم افتح المتصفح على: http://localhost:3000
 
 ## بيانات الدخول الافتراضية (بعد الـ seed)
-- المستخدم: `admin` — كلمة المرور: قيمة `ADMIN_PASSWORD` في `.env` (Admin12345!)
-- المستخدم: `observer` — كلمة المرور: قيمة `USER_PASSWORD` (User12345!)
-- المستخدم: `key_user` — كلمة المرور: قيمة `USER_PASSWORD` (User12345!)
+- المستخدم: `admin` — كلمة المرور: قيمة `ADMIN_PASSWORD` في `.env` (DhiQarOwner2026!)
+- المستخدم: `observer` — كلمة المرور: قيمة `USER_PASSWORD` (DhiQarUser2026!)
+- المستخدم: `key_user` — كلمة المرور: قيمة `USER_PASSWORD` (DhiQarUser2026!)
 
 ⚠️ جميع الحسابات مطالبة بتغيير كلمة المرور عند أول تسجيل دخول. يُنصح بتغيير كلمات المرور في `.env` قبل التشغيل الفعلي.
 

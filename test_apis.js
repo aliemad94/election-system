@@ -24,7 +24,7 @@ async function main() {
   const login = await req({
     hostname: host, path: '/api/access', method: 'POST',
     headers: { 'Content-Type': 'application/json' }
-  }, { action: 'owner-login', ownerPassword: 'Admin12345!' });
+  }, { action: 'owner-login', ownerPassword: 'DhiQarOwner2026!' });
   
   const cookie = login.cookies.find(c => c.startsWith('election_auth='))?.split(';')[0];
   if (!cookie) { console.log('Auth failed'); return; }

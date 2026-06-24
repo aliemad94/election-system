@@ -1,7 +1,7 @@
 const http=require('https');const H='election-system-production-437f.up.railway.app';
 function req(p,m,b,c){return new Promise(R=>{const d=b?JSON.stringify(b):null;const o={hostname:H,path:p,method:m,headers:{}};if(c)o.headers.Cookie=c;if(d){o.headers['Content-Type']='application/json';o.headers['Content-Length']=Buffer.byteLength(d)}const rq=http.request(o,res=>{let x='';res.on('data',z=>x+=z);res.on('end',()=>R({s:res.statusCode,b:x,ck:res.headers['set-cookie']}))});rq.on('error',e=>R({s:0,e:e.message}));if(d)rq.write(d);rq.end()})}
 (async()=>{
-  const L=await req('/api/access','POST',{action:'owner-login',ownerPassword:'Admin12345!'});
+  const L=await req('/api/access','POST',{action:'owner-login',ownerPassword:'DhiQarOwner2026!'});
   const ck=L.ck?.[0]?.split(';')[0]||'';
   const keysResp=await req('/api/electoral-keys','GET',null,ck);
   const list=JSON.parse(keysResp.b);

@@ -6,8 +6,8 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 بدء تهيئة قاعدة البيانات (SQLite)...');
 
-  const adminPassword = process.env.ADMIN_PASSWORD || "Admin12345!";
-  const userPassword = process.env.USER_PASSWORD || "User12345!";
+  const adminPassword = process.env.ADMIN_PASSWORD || "DhiQarOwner2026!";
+  const userPassword = process.env.USER_PASSWORD || "DhiQarUser2026!";
 
   if (!adminPassword || adminPassword.length < 8) {
     console.error('❌ ADMIN_PASSWORD must be set and at least 8 characters long');
