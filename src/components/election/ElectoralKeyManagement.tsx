@@ -23,7 +23,8 @@ import {
   Zap,
   Calendar,
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from './toastprovider';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import EvaluateKeyPage from './evaluatekeypage';
 
 const DISTRICTS = ['الناصرية', 'الشطرة', 'سوق الشيوخ', 'الرفاعي', 'قلعة سكر', 'عشيرة', 'البطحاء'];
@@ -127,6 +128,7 @@ const RatingBar = ({ value, onChange, labels, weight, field }: { value: number; 
 );
 
 export default function ElectoralKeyManagement() {
+  const { toast } = useToast();
   const [keys, setKeys] = useState<ElectoralKeyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -244,7 +246,7 @@ export default function ElectoralKeyManagement() {
         }
       } else {
         const err = await res.json();
-        alert(err.error || 'فشل في حفظ المفتاح الانتخابي');
+        toast(err.error || 'فشل في حفظ المفتاح الانتخابي', 'error');
       }
     } catch (err) {
       console.error('Error saving key:', err);
@@ -824,7 +826,7 @@ export default function ElectoralKeyManagement() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">القضاء</label>
                       <select className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary cursor-pointer"
@@ -832,6 +834,19 @@ export default function ElectoralKeyManagement() {
                         {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
                     </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">العشيرة المرتبطة</label>
+                      <SearchableSelect
+                        options={tribes.map(t => ({ value: t.id, label: t.name }))}
+                        value={form.tribeId || ''}
+                        onChange={(val) => setForm({ ...form, tribeId: String(val) })}
+                        placeholder="اختر العشيرة..."
+                        searchPlaceholder="البحث عن عشيرة..."
+                        emptyMessage="لا توجد عشائر مطابقة"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">المنطقة</label>
                       <input className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary"
