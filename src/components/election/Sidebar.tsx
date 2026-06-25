@@ -20,7 +20,8 @@ import {
   Wrench,
   ShieldAlert,
   FileText,
-  Users2
+  Users2,
+  Landmark
 } from 'lucide-react';
 
 export type PageId =
@@ -40,6 +41,7 @@ export type PageId =
   | 'comms'
   | 'warroom'
   | 'commission'
+  | 'election-results'
   | 'sms';
 
 interface SidebarProps {
@@ -64,6 +66,7 @@ const navItems: { id: PageId; label: string; description: string; icon: React.El
   { id: 'advanced-indicators', label: 'التنبؤ والذكاء الاصطناعي', description: '70 مؤشر تحليلي ذكي للتوقع', icon: Brain, section: 'التحليل والذكاء' },
   { id: 'data-analysis', label: 'تحليل البيانات الشامل', description: 'منظومة تحليل متكاملة', icon: BarChart3, section: 'التحليل والذكاء' },
   { id: 'commission', label: 'بيانات المفوضية', description: 'السجلات الانتخابية وتوزيع الأقضية', icon: FileText, section: 'التحليل والذكاء' },
+  { id: 'election-results', label: 'النتائج الانتخابية الرسمية', description: 'سجلات الأصوات وتوزيع مقاعد Saint-Laguë', icon: Landmark, section: 'التحليل والذكاء' },
   { id: 'early-warnings', label: 'مراقب الإنذار المبكر', description: 'مؤشرات التهديدات والفرص', icon: AlertTriangle, section: 'التحليل والذكاء' },
   
   { id: 'fieldagent', label: 'بوابة المندوب الميداني', description: 'تأكيد الحضور وتحديث الميدان', icon: Network, section: 'الاتصال السياسي' },
