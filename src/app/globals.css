@@ -281,3 +281,97 @@
   animation: slideInRight 0.3s ease-out;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   طباعة التقارير — تحسينات تخطيط الطباعة (Print Media Styles)
+   ═══════════════════════════════════════════════════════════════ */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+    margin: 0.5cm;
+    padding: 0;
+    direction: rtl;
+  }
+
+  /* Hide navigation, sidebars, buttons, and other interactive elements */
+  nav,
+  aside,
+  header,
+  footer,
+  .print\:hidden,
+  button,
+  select,
+  input,
+  .sidebar,
+  .topbar,
+  .excel-toolbar {
+    display: none !important;
+  }
+
+  /* Adjust main container to occupy full page */
+  main,
+  .main-content,
+  .max-w-7xl,
+  .max-w-\[1440px\] {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Force white backgrounds and dark borders for printing */
+  .bg-\[var\(--el-surface\)\],
+  .bg-\[var\(--el-surface-container\)\],
+  .bg-el-surface-container-lowest,
+  .bg-gradient-to-r {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #94a3b8 !important;
+    box-shadow: none !important;
+  }
+
+  .text-white {
+    color: #000000 !important;
+  }
+
+  .text-el-secondary, .text-el-primary {
+    color: #0f172a !important;
+  }
+
+  /* Avoid breaking sections, tables, and cards across pages */
+  table,
+  tr,
+  td,
+  th,
+  .rounded-lg,
+  section,
+  .card {
+    page-break-inside: avoid !important;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #000000 !important;
+    page-break-after: avoid !important;
+    margin-top: 10px !important;
+    margin-bottom: 5px !important;
+  }
+
+  span, p, td, th {
+    color: #000000 !important;
+  }
+
+  .text-right {
+    text-align: right !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+

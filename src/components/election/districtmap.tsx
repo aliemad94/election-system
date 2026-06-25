@@ -1,127 +1,212 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// إصلاح أيقونات Leaflet الافتراضية مع Next.js
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+// Fix Leaflet marker icons issues in Next.js
+if (typeof window !== 'undefined') {
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  });
+}
 
-// GeoJSON مبسط لحدود أقضية محافظة ذي قار (إحداثيات تقريبية)
+// GeoJSON boundaries of Dhi Qar districts
 const DHI_QAR_DISTRICTS = {
   type: "FeatureCollection",
   features: [
-    { type: "Feature", properties: { name: "الناصرية", voters: 350000, turnout: 48 }, geometry: { type: "Polygon", coordinates: [[[46.2, 31.0], [46.4, 31.0], [46.4, 31.3], [46.2, 31.3], [46.2, 31.0]]] } },
-    { type: "Feature", properties: { name: "الشطرة", voters: 180000, turnout: 51 }, geometry: { type: "Polygon", coordinates: [[[46.1, 31.3], [46.3, 31.3], [46.3, 31.6], [46.1, 31.6], [46.1, 31.3]]] } },
-    { type: "Feature", properties: { name: "سوق الشيوخ", voters: 120000, turnout: 45 }, geometry: { type: "Polygon", coordinates: [[[46.4, 30.8], [46.6, 30.8], [46.6, 31.0], [46.4, 31.0], [46.4, 30.8]]] } },
-    { type: "Feature", properties: { name: "الرفاعي", voters: 95000, turnout: 52 }, geometry: { type: "Polygon", coordinates: [[[46.0, 31.5], [46.2, 31.5], [46.2, 31.8], [46.0, 31.8], [46.0, 31.5]]] } },
-    { type: "Feature", properties: { name: "قلعة سكر", voters: 82000, turnout: 46 }, geometry: { type: "Polygon", coordinates: [[[45.9, 31.7], [46.1, 31.7], [46.1, 31.9], [45.9, 31.9], [45.9, 31.7]]] } },
-    { type: "Feature", properties: { name: "الغراف", voters: 65000, turnout: 43 }, geometry: { type: "Polygon", coordinates: [[[46.3, 31.4], [46.5, 31.4], [46.5, 31.7], [46.3, 31.7], [46.3, 31.4]]] } },
-    { type: "Feature", properties: { name: "البطحاء", voters: 35000, turnout: 40 }, geometry: { type: "Polygon", coordinates: [[[45.8, 31.0], [46.0, 31.0], [46.0, 31.2], [45.8, 31.2], [45.8, 31.0]]] } },
-    { type: "Feature", properties: { name: "الدواية", voters: 29000, turnout: 44 }, geometry: { type: "Polygon", coordinates: [[[46.5, 31.1], [46.7, 31.1], [46.7, 31.3], [46.5, 31.3], [46.5, 31.1]]] } },
-    { type: "Feature", properties: { name: "الجبايش", voters: 22000, turnout: 42 }, geometry: { type: "Polygon", coordinates: [[[46.7, 30.9], [46.9, 30.9], [46.9, 31.1], [46.7, 31.1], [46.7, 30.9]]] } },
-    { type: "Feature", properties: { name: "الإصلاح", voters: 18000, turnout: 41 }, geometry: { type: "Polygon", coordinates: [[[46.0, 31.3], [46.2, 31.3], [46.2, 31.5], [46.0, 31.5], [46.0, 31.3]]] } },
-    { type: "Feature", properties: { name: "الفهود", voters: 16000, turnout: 41 }, geometry: { type: "Polygon", coordinates: [[[46.3, 30.8], [46.5, 30.8], [46.5, 31.0], [46.3, 31.0], [46.3, 30.8]]] } },
-    { type: "Feature", properties: { name: "النصر", voters: 14000, turnout: 42 }, geometry: { type: "Polygon", coordinates: [[[46.2, 31.3], [46.4, 31.3], [46.4, 31.4], [46.2, 31.4], [46.2, 31.3]]] } },
-    { type: "Feature", properties: { name: "سيد دخيل", voters: 12000, turnout: 40 }, geometry: { type: "Polygon", coordinates: [[[46.0, 31.0], [46.1, 31.0], [46.1, 31.2], [46.0, 31.2], [46.0, 31.0]]] } },
-    { type: "Feature", properties: { name: "العكيكة", voters: 11000, turnout: 39 }, geometry: { type: "Polygon", coordinates: [[[46.1, 31.7], [46.3, 31.7], [46.3, 31.8], [46.1, 31.8], [46.1, 31.7]]] } },
-    { type: "Feature", properties: { name: "الطار", voters: 10000, turnout: 40 }, geometry: { type: "Polygon", coordinates: [[[46.3, 31.7], [46.5, 31.7], [46.5, 31.8], [46.3, 31.8], [46.3, 31.7]]] } },
-    { type: "Feature", properties: { name: "الكرادي", voters: 9000, turnout: 38 }, geometry: { type: "Polygon", coordinates: [[[45.9, 31.8], [46.1, 31.8], [46.1, 31.9], [45.9, 31.9], [45.9, 31.8]]] } },
-    { type: "Feature", properties: { name: "أور", voters: 9000, turnout: 41 }, geometry: { type: "Polygon", coordinates: [[[46.5, 30.9], [46.7, 30.9], [46.7, 31.0], [46.5, 31.0], [46.5, 30.9]]] } },
-    { type: "Feature", properties: { name: "الدغارة", voters: 8500, turnout: 40 }, geometry: { type: "Polygon", coordinates: [[[46.4, 31.5], [46.6, 31.5], [46.6, 31.6], [46.4, 31.6], [46.4, 31.5]]] } },
-    { type: "Feature", properties: { name: "الفجر", voters: 8000, turnout: 40 }, geometry: { type: "Polygon", coordinates: [[[46.0, 31.5], [46.2, 31.5], [46.2, 31.6], [46.0, 31.6], [46.0, 31.5]]] } },
-    { type: "Feature", properties: { name: "كرمة بني سعيد", voters: 7500, turnout: 39 }, geometry: { type: "Polygon", coordinates: [[[46.2, 31.8], [46.4, 31.8], [46.4, 31.9], [46.2, 31.9], [46.2, 31.8]]] } },
-    { type: "Feature", properties: { name: "الغدير", voters: 7000, turnout: 39 }, geometry: { type: "Polygon", coordinates: [[[46.1, 31.0], [46.2, 31.0], [46.2, 31.1], [46.1, 31.1], [46.1, 31.0]]] } },
+    { type: "Feature", properties: { name: "الناصرية" }, geometry: { type: "Polygon", coordinates: [[[46.2, 31.0], [46.4, 31.0], [46.4, 31.3], [46.2, 31.3], [46.2, 31.0]]] } },
+    { type: "Feature", properties: { name: "الشطرة" }, geometry: { type: "Polygon", coordinates: [[[46.1, 31.3], [46.3, 31.3], [46.3, 31.6], [46.1, 31.6], [46.1, 31.3]]] } },
+    { type: "Feature", properties: { name: "سوق الشيوخ" }, geometry: { type: "Polygon", coordinates: [[[46.4, 30.8], [46.6, 30.8], [46.6, 31.0], [46.4, 31.0], [46.4, 30.8]]] } },
+    { type: "Feature", properties: { name: "الرفاعي" }, geometry: { type: "Polygon", coordinates: [[[46.0, 31.5], [46.2, 31.5], [46.2, 31.8], [46.0, 31.8], [46.0, 31.5]]] } },
+    { type: "Feature", properties: { name: "قلعة سكر" }, geometry: { type: "Polygon", coordinates: [[[45.9, 31.7], [46.1, 31.7], [46.1, 31.9], [45.9, 31.9], [45.9, 31.7]]] } },
+    { type: "Feature", properties: { name: "الغراف" }, geometry: { type: "Polygon", coordinates: [[[46.3, 31.4], [46.5, 31.4], [46.5, 31.7], [46.3, 31.7], [46.3, 31.4]]] } },
+    { type: "Feature", properties: { name: "البطحاء" }, geometry: { type: "Polygon", coordinates: [[[45.8, 31.0], [46.0, 31.0], [46.0, 31.2], [45.8, 31.2], [45.8, 31.0]]] } },
+    { type: "Feature", properties: { name: "الدواية" }, geometry: { type: "Polygon", coordinates: [[[46.5, 31.1], [46.7, 31.1], [46.7, 31.3], [46.5, 31.3], [46.5, 31.1]]] } },
+    { type: "Feature", properties: { name: "الجبايش" }, geometry: { type: "Polygon", coordinates: [[[46.7, 30.9], [46.9, 30.9], [46.9, 31.1], [46.7, 31.1], [46.7, 30.9]]] } },
+    { type: "Feature", properties: { name: "الإصلاح" }, geometry: { type: "Polygon", coordinates: [[[46.0, 31.3], [46.2, 31.3], [46.2, 31.5], [46.0, 31.5], [46.0, 31.3]]] } },
+    { type: "Feature", properties: { name: "الفهود" }, geometry: { type: "Polygon", coordinates: [[[46.3, 30.8], [46.5, 30.8], [46.5, 31.0], [46.3, 31.0], [46.3, 30.8]]] } },
+    { type: "Feature", properties: { name: "النصر" }, geometry: { type: "Polygon", coordinates: [[[46.2, 31.3], [46.4, 31.3], [46.4, 31.4], [46.2, 31.4], [46.2, 31.3]]] } },
+    { type: "Feature", properties: { name: "سيد دخيل" }, geometry: { type: "Polygon", coordinates: [[[46.0, 31.0], [46.1, 31.0], [46.1, 31.2], [46.0, 31.2], [46.0, 31.0]]] } },
   ],
 };
 
-const DISTRICT_COLORS: Record<string, string> = {
-  "الناصرية": "#1e3a5f",
-  "الشطرة": "#2d6a4f",
-  "سوق الشيوخ": "#7b2d8b",
-  "الرفاعي": "#c44536",
-  "قلعة سكر": "#e07a5f",
-  "الغراف": "#3d5a80",
-  "البطحاء": "#b5651d",
-};
-
-// تثبيت الخريطة على ذي قار
-function MapBounds({ districts }: { districts: any[] }) {
+function MapBounds() {
   const map = useMap();
   useEffect(() => {
-    map.fitBounds([[30.7, 45.7], [32.0, 47.1]], { padding: [20, 20] });
+    map.fitBounds([[30.7, 45.7], [32.0, 47.1]], { padding: [10, 10] });
   }, [map]);
   return null;
 }
 
-function getColor(name: string): string {
-  return DISTRICT_COLORS[name] || `hsl(${(name.charCodeAt(0) || 0) * 7 % 360}, 50%, 55%)`;
+function getOverlayColor(value: number, mode: 'support' | 'keys' | 'turnout'): string {
+  if (mode === 'support') {
+    if (value < 35) return '#ef4444'; // Red (Low)
+    if (value < 55) return '#f59e0b'; // Amber (Swing)
+    return '#10b981'; // Green (Strong)
+  } else if (mode === 'keys') {
+    if (value === 0) return '#1e293b';
+    if (value < 2) return '#fed7aa'; // Light orange
+    if (value < 5) return '#f97316'; // Orange
+    return '#ea580c'; // Dark orange
+  } else {
+    // Turnout
+    if (value < 30) return '#fda4af'; // light red
+    if (value < 45) return '#fed7aa'; // light orange
+    if (value < 60) return '#a7f3d0'; // light green
+    return '#10b981'; // dark green
+  }
 }
 
 interface DistrictMapProps {
   onDistrictClick?: (name: string) => void;
-  districtData?: Array<{ district: string; registeredVoters: number; actualVoters: number }>;
+  districtData?: Array<{
+    district: string;
+    registeredVoters?: number;
+    actualVoters?: number;
+    keyCount?: number;
+    netVotes?: number;
+    strength?: number;
+  }>;
   height?: number;
 }
 
-export default function DistrictMap({ onDistrictClick, districtData, height = 300 }: DistrictMapProps) {
+export default function DistrictMap({ onDistrictClick, districtData, height = 350 }: DistrictMapProps) {
+  const [overlayMode, setOverlayMode] = useState<'support' | 'keys' | 'turnout'>('support');
   const dataMap = new Map((districtData || []).map(d => [d.district, d]));
 
   const districtStyle = (feature: any) => {
     const name = feature?.properties?.name || '';
     const d = dataMap.get(name);
-    const color = getColor(name);
+    let value = 0;
+    if (d) {
+      if (overlayMode === 'support') {
+        value = d.strength ?? 0;
+      } else if (overlayMode === 'keys') {
+        value = d.keyCount ?? 0;
+      } else if (overlayMode === 'turnout') {
+        const registered = d.registeredVoters || 1;
+        const actual = d.actualVoters ?? 0;
+        value = Math.round((actual / registered) * 100);
+      }
+    }
+    const color = getOverlayColor(value, overlayMode);
     return {
       fillColor: color,
       weight: 1.5,
       opacity: 1,
-      color: '#ffffff',
-      fillOpacity: d ? 0.7 : 0.4,
+      color: 'var(--el-line)',
+      fillOpacity: d ? 0.75 : 0.15,
     };
   };
 
   const onEachDistrict = (feature: any, layer: L.Layer) => {
     const name = feature.properties.name;
     const d = dataMap.get(name);
-    const turnout = d ? Math.round((d.actualVoters / d.registeredVoters) * 100) : 0;
+    const turnout = d && d.registeredVoters ? Math.round(((d.actualVoters || 0) / d.registeredVoters) * 100) : 0;
+    
+    const content = `
+      <div style="text-align:right;font-family:IBM Plex Sans Arabic, sans-serif;font-size:12px;color:#1e293b;padding:6px;direction:rtl;" dir="rtl">
+        <b style="font-size:14px;color:#0f172a;display:block;margin-bottom:4px;border-bottom:1px solid #e2e8f0;padding-bottom:2px;">قضاء ${name}</b>
+        ${d ? `
+          <span style="display:block;margin-top:2px;">الناخبون المسجلون: <b>${d.registeredVoters?.toLocaleString() || 0}</b></span>
+          <span style="display:block;margin-top:2px;">الأصوات الصافية: <b style="color:#0f3b7d">${d.netVotes?.toLocaleString() || 0}</b></span>
+          <span style="display:block;margin-top:2px;">نسبة القوة/التأييد: <b style="color:#10b981">${d.strength || 0}%</b></span>
+          <span style="display:block;margin-top:2px;">المفاتيح النشطة: <b>${d.keyCount || 0} مفتاح</b></span>
+          <span style="display:block;margin-top:2px;">نسبة المشاركة: <b>${turnout}%</b></span>
+        ` : '<span style="color:#64748b;">لا توجد بيانات تفصيلية حالياً</span>'}
+      </div>
+    `;
 
-    layer.bindTooltip(
-      `<div style="text-align:right;font-family:sans-serif;font-size:12px">
-        <b>${name}</b><br/>
-        ${d ? `الناخبين: ${d.registeredVoters.toLocaleString()}<br/>نسبة المشاركة: ${turnout}%` : 'لا توجد بيانات'}
-      </div>`,
-      { direction: 'top', sticky: true, offset: [0, -5] }
-    );
-
-    layer.on({ click: () => onDistrictClick?.(name) });
+    layer.bindTooltip(content, { direction: 'top', sticky: true, offset: [0, -5] });
+    layer.on({
+      click: () => onDistrictClick?.(name),
+      mouseover: (e) => {
+        const lyr = e.target;
+        lyr.setStyle({ fillOpacity: 0.9, weight: 2.5 });
+      },
+      mouseout: (e) => {
+        const lyr = e.target;
+        lyr.setStyle({ fillOpacity: 0.75, weight: 1.5 });
+      }
+    });
   };
 
   return (
-    <div style={{ height, borderRadius: 8, overflow: 'hidden' }}>
-      <MapContainer
-        center={[31.05, 46.25]}
-        zoom={9}
-        style={{ height: '100%', width: '100%' }}
-        zoomControl={true}
-        scrollWheelZoom={true}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MapBounds districts={DHI_QAR_DISTRICTS.features} />
-        <GeoJSON
-          data={DHI_QAR_DISTRICTS as any}
-          style={districtStyle}
-          onEachFeature={onEachDistrict}
-        />
-      </MapContainer>
+    <div className="relative w-full rounded-lg border border-[var(--el-line)] bg-[var(--el-surface-container)] overflow-hidden flex flex-col" style={{ height }}>
+      {/* Map Control Tabs */}
+      <div className="absolute top-2.5 right-2.5 z-[1000] flex gap-1 bg-[var(--el-surface)] border border-[var(--el-line)] p-1 rounded-md shadow-lg">
+        <button
+          onClick={() => setOverlayMode('support')}
+          className={`px-2.5 py-1 text-[10px] sm:text-xs font-bold rounded transition-colors cursor-pointer ${overlayMode === 'support' ? 'bg-[var(--el-primary)] text-white' : 'text-[var(--el-muted)] hover:bg-[var(--el-surface-container)]'}`}
+        >
+          كثافة التأييد
+        </button>
+        <button
+          onClick={() => setOverlayMode('keys')}
+          className={`px-2.5 py-1 text-[10px] sm:text-xs font-bold rounded transition-colors cursor-pointer ${overlayMode === 'keys' ? 'bg-[var(--el-primary)] text-white' : 'text-[var(--el-muted)] hover:bg-[var(--el-surface-container)]'}`}
+        >
+          المفاتيح النشطة
+        </button>
+        <button
+          onClick={() => setOverlayMode('turnout')}
+          className={`px-2.5 py-1 text-[10px] sm:text-xs font-bold rounded transition-colors cursor-pointer ${overlayMode === 'turnout' ? 'bg-[var(--el-primary)] text-white' : 'text-[var(--el-muted)] hover:bg-[var(--el-surface-container)]'}`}
+        >
+          نسبة المشاركة
+        </button>
+      </div>
+
+      {/* Floating Legend */}
+      <div className="absolute bottom-2.5 right-2.5 z-[1000] bg-[var(--el-surface)] border border-[var(--el-line)] p-2 rounded-md shadow-lg text-[10px] sm:text-[11px] text-[var(--el-text)] space-y-1 w-32 sm:w-36">
+        <div className="font-bold text-center border-b border-[var(--el-line)] pb-1 mb-1.5 text-[10.5px]">دليل الخريطة</div>
+        {overlayMode === 'support' && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#10b981]" /> قوي (≥ 55%)</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#f59e0b]" /> متأرجح (35-54%)</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#ef4444]" /> ضعيف (&lt; 35%)</div>
+          </div>
+        )}
+        {overlayMode === 'keys' && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#ea580c]" /> كشافة نشطة جداً (5+)</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#f97316]" /> نشاط متوسط (2-4)</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#fed7aa]" /> نشاط محدود (1)</div>
+          </div>
+        )}
+        {overlayMode === 'turnout' && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#10b981]" /> مرتفعة (≥ 60%)</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#a7f3d0]" /> متوسطة (45-59%)</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#fda4af]" /> منخفضة (&lt; 30%)</div>
+          </div>
+        )}
+      </div>
+
+      {/* Leaflet Map */}
+      <div className="flex-grow w-full z-10">
+        <MapContainer
+          center={[31.05, 46.25]}
+          zoom={9}
+          style={{ height: '100%', width: '100%' }}
+          zoomControl={true}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <MapBounds />
+          <GeoJSON
+            data={DHI_QAR_DISTRICTS as any}
+            style={districtStyle}
+            onEachFeature={onEachDistrict}
+          />
+        </MapContainer>
+      </div>
     </div>
   );
 }

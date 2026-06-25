@@ -2,7 +2,6 @@
 
 // ====================================================================
 // WarRoom — غرفة العمليات اللحظية (Command Deck)
-// palette موحّد مع Command Deck بدل الألوان الثابتة
 // ====================================================================
 
 import { useEffect, useState } from "react";
@@ -17,8 +16,10 @@ import {
   Users,
   Trophy,
   RefreshCw,
+  Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface VoterItem {
   id: string;
@@ -52,6 +53,7 @@ export default function WarRoom() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [simulating, setSimulating] = useState(false);
 
   const load = async () => {
     setRefreshing(true);
@@ -81,6 +83,39 @@ export default function WarRoom() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleSimulate = async (count: number) => {
+    setSimulating(true);
+    try {
+      const res = await fetch(`/api/reset/simulate-turnout?count=${count}`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(data.message || `تم بنجاح تسجيل حضور ${data.checkedInCount} ناخب!`);
+        load(); // Reload statistics
+      }
+    } catch {
+      toast.error('حدث خطأ أثناء الاتصال بالخادم لمسار المحاكاة');
+    } finally {
+      setSimulating(false);
+    }
+  };
+
+  const handleResetSimulate = async () => {
+    if (!window.confirm('هل أنت متأكد من تصفير حضور جميع الناخبين في الماكينة الانتخابية؟')) return;
+    setSimulating(true);
+    try {
+      const res = await fetch('/api/reset/simulate-turnout?action=reset', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(data.message || 'تم تصفير حضور الناخبين بنجاح.');
+        load();
+      }
+    } catch {
+      toast.error('حدث خطأ أثناء تصفير الحضور');
+    } finally {
+      setSimulating(false);
+    }
+  };
+
   const votedPercentage = stats?.votedPercentage || 0;
   const districts = stats?.districts || [];
   const sortedDistricts = [...districts].sort((a, b) => b.count - a.count);
@@ -95,7 +130,7 @@ export default function WarRoom() {
   }
 
   return (
-    <div className="p-4 sm:p-5 space-y-3 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-5 space-y-3.5 max-w-7xl mx-auto" dir="rtl">
       {/* ===== رأس غرفة العمليات ===== */}
       <div className="flex items-center justify-between px-4 h-14 rounded-lg bg-[var(--el-surface)] border border-[var(--el-line)]">
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -128,12 +163,52 @@ export default function WarRoom() {
             size="sm"
             onClick={load}
             disabled={refreshing}
-            className="h-8 text-[var(--el-muted)] hover:text-[var(--el-text)] hover:bg-[var(--el-surface-container)] shrink-0"
+            className="h-8 text-[var(--el-muted)] hover:text-[var(--el-text)] hover:bg-[var(--el-surface-container)] shrink-0 cursor-pointer"
           >
             <RefreshCw
               className={`w-3.5 h-3.5 ml-1 ${refreshing ? "animate-spin" : ""}`}
             />
             <span className="hidden sm:inline text-xs">تحديث</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* ===== منصة المحاكاة والتحكم للتجربة والتدريب ===== */}
+      <div className="bg-[var(--el-surface)] border border-[rgba(242,160,36,0.25)] rounded-lg p-3.5 flex flex-col md:flex-row justify-between items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-[rgba(242,160,36,0.1)] text-[var(--el-primary)] shrink-0 animate-pulse">
+            <Zap className="w-4 h-4" />
+          </span>
+          <div>
+            <h3 className="text-xs font-bold text-[var(--el-text)]">منصة محاكاة إقبال الناخبين يوم الحسم</h3>
+            <p className="text-[10px] text-[var(--el-muted)]">تحكّم بزيادة تدفق الناخبين بشكل افتراضي لمحاكاة وتدريب كوادر غرف العمليات.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <Button
+            size="sm"
+            onClick={() => handleSimulate(25)}
+            disabled={simulating}
+            className="h-8 text-xs font-bold bg-[var(--el-primary)] hover:bg-[var(--el-primary)]/90 text-white cursor-pointer"
+          >
+            إقبال تدريجي (+25)
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => handleSimulate(100)}
+            disabled={simulating}
+            className="h-8 text-xs font-bold bg-[var(--el-primary)] hover:bg-[var(--el-primary)]/90 text-white cursor-pointer"
+          >
+            إقبال مكثف (+100)
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleResetSimulate}
+            disabled={simulating}
+            className="h-8 text-xs font-bold border-red-500/30 text-red-500 hover:bg-red-500/10 cursor-pointer"
+          >
+            تصفير يوم الاقتراع
           </Button>
         </div>
       </div>
@@ -151,18 +226,18 @@ export default function WarRoom() {
           </div>
           <div className="flex-1 overflow-y-auto max-h-[380px] custom-scroll">
             <table className="w-full text-right">
-              <thead className="sticky top-0 z-10 bg-[var(--el-surface-container)] border-b border-[var(--el-line)]">
+              <thead className="sticky top-0 z-10 bg-[var(--el-surface-container)] border-b border-[var(--el-line)] text-[var(--el-muted)]">
                 <tr>
-                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 text-[var(--el-muted)] w-20">
+                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 w-20">
                     الثقة
                   </th>
-                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 text-[var(--el-muted)]">
+                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2">
                     الاسم
                   </th>
-                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 text-center text-[var(--el-muted)] hidden sm:table-cell">
+                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 text-center hidden sm:table-cell">
                     القضاء / العشيرة
                   </th>
-                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 text-center text-[var(--el-muted)]">
+                  <th className="text-[10.5px] font-bold tracking-wide px-3 py-2 text-center">
                     إجراء
                   </th>
                 </tr>
@@ -171,8 +246,7 @@ export default function WarRoom() {
                 {voters.slice(0, 8).map((voter, index) => (
                   <tr
                     key={voter.id}
-                    className="transition-colors h-9 border-b border-[var(--el-line)] row-fade-in hover:bg-[var(--el-surface-container)]"
-                    style={{ animationDelay: `${index * 30}ms` }}
+                    className="transition-colors h-9 border-b border-[var(--el-line)] hover:bg-[var(--el-surface-container)]"
                   >
                     <td className="px-3 py-1.5">
                       <div className="flex gap-0.5">
@@ -208,7 +282,7 @@ export default function WarRoom() {
                     </td>
                     <td className="px-3 py-1.5 text-center hidden sm:table-cell">
                       <span
-                        className="chip chip-primary text-[10px]"
+                        className="bg-[var(--el-surface-container-high)] text-[var(--el-text)] border border-[var(--el-line)] px-2 py-0.5 rounded text-[10px]"
                       >
                         {voter.tribeName !== "غير محدد"
                           ? voter.tribeName
@@ -216,7 +290,7 @@ export default function WarRoom() {
                       </span>
                     </td>
                     <td className="px-3 py-1.5 text-center">
-                      <button className="text-[var(--el-text)] border border-[var(--el-line)] px-2.5 py-1 rounded-md text-[11px] flex items-center gap-1 w-full justify-center hover:bg-[var(--el-surface-container)] hover:border-[var(--el-primary)] transition-colors cursor-pointer">
+                      <button className="text-[var(--el-text)] border border-[var(--el-line)] px-2.5 py-1 rounded text-[11px] flex items-center gap-1 w-full justify-center hover:bg-[var(--el-surface-container)] hover:border-[var(--el-primary)] transition-all cursor-pointer">
                         <Phone className="w-3 h-3" />
                         اتصل
                       </button>

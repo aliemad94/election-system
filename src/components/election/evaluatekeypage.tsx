@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, ArrowLeft } from 'lucide-react';
+import { Shield, ArrowLeft, Zap } from 'lucide-react';
 
 const LOYALTY_LABELS = ['متذبذب — لا ولاء ثابت', 'ضعيف — ولاء محدود لعدة أطراف', 'متوسط — يميل للطرف المؤثر', 'عالٍ — يفضل جهة بعينها', 'قوي جداً — ولاء راسخ لا يتزحزح'];
 const INFLUENCE_LABELS = ['تأثير محدود — على نفسه فقط', 'دائرة صغيرة — الأسرة المباشرة', 'متوسط — 10-30 فرداً', 'واسع — 30-100 فرداً', 'شخصية قيادية — أكثر من 100'];
@@ -202,25 +202,66 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
               </div>
             </div>
 
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <div className="text-[11px] text-slate-400">معامل الكفاءة</div>
-                  <div className="text-3xl font-bold text-blue-400 font-mono">{efficiency}%</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-slate-400">التصنيف</div>
-                  <div className={`text-xl font-bold ${efficiency >= 100 ? 'text-green-400' : efficiency >= 50 ? 'text-blue-400' : efficiency >= 20 ? 'text-yellow-400' : 'text-red-400'}`}>
-                    {classification}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              {/* خلاصة التقييم الحسابية */}
+              <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                <h4 className="text-[12px] font-bold text-slate-300 border-b border-slate-700 pb-1.5 mb-2.5">معادلة الكفاءة الموزونة</h4>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <div className="text-[11px] text-slate-400">معامل الكفاءة</div>
+                    <div className="text-3xl font-extrabold text-blue-400 font-mono">{efficiency}%</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-slate-400">التصنيف</div>
+                    <div className={`text-lg font-bold ${efficiency >= 100 ? 'text-green-400' : efficiency >= 50 ? 'text-blue-400' : efficiency >= 20 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {classification}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-slate-400">الأصوات المضمونة</div>
+                    <div className="text-3xl font-extrabold text-green-400 font-mono">{guaranteed}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-slate-400">الأصوات المتسربة</div>
+                    <div className="text-3xl font-extrabold text-red-400 font-mono">{Math.max(0, (selectedKey?.netVotes || 0) - guaranteed)}</div>
                   </div>
                 </div>
-                <div>
-                  <div className="text-[11px] text-slate-400">الأصوات المضمونة</div>
-                  <div className="text-3xl font-bold text-green-400 font-mono">{guaranteed}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-slate-400">الأصوات المتسربة</div>
-                  <div className="text-3xl font-bold text-red-400 font-mono">{(selectedKey?.netVotes || 0) - guaranteed}</div>
+              </div>
+
+              {/* تشخيص الذكاء الاصطناعي لمخاطر التسرب */}
+              <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
+                <h4 className="text-[12px] font-bold text-blue-400 border-b border-slate-700 pb-1.5 mb-2.5 flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-blue-400 animate-pulse" /> تشخيص مخاطر تسرب الأصوات (AI Diagnostic)
+                </h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800">
+                    <span className="text-slate-400">احتمالية الالتزام الانتخابي:</span>
+                    <span className={`font-bold font-mono ${efficiency >= 70 ? 'text-green-400' : efficiency >= 45 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {efficiency}%
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 mt-2.5">
+                    <span className="text-[10px] font-bold text-slate-400 block mb-1">عوامل خطر تسرب الأصوات النشطة:</span>
+                    {(scores.loyaltyScore ?? 3) <= 2 && (
+                      <p className="text-red-400 flex gap-1.5 items-start">⚠️ <span>ولاء متذبذب أو ضعيف للجهة المنظمة.</span></p>
+                    )}
+                    {(scores.needsLevel ?? 3) <= 2 && (
+                      <p className="text-amber-400 flex gap-1.5 items-start">⚠️ <span>مطالب خدمية مرتفعة قد تؤدي لانشقاق وتراجع الأصوات.</span></p>
+                    )}
+                    {(scores.voteProtection ?? 3) <= 2 && (
+                      <p className="text-red-400 flex gap-1.5 items-start">⚠️ <span>ضعف المتابعة الميدانية وتأمين وصول الناخبين.</span></p>
+                    )}
+                    {(parseInt(accuracy) || 3) <= 2 && (
+                      <p className="text-amber-400 flex gap-1.5 items-start">⚠️ <span>دقة البيانات الميدانية مشكوك بها وتضخيم للأرقام.</span></p>
+                    )}
+                    {training !== 'مكتمل' && (
+                      <p className="text-slate-400 flex gap-1.5 items-start">ℹ️ <span>لم يتم إكمال التدريب التنظيمي للمندوبين.</span></p>
+                    )}
+                    {((scores.loyaltyScore ?? 3) > 2 && (scores.needsLevel ?? 3) > 2 && (scores.voteProtection ?? 3) > 2 && (parseInt(accuracy) || 3) > 2 && training === 'مكتمل') && (
+                      <p className="text-green-400 flex gap-1.5 items-start">✅ <span>الوضع مستقر ولا توجد مؤشرات خطر نشطة.</span></p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
