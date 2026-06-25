@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FileText, Plus, X, MapPin, Calculator, TrendingUp, Percent, Users, UserCheck, UserRoundCheck, UserRound, Building2, Hash } from 'lucide-react';
+import { FileText, Plus, X, MapPin, Calculator, TrendingUp, Percent, Users, UserCheck, UserRoundCheck, UserRound, Building2, Hash, Edit2, Trash2 } from 'lucide-react';
 
 // القائمة المعتمدة لـ 21 قضاء في محافظة ذي قار
 const DISTRICTS_21 = [
@@ -60,6 +60,21 @@ export default function CommissionManagement() {
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [form, setForm] = useState<DistrictForm>(emptyForm);
+  const [isEdit, setIsEdit] = useState(false);
+
+  const handleEditClick = (record: CommissionRecord) => {
+    setForm({
+      district: record.district,
+      registeredVoters: record.registeredVoters.toString(),
+      actualVoters: record.actualVoters.toString(),
+      maleVoters: record.maleVoters.toString(),
+      femaleVoters: record.femaleVoters.toString(),
+      pollingCenters: record.pollingCenters.toString(),
+      ballotStations: record.ballotStations.toString(),
+    });
+    setIsEdit(true);
+    setShowDialog(true);
+  };
 
   // إحصاءات المقارنة
   const computedTurnout = form.registeredVoters && form.actualVoters
@@ -105,6 +120,7 @@ export default function CommissionManagement() {
       });
       if (res.ok) {
         setForm(emptyForm);
+        setIsEdit(false);
         setShowDialog(false);
         fetchData();
       }
@@ -127,6 +143,8 @@ export default function CommissionManagement() {
   const totalAct = records.reduce((s, r) => s + r.actualVoters, 0);
   const totalM = records.reduce((s, r) => s + r.maleVoters, 0);
   const totalF = records.reduce((s, r) => s + r.femaleVoters, 0);
+  const totalCenters = records.reduce((s, r) => s + (r.pollingCenters || 0), 0);
+  const totalStations = records.reduce((s, r) => s + (r.ballotStations || 0), 0);
 
   if (loading) {
     return (
@@ -150,7 +168,7 @@ export default function CommissionManagement() {
           </p>
         </div>
         <button
-          onClick={() => { setForm(emptyForm); setShowDialog(true); }}
+          onClick={() => { setForm(emptyForm); setIsEdit(false); setShowDialog(true); }}
           className="bg-el-primary text-el-on-primary px-5 py-2.5 rounded-lg flex items-center gap-2 hover:opacity-90 transition-all shadow-sm font-bold text-[14px]"
         >
           <Plus className="w-[18px] h-[18px]" /> إضافة بيانات
@@ -188,6 +206,8 @@ export default function CommissionManagement() {
             <span>🗳️ مصوتين: {totalAct.toLocaleString()}</span>
             <span>👨 ذكور: {totalM.toLocaleString()}</span>
             <span>👩 إناث: {totalF.toLocaleString()}</span>
+            <span>🏢 مراكز الاقتراع: {totalCenters.toLocaleString()}</span>
+            <span>🔢 محطات الاقتراع: {totalStations.toLocaleString()}</span>
             <span>📊 مشاركة: {totalReg > 0 ? ((totalAct / totalReg) * 100).toFixed(2) : '0.00'}%</span>
           </div>
 
@@ -204,7 +224,7 @@ export default function CommissionManagement() {
                   <th className="p-2 text-center">مراكز</th>
                   <th className="p-2 text-center">محطات</th>
                   <th className="p-2 text-center bg-el-primary/10">نسبة المشاركة %</th>
-                  <th className="p-2 text-center">حذف</th>
+                  <th className="p-2 text-center">العمليات</th>
                 </tr>
               </thead>
               <tbody>
@@ -221,7 +241,22 @@ export default function CommissionManagement() {
                       {r.turnout}%
                     </td>
                     <td className="p-2 text-center">
-                      <button onClick={() => handleDelete(r.id)} className="text-red-500 hover:text-red-700 text-[10px] cursor-pointer">✕</button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleEditClick(r)}
+                          className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 rounded transition-all cursor-pointer"
+                          title="تعديل"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(r.id)}
+                          className="p-1 text-red-500 hover:text-red-700 hover:bg-red-500/10 rounded transition-all cursor-pointer"
+                          title="حذف"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -237,9 +272,9 @@ export default function CommissionManagement() {
           <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-xl shadow-2xl w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-[16px] font-bold text-el-primary flex items-center gap-2">
-                <Calculator className="w-5 h-5" /> إضافة بيانات قضاء
+                <Calculator className="w-5 h-5" /> {isEdit ? 'تعديل بيانات القضاء' : 'إضافة بيانات قضاء'}
               </h3>
-              <button onClick={() => setShowDialog(false)} className="text-el-on-surface-variant hover:text-el-primary cursor-pointer">
+              <button onClick={() => { setShowDialog(false); setIsEdit(false); }} className="text-el-on-surface-variant hover:text-el-primary cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -251,13 +286,15 @@ export default function CommissionManagement() {
                 <select
                   value={form.district}
                   onChange={(e) => setForm({ ...form, district: e.target.value })}
-                  className="w-full border border-el-outline-variant rounded-lg p-2.5 text-[13px] bg-el-surface-container"
+                  disabled={isEdit}
+                  className="w-full border border-el-outline-variant rounded-lg p-2.5 text-[13px] bg-el-surface-container disabled:opacity-75"
                 >
                   <option value="">— اختر القضاء —</option>
+                  {isEdit && <option value={form.district}>{form.district}</option>}
                   {availableDistricts.map((d) => (
                     <option key={d} value={d}>{d}</option>
                   ))}
-                  {records.find((r) => r.district === form.district) && (
+                  {!isEdit && records.find((r) => r.district === form.district) && (
                     <option value="" disabled>تم إدخال هذا القضاء مسبقاً</option>
                   )}
                 </select>
@@ -287,13 +324,13 @@ export default function CommissionManagement() {
 
               {/* أزرار الحفظ */}
               <div className="flex gap-2 justify-end mt-2">
-                <button onClick={() => setShowDialog(false)} className="px-4 py-2 text-[13px] border border-el-outline-variant rounded-lg hover:bg-el-surface-container cursor-pointer">إلغاء</button>
+                <button onClick={() => { setShowDialog(false); setIsEdit(false); }} className="px-4 py-2 text-[13px] border border-el-outline-variant rounded-lg hover:bg-el-surface-container cursor-pointer">إلغاء</button>
                 <button
                   onClick={handleSave}
                   disabled={!form.district}
                   className="px-6 py-2 bg-el-primary text-el-on-primary rounded-lg text-[13px] font-bold hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer"
                 >
-                  حفظ البيانات
+                  {isEdit ? 'تعديل البيانات' : 'حفظ البيانات'}
                 </button>
               </div>
             </div>
