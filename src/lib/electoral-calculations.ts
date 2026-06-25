@@ -401,3 +401,106 @@ export function generateDoubleFilterReport(keyName: string, r: DoubleFilterResul
     `| 💡 التوصية | ${r.recommendation} |`,
   ].join('\n');
 }
+
+// ====================================================================
+// ═══ حساب النتائج الانتخابية الشاملة (Election Results Calculator) ═══
+// ====================================================================
+// يحسب النتائج الفعلية للانتخابات من أصوات المرشحين المُدخلة يدوياً.
+// يستخدم Saint-Laguë المعدّل (قاسم أول 1.7) لتوزيع المقاعد.
+//
+// ملاحظة: seatsAllocated هنا يمثّل المقاعد الفعلية (نتائج رسمية)
+// وهو مستقل تماماً عن "توقعات المقاعد" (projectedSeats) في
+// indicators-engine.ts التي تُحسب لحظياً من بيانات التقديرات.
+// لا يوجد تعارض: التوقعات تُحسب لحظياً ولا تُخزَّن في DB.
+// ====================================================================
+
+import { allocateSeatsLaguë } from './seat-projection';
+
+export interface ElectionResultInput {
+  candidates: {
+    candidateName: string;
+    partyName?: string;
+    votes: number;
+    isOurCandidate?: boolean;
+  }[];
+  totalRegistered: number;
+  totalVotes: number;
+  invalidVotes: number;
+  totalSeats: number;
+}
+
+export interface ElectionResultOutput {
+  validVotes: number;
+  participationRate: number;
+  thresholdVotes: number;
+  candidates: {
+    candidateName: string;
+    partyName: string;
+    votes: number;
+    votePercentage: number;            // نسبة من الأصوات الصحيحة (أساس Saint-Laguë)
+    votePercentageOfTurnout: number;   // نسبة من إجمالي المصوتين
+    seatsAllocated: number;
+    isOurCandidate: boolean;
+  }[];
+  seatsWon: number;
+  winnerName: string;
+  winnerVotes: number;
+}
+
+/**
+ * حساب نتائج الانتخابات الشاملة من أصوات المرشحين الفعلية.
+ * يحسب نسبتين لكل مرشح:
+ *   - votePercentage: من الأصوات الصحيحة (validVotes) — أساس Saint-Laguë
+ *   - votePercentageOfTurnout: من إجمالي المصوتين (totalVotes) — المرجع الإعلامي
+ */
+export function calculateElectionResults(input: ElectionResultInput): ElectionResultOutput {
+  const validVotes = input.totalVotes - input.invalidVotes;
+  const participationRate = input.totalRegistered > 0
+    ? Math.round((input.totalVotes / input.totalRegistered) * 10000) / 100
+    : 0;
+  const thresholdVotes = Math.ceil(
+    Math.max(0, validVotes) * DHI_QAR_CONSTANTS.ELECTORAL_THRESHOLD
+  );
+
+  // توزيع المقاعد بطريقة Saint-Laguë المعدّلة (قاسم أول 1.7)
+  const parties = input.candidates.map(c => ({
+    partyName: c.candidateName,
+    votes: c.votes,
+  }));
+  const allocated = allocateSeatsLaguë(parties, input.totalSeats);
+  const allocationMap = new Map(allocated.map(a => [a.partyName, a.seats]));
+
+  // بناء النتائج مع النسبتين
+  const candidates = input.candidates.map(c => ({
+    candidateName: c.candidateName,
+    partyName: c.partyName || '',
+    votes: c.votes,
+    votePercentage: validVotes > 0
+      ? Math.round((c.votes / validVotes) * 10000) / 100
+      : 0,
+    votePercentageOfTurnout: input.totalVotes > 0
+      ? Math.round((c.votes / input.totalVotes) * 10000) / 100
+      : 0,
+    seatsAllocated: allocationMap.get(c.candidateName) || 0,
+    isOurCandidate: c.isOurCandidate || false,
+  }));
+
+  // ترتيب تنازلي بالأصوات
+  candidates.sort((a, b) => b.votes - a.votes);
+
+  const seatsWon = candidates
+    .filter(c => c.isOurCandidate)
+    .reduce((s, c) => s + c.seatsAllocated, 0);
+
+  const winner = candidates[0];
+
+  return {
+    validVotes,
+    participationRate,
+    thresholdVotes,
+    candidates,
+    seatsWon,
+    winnerName: winner?.candidateName || '',
+    winnerVotes: winner?.votes || 0,
+  };
+}

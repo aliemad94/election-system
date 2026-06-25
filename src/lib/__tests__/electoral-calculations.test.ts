@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   calculateNetVotes, calculateTotalVotes, calculateWeightedScore,
   classifyKey, calculateCostPerVote, calculateThresholdVotes,
-  calculateVotesPerSeat, filterOneNetVoters, CLASSIFICATION_LABELS,
-  DHI_QAR_CONSTANTS, VOTE_WEIGHTS,
+  calculateVotesPerSeat, filterOneNetVoters, calculateElectionResults,
+  CLASSIFICATION_LABELS, DHI_QAR_CONSTANTS, VOTE_WEIGHTS,
 } from "../electoral-calculations";
 import { allocateSeatsLaguë } from "../seat-projection";
 
@@ -131,4 +131,55 @@ describe("DHI_QAR_CONSTANTS — ثوابت المحافظة", () => {
   it("7 أقضية", () => { expect(DHI_QAR_CONSTANTS.DISTRICTS.length).toBe(7); });
   it("أصوات العتبة = 24795", () => { expect(calculateThresholdVotes()).toBe(24795); });
   it("أصوات المقعد = 27550", () => { expect(calculateVotesPerSeat()).toBe(27550); });
+});
+
+describe("calculateElectionResults — حساب النتائج الانتخابية", () => {
+  it("يحسب نسبة التصويت ونسبة الأصوات الصحيحة ونسبة إجمالي المصوتين بشكل صحيح", () => {
+    const input = {
+      candidates: [
+        { candidateName: "مرشح 1", partyName: "حزب 1", votes: 4000, isOurCandidate: true },
+        { candidateName: "مرشح 2", partyName: "حزب 2", votes: 3000, isOurCandidate: false },
+        { candidateName: "مرشح 3", partyName: "حزب 3", votes: 1000, isOurCandidate: false },
+      ],
+      totalRegistered: 10000,
+      totalVotes: 8500,
+      invalidVotes: 500,
+      totalSeats: 3,
+    };
+
+    const result = calculateElectionResults(input);
+
+    expect(result.validVotes).toBe(8000); // 8500 - 500
+    expect(result.participationRate).toBe(85.0); // 8500 / 10000 = 85%
+    expect(result.thresholdVotes).toBe(400); // 8000 * 0.05 = 400
+
+    const c1 = result.candidates.find(c => c.candidateName === "مرشح 1");
+    expect(c1).toBeDefined();
+    expect(c1!.votePercentage).toBe(50); // 4000 / 8000 = 50%
+    expect(c1!.votePercentageOfTurnout).toBeCloseTo(47.06, 1); // 4000 / 8500 = 47.06%
+
+    const c2 = result.candidates.find(c => c.candidateName === "مرشح 2");
+    expect(c2).toBeDefined();
+    expect(c2!.votePercentage).toBe(37.5); // 3000 / 8000 = 37.5%
+    expect(c2!.votePercentageOfTurnout).toBeCloseTo(35.29, 1); // 3000 / 8500 = 35.29%
+  });
+
+  it("تتباعد النسبتان عند وجود أصوات باطلة", () => {
+    const input = {
+      candidates: [
+        { candidateName: "مرشح 1", partyName: "حزب 1", votes: 5000 },
+      ],
+      totalRegistered: 10000,
+      totalVotes: 6000,
+      invalidVotes: 1000,
+      totalSeats: 1,
+    };
+
+    const result = calculateElectionResults(input);
+    const c1 = result.candidates[0];
+
+    expect(c1.votePercentage).toBe(100); // 5000 / 5000
+    expect(c1.votePercentageOfTurnout).toBeCloseTo(83.33, 1); // 5000 / 6000
+    expect(c1.votePercentage).not.toBe(c1.votePercentageOfTurnout);
+  });
 });
