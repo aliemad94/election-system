@@ -27,7 +27,8 @@ import EvaluateKeyPage from './evaluatekeypage';
 const DISTRICTS = ['الناصرية', 'الشطرة', 'سوق الشيوخ', 'الرفاعي', 'قلعة سكر', 'عشيرة', 'البطحاء'];
 const EDUCATION_LEVELS = ['يقرا ويكتب', 'ابتدائية', 'متوسطة', 'اعدادية', 'دبلوم', 'بكالوريوس', 'ماجستير', 'دكتوراه'];
 const GENDER_OPTIONS = ['ذكر', 'أنثى'];
-const MARITAL_STATUS = ['أعزب', 'متزوج', 'مطلق', 'أرمل'];
+const MARITAL_STATUS_MALE = ['أعزب', 'متزوج', 'مطلق', 'أرمل'];
+const MARITAL_STATUS_FEMALE = ['عزباء', 'متزوجة', 'مطلقة', 'أرملة'];
 
 // جداول التقييم من الوثيقة
 const LOYALTY_LABELS = ['متذبذب', 'ولاء ضعيف', 'ولاء متوسط', 'ولاء جيد', 'ولاء قوي'];
@@ -729,7 +730,7 @@ export default function ElectoralKeyManagement() {
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">الجنس</label>
                       <select className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary cursor-pointer"
-                        value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}>
+                        value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value, maritalStatus: '' })}>
                         {GENDER_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
                       </select>
                     </div>
@@ -778,9 +779,9 @@ export default function ElectoralKeyManagement() {
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">الحالة الاجتماعية</label>
                       <select className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary cursor-pointer"
-                        value={form.maritalStatus} onChange={e => setForm({ ...form, maritalStatus: e.target.value })}>
+                        value={form.maritalStatus || ''} onChange={e => setForm({ ...form, maritalStatus: e.target.value })}>
                         <option value="">اختر</option>
-                        {MARITAL_STATUS.map(m => <option key={m} value={m}>{m}</option>)}
+                        {(form.gender === 'أنثى' ? MARITAL_STATUS_FEMALE : MARITAL_STATUS_MALE).map(m => <option key={m} value={m}>{m}</option>)}
                       </select>
                     </div>
                     <div>
