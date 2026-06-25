@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { ModernDatePicker } from '@/components/ui/modern-date-picker';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { useToast } from './toastprovider';
 import {
   UserPlus, Search, Star, Phone, MapPin, ChevronDown, CheckCircle, XCircle, X, Users, Eye,
   User, MessageSquare, Key, Calendar, Edit2, ShieldAlert, Award, FileText, Trash2
@@ -118,6 +120,7 @@ const defaultForm = {
 };
 
 export default function VoterRegistration() {
+  const { toast } = useToast();
   const [tribes, setTribes] = useState<Tribe[]>([]);
   const [voters, setVoters] = useState<Voter[]>([]);
   const [electoralKeys, setElectoralKeys] = useState<{ id: string; code: string; firstName: string; fatherName: string | null }[]>([]);
@@ -217,7 +220,7 @@ export default function VoterRegistration() {
       const exportVoters = data.voters || [];
       
       if (exportVoters.length === 0) {
-        alert('لا توجد بيانات لتصديرها');
+        toast('لا توجد بيانات لتصديرها', 'warning');
         return;
       }
 
@@ -275,7 +278,7 @@ export default function VoterRegistration() {
       document.body.removeChild(link);
     } catch (err) {
       console.error('Error exporting CSV:', err);
-      alert('حدث خطأ أثناء تصدير البيانات');
+      toast('حدث خطأ أثناء تصدير البيانات', 'error');
     }
   };
   const parseSocialMedia = (socialStr: any) => {
@@ -662,16 +665,16 @@ export default function VoterRegistration() {
                   </div>
                   <div className="col-span-2">
                     <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">العشيرة المرتبطة</label>
-                    <div className="relative">
-                      <select className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[11px] appearance-none pr-8 focus:outline-none focus:border-el-primary cursor-pointer"
-                        value={form.tribeId} onChange={(e) => setForm({ ...form, tribeId: e.target.value })} >
-                        <option value="">اختر العشيرة (تلقائي حسب القضاء)</option>
-                        {tribes.filter(t => !form.district || t.district === form.district).map((t) => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-el-outline pointer-events-none" />
-                    </div>
+                    <SearchableSelect
+                      options={tribes
+                        .filter(t => !form.district || t.district === form.district)
+                        .map(t => ({ value: t.id, label: t.name }))}
+                      value={form.tribeId || ''}
+                      onChange={(val) => setForm({ ...form, tribeId: String(val) })}
+                      placeholder="اختر العشيرة (تلقائي حسب القضاء)"
+                      searchPlaceholder="البحث عن عشيرة..."
+                      emptyMessage="لا توجد عشائر مطابقة"
+                    />
                   </div>
                   <div className="col-span-2 border-t border-el-outline-variant/40 pt-2 mt-1 space-y-2">
                     <div className="flex items-center gap-2">
@@ -779,16 +782,20 @@ export default function VoterRegistration() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">المفتاح الانتخابي المسؤول</label>
-                    <div className="relative">
-                      <select className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[11px] appearance-none pr-8 focus:outline-none focus:border-el-primary cursor-pointer"
-                        value={form.electoralKeyId} onChange={(e) => setForm({ ...form, electoralKeyId: e.target.value })} >
-                        <option value="">بدون مفتاح (غير مرتبط حالياً)</option>
-                        {electoralKeys.map((ek) => (
-                          <option key={ek.id} value={ek.id}>{ek.code} - {ek.firstName} {ek.fatherName || ''}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-el-outline pointer-events-none" />
-                    </div>
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: 'بدون مفتاح (غير مرتبط حالياً)' },
+                        ...electoralKeys.map(ek => ({
+                          value: ek.id,
+                          label: `${ek.code} - ${ek.firstName} ${ek.fatherName || ''}`
+                        }))
+                      ]}
+                      value={form.electoralKeyId || ''}
+                      onChange={(val) => setForm({ ...form, electoralKeyId: String(val) })}
+                      placeholder="اختر المفتاح المسؤول..."
+                      searchPlaceholder="البحث عن مفتاح..."
+                      emptyMessage="لا توجد مفاتيح مطابقة"
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>

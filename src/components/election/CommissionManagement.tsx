@@ -238,8 +238,22 @@ export default function CommissionManagement() {
                     <td className="p-2 text-center font-mono">{r.femaleVoters.toLocaleString()}</td>
                     <td className="p-2 text-center font-mono">{r.pollingCenters}</td>
                     <td className="p-2 text-center font-mono">{r.ballotStations}</td>
-                    <td className="p-2 text-center font-mono font-bold bg-el-primary/5 text-el-primary">
-                      {r.turnout}%
+                    <td className="p-2 text-center bg-el-primary/5">
+                      <div className="flex flex-col items-center gap-1.5 min-w-[70px]">
+                        <span className="font-mono font-bold text-el-on-surface">{r.turnout}%</span>
+                        <div className="w-full h-1 bg-el-outline-variant/30 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all ${
+                              r.turnout < 35
+                                ? 'bg-red-500'
+                                : r.turnout < 55
+                                ? 'bg-amber-500'
+                                : 'bg-emerald-500'
+                            }`}
+                            style={{ width: `${Math.min(r.turnout, 100)}%` }}
+                          />
+                        </div>
+                      </div>
                     </td>
                     <td className="p-2 text-center">
                       <div className="flex items-center justify-center gap-2">
@@ -312,14 +326,29 @@ export default function CommissionManagement() {
               </div>
 
               {/* الحقل السابع — حساب تلقائي */}
-              <div className="bg-el-primary/5 border border-el-primary/20 rounded-lg p-3 flex items-center gap-3">
-                <TrendingUp className="w-5 h-5 text-el-primary shrink-0" />
-                <div>
-                  <div className="text-[11px] text-el-on-surface-variant">نسبة المشاركة في القضاء (حساب تلقائي)</div>
-                  <div className="text-[20px] font-bold text-el-primary font-mono">{computedTurnout}%</div>
-                  <div className="text-[9px] text-el-on-surface-variant/50 mt-0.5">
-                    المعادلة: (عدد المصوتين ÷ عدد الناخبين) × 100
+              {/* الحقل السابع — حساب تلقائي */}
+              <div className="bg-el-primary/5 border border-el-primary/20 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="w-5 h-5 text-el-primary shrink-0" />
+                  <div>
+                    <div className="text-[11px] text-el-on-surface-variant">نسبة المشاركة في القضاء (حساب تلقائي)</div>
+                    <div className="text-[20px] font-bold text-el-primary font-mono">{computedTurnout}%</div>
                   </div>
+                </div>
+                <div className="w-full h-1.5 bg-el-outline-variant/30 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${
+                      parseFloat(computedTurnout) < 35
+                        ? 'bg-red-500'
+                        : parseFloat(computedTurnout) < 55
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.min(parseFloat(computedTurnout) || 0, 100)}%` }}
+                  />
+                </div>
+                <div className="text-[9px] text-el-on-surface-variant/50">
+                  المعادلة: (عدد المصوتين ÷ عدد الناخبين) × 100
                 </div>
               </div>
 
