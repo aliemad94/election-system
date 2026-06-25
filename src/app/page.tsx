@@ -25,6 +25,7 @@ const CompetitorsManagement = dynamic(() => import('@/components/election/Compet
 const VolunteersManagement = dynamic(() => import('@/components/election/VolunteersManagement'), { ssr: false });
 const PublicOpinion = dynamic(() => import('@/components/election/PublicOpinion'), { ssr: false });
 const CommissionManagement = dynamic(() => import('@/components/election/CommissionManagement'), { ssr: false });
+const ElectionResultsManagement = dynamic(() => import('@/components/election/ElectionResultsManagement'), { ssr: false });
 
 import type { PageId } from '@/components/election/Sidebar';
 
@@ -196,6 +197,8 @@ export default function Home() {
         return <WarRoom />;
       case 'commission':
         return <CommissionManagement />;
+      case 'election-results':
+        return <ElectionResultsManagement />;
       case 'sms':
         return <SMSBroadcasting />;
       default:
