@@ -791,7 +791,7 @@ export default function ElectoralKeyManagement() {
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">عدد أفراد الأسرة</label>
                       <input type="number" min="0" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                        value={form.familySize || ''} onChange={e => setForm({ ...form, familySize: parseInt(e.target.value) || 0 })} />
+                        value={form.familySize === 0 ? '' : form.familySize || ''} onChange={e => setForm({ ...form, familySize: parseInt(e.target.value) || 0 })} />
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">تاريخ أول تواصل</label>
@@ -861,13 +861,13 @@ export default function ElectoralKeyManagement() {
                     <div className="col-span-2">
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">عدد الأصوات الكلي *</label>
                       <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                        value={form.totalVotes} onChange={e => setForm({ ...form, totalVotes: parseInt(e.target.value) || 0 })} />
+                        value={form.totalVotes === 0 ? '' : form.totalVotes} onChange={e => setForm({ ...form, totalVotes: parseInt(e.target.value) || 0 })} />
                       <p className="text-[10px] text-el-on-surface-variant mt-0.5">إجمالي الكتلة التصويتية المستهدفة للمفتاح</p>
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">عدد الأصوات المؤيدة</label>
                       <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                        value={form.supportedVotes} onChange={e => {
+                        value={form.supportedVotes === 0 ? '' : form.supportedVotes} onChange={e => {
                           const s = parseInt(e.target.value) || 0;
                           setForm({ ...form, supportedVotes: s });
                         }} />
@@ -876,7 +876,7 @@ export default function ElectoralKeyManagement() {
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">عدد الأصوات المحايدة</label>
                       <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                        value={form.neutralVotes} onChange={e => {
+                        value={form.neutralVotes === 0 ? '' : form.neutralVotes} onChange={e => {
                           const n = parseInt(e.target.value) || 0;
                           setForm({ ...form, neutralVotes: n });
                         }} />
@@ -885,7 +885,7 @@ export default function ElectoralKeyManagement() {
                     <div>
                       <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">عدد الأصوات الضعيفة</label>
                       <input type="number" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                        value={form.weakVotes} onChange={e => {
+                        value={form.weakVotes === 0 ? '' : form.weakVotes} onChange={e => {
                           const w = parseInt(e.target.value) || 0;
                           setForm({ ...form, weakVotes: w });
                         }} />

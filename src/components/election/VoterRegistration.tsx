@@ -620,7 +620,7 @@ export default function VoterRegistration() {
                   <div className="col-span-2 sm:col-span-1">
                     <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">عدد أفراد الأسرة</label>
                     <input type="number" min="0" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                      value={form.familySize || ''} onChange={(e) => setForm({ ...form, familySize: parseInt(e.target.value) || 0 })} />
+                      value={form.familySize === 0 ? '' : form.familySize || ''} onChange={(e) => setForm({ ...form, familySize: parseInt(e.target.value) || 0 })} />
                   </div>
                 </div>
               </div>
@@ -799,7 +799,7 @@ export default function VoterRegistration() {
                     <div>
                       <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">نسبة تأثير المفتاح (0 - 100%)</label>
                       <input type="number" min="0" max="100" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[12px] focus:outline-none focus:border-el-primary font-mono"
-                        value={form.influenceRate} onChange={(e) => setForm({ ...form, influenceRate: parseInt(e.target.value) || 0 })} />
+                        value={form.influenceRate === 0 ? '' : form.influenceRate} onChange={(e) => setForm({ ...form, influenceRate: parseInt(e.target.value) || 0 })} />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 pt-2">
