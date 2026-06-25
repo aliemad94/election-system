@@ -1324,11 +1324,11 @@ export default function VoterRegistration() {
                   <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-[12px]">
                     <div>
                       <span className="block text-[10px] text-el-on-surface-variant/70">تاريخ أول تواصل:</span>
-                      <span className="font-medium text-el-on-surface font-mono">{selectedVoter.firstContactDate ? new Date(selectedVoter.firstContactDate).toLocaleDateString('ar-EG') : 'غير محدد'}</span>
+                      <span className="font-medium text-el-on-surface font-mono">{selectedVoter.firstContactDate ? new Date(selectedVoter.firstContactDate).toLocaleDateString('en-US') : 'غير محدد'}</span>
                     </div>
                     <div>
                       <span className="block text-[10px] text-el-on-surface-variant/70">تاريخ آخر تواصل:</span>
-                      <span className="font-medium text-el-on-surface font-mono">{selectedVoter.lastContactDate ? new Date(selectedVoter.lastContactDate).toLocaleDateString('ar-EG') : 'غير محدد'}</span>
+                      <span className="font-medium text-el-on-surface font-mono">{selectedVoter.lastContactDate ? new Date(selectedVoter.lastContactDate).toLocaleDateString('en-US') : 'غير محدد'}</span>
                     </div>
                     <div className="col-span-2">
                       <span className="block text-[10px] text-el-on-surface-variant/70">نتيجة التواصل الأخير:</span>
@@ -1342,7 +1342,7 @@ export default function VoterRegistration() {
                     </div>
                     <div>
                       <span className="block text-[10px] text-el-on-surface-variant/70">موعد المتابعة القادمة:</span>
-                      <span className="font-medium text-el-on-surface font-mono">{selectedVoter.followUpDate ? new Date(selectedVoter.followUpDate).toLocaleDateString('ar-EG') : '—'}</span>
+                      <span className="font-medium text-el-on-surface font-mono">{selectedVoter.followUpDate ? new Date(selectedVoter.followUpDate).toLocaleDateString('en-US') : '—'}</span>
                     </div>
                     <div className="col-span-2 border-t border-el-outline-variant/30 pt-2 mt-1 space-y-1">
                       <span className="block text-[10px] text-el-on-surface-variant/70">التدقيق الجغرافي:</span>

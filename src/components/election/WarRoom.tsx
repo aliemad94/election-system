@@ -498,7 +498,7 @@ function MetricPill({
       <div className="min-w-0">
         <p className="text-[9.5px] text-[var(--el-muted)] truncate">{label}</p>
         <p className="text-base font-bold tnum" style={{ color }}>
-          {typeof value === "number" ? value.toLocaleString("ar-IQ") : value}
+          {typeof value === "number" ? value.toLocaleString("en-US") : value}
         </p>
       </div>
     </div>

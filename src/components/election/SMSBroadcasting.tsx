@@ -461,7 +461,7 @@ export default function SMSBroadcasting() {
                       {camp.recipients.toLocaleString()} مستلم
                     </span>
                     <span className="text-[var(--el-muted)] text-[10px]">
-                      {new Date(camp.createdAt).toLocaleString('ar-IQ')}
+                      {new Date(camp.createdAt).toLocaleString('en-US')}
                     </span>
                   </div>
                 </div>

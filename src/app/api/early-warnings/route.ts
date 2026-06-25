@@ -89,7 +89,7 @@ async function getHandler() {
         level: "MEDIUM",
         category: "خدمة معلّقة",
         title: `خدمة معلّقة: ${s.title}`,
-        description: `بانتظار منذ ${new Date(s.createdAt).toLocaleDateString("ar-IQ")}`,
+        description: `بانتظار منذ ${new Date(s.createdAt).toLocaleDateString("en-US")}`,
         metric: Math.floor((Date.now() - s.createdAt.getTime()) / (24 * 60 * 60 * 1000)),
         threshold: 7,
       });

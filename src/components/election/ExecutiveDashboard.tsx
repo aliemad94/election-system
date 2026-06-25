@@ -151,7 +151,7 @@ export default function ExecutiveDashboard() {
           </p>
         </div>
         <div className="text-[10px] text-el-on-surface-variant bg-el-surface-container px-2 py-1 rounded">
-          آخر تحديث: {new Date(m.calculatedAt || Date.now()).toLocaleString('ar-IQ')}
+          آخر تحديث: {new Date(m.calculatedAt || Date.now()).toLocaleString('en-US')}
         </div>
       </div>
 
