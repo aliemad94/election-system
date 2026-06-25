@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { ModernDatePicker } from '@/components/ui/modern-date-picker';
 import {
   Key,
   Plus,
@@ -736,12 +737,11 @@ export default function ElectoralKeyManagement() {
                       </select>
                     </div>
                     <div>
-                      <div className="relative">
-                        <input type="date" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 pl-8 text-[12px] focus:outline-none focus:border-el-primary cursor-pointer modern-date-input"
-                          value={form.dateOfBirth} onChange={e => setForm({ ...form, dateOfBirth: e.target.value })}
-                          onClick={(e) => { try { e.currentTarget.showPicker(); } catch (err) {} }} />
-                        <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-el-outline pointer-events-none" />
-                      </div>
+                      <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">العمر (تاريخ الميلاد)</label>
+                      <ModernDatePicker
+                        value={form.dateOfBirth}
+                        onChange={(val) => setForm({ ...form, dateOfBirth: val })}
+                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -794,12 +794,11 @@ export default function ElectoralKeyManagement() {
                         value={form.familySize || ''} onChange={e => setForm({ ...form, familySize: parseInt(e.target.value) || 0 })} />
                     </div>
                     <div>
-                      <div className="relative">
-                        <input type="date" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 pl-8 text-[12px] focus:outline-none focus:border-el-primary cursor-pointer modern-date-input"
-                          value={form.firstContactDate} onChange={e => setForm({ ...form, firstContactDate: e.target.value })}
-                          onClick={(e) => { try { e.currentTarget.showPicker(); } catch (err) {} }} />
-                        <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-el-outline pointer-events-none" />
-                      </div>
+                      <label className="block text-[11px] font-bold text-el-on-surface-variant mb-1">تاريخ أول تواصل</label>
+                      <ModernDatePicker
+                        value={form.firstContactDate}
+                        onChange={(val) => setForm({ ...form, firstContactDate: val })}
+                      />
                     </div>
                   </div>
                   
