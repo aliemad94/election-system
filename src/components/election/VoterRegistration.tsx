@@ -578,9 +578,12 @@ export default function VoterRegistration() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">تاريخ الميلاد (العمر)</label>
-                    <input type="date" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[11px] focus:outline-none focus:border-el-primary"
-                      value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} />
+                    <div className="relative">
+                      <input type="date" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 pl-8 text-[11px] focus:outline-none focus:border-el-primary cursor-pointer modern-date-input"
+                        value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
+                        onClick={(e) => { try { e.currentTarget.showPicker(); } catch (err) {} }} />
+                      <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-el-outline pointer-events-none" />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">الشهادة</label>
@@ -815,14 +818,20 @@ export default function VoterRegistration() {
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">أول تواصل تاريخي</label>
-                    <input type="date" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[11px] focus:outline-none focus:border-el-primary"
-                      value={form.firstContactDate} onChange={(e) => setForm({ ...form, firstContactDate: e.target.value })} />
+                    <div className="relative">
+                      <input type="date" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 pl-8 text-[11px] focus:outline-none focus:border-el-primary cursor-pointer modern-date-input"
+                        value={form.firstContactDate} onChange={(e) => setForm({ ...form, firstContactDate: e.target.value })}
+                        onClick={(e) => { try { e.currentTarget.showPicker(); } catch (err) {} }} />
+                      <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-el-outline pointer-events-none" />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">آخر تواصل فعلي</label>
-                    <input type="date" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[11px] focus:outline-none focus:border-el-primary"
-                      value={form.lastContactDate} onChange={(e) => setForm({ ...form, lastContactDate: e.target.value })} />
+                    <div className="relative">
+                      <input type="date" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 pl-8 text-[11px] focus:outline-none focus:border-el-primary cursor-pointer modern-date-input"
+                        value={form.lastContactDate} onChange={(e) => setForm({ ...form, lastContactDate: e.target.value })}
+                        onClick={(e) => { try { e.currentTarget.showPicker(); } catch (err) {} }} />
+                      <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-el-outline pointer-events-none" />
+                    </div>
                   </div>
                   <div className="col-span-2">
                     <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">نتيجة التواصل الأخير</label>
@@ -835,9 +844,12 @@ export default function VoterRegistration() {
                       value={form.nextAction} onChange={(e) => setForm({ ...form, nextAction: e.target.value })} placeholder="مثال: تلبية طلب الخدمة الصحية، اتصال تذكيري..." />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-[10px] font-bold text-el-on-surface-variant mb-1">موعد المتابعة القادمة</label>
-                    <input type="date" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 text-[11px] focus:outline-none focus:border-el-primary"
-                      value={form.followUpDate} onChange={(e) => setForm({ ...form, followUpDate: e.target.value })} />
+                    <div className="relative">
+                      <input type="date" className="w-full bg-el-surface border border-el-outline-variant rounded h-8 px-2 pl-8 text-[11px] focus:outline-none focus:border-el-primary cursor-pointer modern-date-input"
+                        value={form.followUpDate} onChange={(e) => setForm({ ...form, followUpDate: e.target.value })}
+                        onClick={(e) => { try { e.currentTarget.showPicker(); } catch (err) {} }} />
+                      <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-el-outline pointer-events-none" />
+                    </div>
                   </div>
                   <div className="col-span-2 border-t border-el-outline-variant/40 pt-2 mt-1 space-y-2">
                     <div className="flex items-center gap-2">
