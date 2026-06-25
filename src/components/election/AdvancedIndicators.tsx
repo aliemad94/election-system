@@ -575,7 +575,7 @@ export default function AdvancedIndicators() {
 
       {/* توقيت آخر حساب */}
       <p className="text-xs text-center text-[var(--el-on-surface-variant)]">
-        آخر حساب: {new Date(data.lastCalculated).toLocaleString("ar-IQ")}
+        آخر حساب: {new Date(data.lastCalculated).toLocaleString("en-US")}
       </p>
     </div>
   );

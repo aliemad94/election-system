@@ -77,7 +77,7 @@ async function getHandler() {
         id: `svc-${s.id}`,
         type: "WARNING",
         title: `خدمة معلّقة: ${s.title}`,
-        description: `بانتظار منذ ${new Date(s.createdAt).toLocaleDateString("ar-IQ")}`,
+        description: `بانتظار منذ ${new Date(s.createdAt).toLocaleDateString("en-US")}`,
         district: null,
         createdAt: s.createdAt.toISOString(),
       });

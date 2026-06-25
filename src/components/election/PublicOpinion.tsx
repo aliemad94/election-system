@@ -196,7 +196,7 @@ export default function PublicOpinion() {
                 <p className="text-el-on-surface font-medium leading-[20px]">{ind.value}</p>
                 <div className="pt-2 flex justify-between text-[11px] text-zinc-400 border-t border-zinc-100">
                   <span>المصدر: {ind.source}</span>
-                  <span>{new Date(ind.recordedAt || ind.createdAt).toLocaleDateString('ar-IQ')}</span>
+                  <span>{new Date(ind.recordedAt || ind.createdAt).toLocaleDateString('en-US')}</span>
                 </div>
               </CardContent>
             </Card>
