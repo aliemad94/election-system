@@ -188,6 +188,7 @@ export default function VolunteersManagement({ role = "OBSERVER" }: VolunteersMa
   };
 
   const handleDelete = (volunteer: Volunteer) => {
+    if (!confirm(`هل تريد الحذف؟ يرجى التأكيد (حذف المتطوع ${volunteer.fullName})`)) return;
     // Remove from UI optimistically
     setVolunteers(prev => prev.filter(v => v.id !== volunteer.id));
     setSelectedIds(prev => prev.filter(item => item !== volunteer.id));

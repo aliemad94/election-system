@@ -372,7 +372,7 @@ export default function VoterRegistration() {
   };
 
   const handleDelete = async (voterId: string, voterName: string) => {
-    if (!confirm(`هل أنت متأكد من حذف الناخب ${voterName} نهائياً؟`)) return;
+    if (!confirm(`هل تريد الحذف؟ يرجى التأكيد (حذف الناخب ${voterName} نهائياً)`)) return;
     try {
       const res = await fetch(`/api/voters/${voterId}`, { method: 'DELETE' });
       if (res.ok) {

@@ -253,7 +253,7 @@ export default function ElectoralKeyManagement() {
   // === الحذف الجماعي ===
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`هل أنت متأكد من حذف ${selectedIds.size} مفتاح؟`)) return;
+    if (!confirm(`هل تريد الحذف؟ يرجى التأكيد (حذف ${selectedIds.size} مفاتيح نهائياً)`)) return;
     try {
       for (const id of selectedIds) {
         await fetch(`/api/electoral-keys/${id}`, { method: 'DELETE' });
