@@ -106,6 +106,7 @@ export default function CompetitorsManagement({ role = 'OBSERVER' }: Competitors
   };
 
   const handleDelete = (comp: any) => {
+    if (!confirm(`هل تريد الحذف؟ يرجى التأكيد (حذف المنافس ${comp.candidateName})`)) return;
     // Remove from UI optimistically
     setCompetitors(prev => prev.filter(c => c.id !== comp.id));
 

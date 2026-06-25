@@ -130,6 +130,7 @@ export default function CommissionManagement() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm('هل تريد الحذف؟ يرجى التأكيد')) return;
     try {
       await fetch(`/api/commission/${id}`, { method: 'DELETE' });
       fetchData();
