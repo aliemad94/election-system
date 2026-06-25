@@ -1,19 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FileText, Plus, X, MapPin, Calculator, Percent, Users, Trash2, Trophy, Landmark, Eye, Info } from 'lucide-react';
+import { Landmark, FileText, ChevronDown, ChevronUp, Trophy, Percent, Users, Award, MapPin, Layers, Info } from 'lucide-react';
 
-const DISTRICTS_21 = [
-  'الناصرية', 'الشطرة', 'سوق الشيوخ', 'الرفاعي', 'الجبايش',
-  'قلعة سكر', 'الغراف', 'النصر', 'الفجر', 'الفهود',
-  'البطحاء', 'سيد دخيل', 'الإصلاح', 'الدواية', 'الطار',
-  'الكرامة', 'أور', 'الحمّار', 'العكيكة', 'الشنافية', 'الخضر',
-];
-
-interface CandidateInput {
+interface CandidateRecord {
+  id: string;
   candidateName: string;
-  partyName: string;
+  partyName: string | null;
   votes: number;
+  votePercentage: number;
+  votePercentageOfTurnout: number;
+  seatsAllocated: number;
   isOurCandidate: boolean;
 }
 
@@ -35,43 +32,22 @@ interface ElectionResultRecord {
   winnerName: string | null;
   winnerVotes: number;
   notes: string | null;
-  candidates: {
-    id: string;
-    candidateName: string;
-    partyName: string | null;
-    votes: number;
-    votePercentage: number;
-    votePercentageOfTurnout: number;
-    seatsAllocated: number;
-    isOurCandidate: boolean;
-  }[];
-  createdAt: string;
+  candidates: CandidateRecord[];
+}
+
+interface PartyGroup {
+  partyName: string;
+  partyCode: string;
+  totalVotes: number;
+  votePercentage: number;
+  seatsAllocated: number;
+  candidates: CandidateRecord[];
 }
 
 export default function ElectionResultsManagement() {
   const [results, setResults] = useState<ElectionResultRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showDialog, setShowDialog] = useState(false);
-  const [showDetailsDialog, setShowDetailsDialog] = useState<ElectionResultRecord | null>(null);
-  
-  // Form State
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [scope, setScope] = useState('محافظة');
-  const [district, setDistrict] = useState('');
-  const [electionType, setElectionType] = useState('برلمانية');
-  const [totalRegistered, setTotalRegistered] = useState('');
-  const [totalVotes, setTotalVotes] = useState('');
-  const [invalidVotes, setInvalidVotes] = useState('');
-  const [totalSeats, setTotalSeats] = useState('18');
-  const [status, setStatus] = useState('أولية');
-  const [notes, setNotes] = useState('');
-  const [candidates, setCandidates] = useState<CandidateInput[]>([]);
-  
-  // Candidate Form Row State
-  const [cName, setCName] = useState('');
-  const [cParty, setCParty] = useState('');
-  const [cVotes, setCVotes] = useState('');
-  const [cIsOur, setCIsOur] = useState(false);
+  const [expandedParty, setExpandedParty] = useState<string | null>(null);
 
   const fetchResults = useCallback(async () => {
     try {
@@ -91,584 +67,257 @@ export default function ElectionResultsManagement() {
     fetchResults();
   }, [fetchResults]);
 
-  const handleAddCandidate = () => {
-    if (!cName || !cVotes) return;
-    setCandidates([
-      ...candidates,
-      {
-        candidateName: cName,
-        partyName: cParty,
-        votes: Number(cVotes) || 0,
-        isOurCandidate: cIsOur,
-      },
-    ]);
-    setCName('');
-    setCParty('');
-    setCVotes('');
-    setCIsOur(false);
+  // دالة تجميع المرشحين حسب الأحزاب وقراءة كود الكيان
+  const getPartyGroups = (candidates: CandidateRecord[], totalValidVotes: number): PartyGroup[] => {
+    const groups: Record<string, CandidateRecord[]> = {};
+    candidates.forEach((c) => {
+      const pName = c.partyName || 'مستقلون / أخرى';
+      if (!groups[pName]) groups[pName] = [];
+      groups[pName].push(c);
+    });
+
+    const partyList = Object.keys(groups).map((pName) => {
+      const partyCandidates = groups[pName];
+      const totalVotes = partyCandidates.reduce((s, c) => s + c.votes, 0);
+      const seatsAllocated = partyCandidates.reduce((s, c) => s + c.seatsAllocated, 0);
+      const votePercentage = totalValidVotes > 0 ? (totalVotes / totalValidVotes) * 100 : 0;
+
+      // استخراج كود الكيان من بين القوسين إن وجد (مثل: ائتلاف الاعمار والتنمية (207))
+      const match = pName.match(/^(.*?)(?:\s*\((\d+)\))?$/);
+      const name = match ? match[1].trim() : pName;
+      const code = match && match[2] ? match[2] : '—';
+
+      // ترتيب مرشحي الحزب تنازلياً حسب أصواتهم (أصوات المرشح)
+      const sortedCandidates = [...partyCandidates].sort((a, b) => b.votes - a.votes);
+
+      return {
+        partyName: name,
+        partyCode: code,
+        totalVotes,
+        votePercentage: Math.round(votePercentage * 100) / 100,
+        seatsAllocated,
+        candidates: sortedCandidates,
+      };
+    });
+
+    // ترتيب الأحزاب تنازلياً حسب إجمالي الأصوات
+    return partyList.sort((a, b) => b.totalVotes - a.totalVotes);
   };
 
-  const handleRemoveCandidate = (index: number) => {
-    setCandidates(candidates.filter((_, i) => i !== index));
-  };
-
-  const handleSave = async () => {
-    if (!year || !scope || !electionType || candidates.length === 0) {
-      alert('يرجى ملء جميع الحقول المطلوبة وإضافة مرشح واحد على الأقل.');
-      return;
-    }
-    try {
-      const res = await fetch('/api/election-results/historical', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          year,
-          district: scope === 'قضاء' ? district : null,
-          scope,
-          electionType,
-          totalRegistered: Number(totalRegistered) || 0,
-          totalVotes: Number(totalVotes) || 0,
-          invalidVotes: Number(invalidVotes) || 0,
-          totalSeats: Number(totalSeats) || 0,
-          status,
-          notes,
-          candidates,
-        }),
-      });
-      if (res.ok) {
-        setShowDialog(false);
-        // Reset form
-        setYear(new Date().getFullYear());
-        setScope('محافظة');
-        setDistrict('');
-        setElectionType('برلمانية');
-        setTotalRegistered('');
-        setTotalVotes('');
-        setInvalidVotes('');
-        setTotalSeats('18');
-        setStatus('أولية');
-        setNotes('');
-        setCandidates([]);
-        fetchResults();
-      } else {
-        const errorData = await res.json();
-        alert(errorData.error || 'حدث خطأ أثناء حفظ النتائج.');
-      }
-    } catch (err) {
-      console.error('Error saving results:', err);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('هل تريد الحذف النهائي؟ يرجى التأكيد')) return;
-    try {
-      const res = await fetch(`/api/election-results/historical/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        fetchResults();
-      }
-    } catch (err) {
-      console.error('Error deleting result:', err);
-    }
+  const togglePartyExpand = (partyKey: string) => {
+    setExpandedParty(expandedParty === partyKey ? null : partyKey);
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 gap-3">
-        <FileText className="w-6 h-6 animate-pulse text-el-primary" />
-        <span className="text-el-on-surface-variant">جاري تحميل النتائج الانتخابية التاريخية...</span>
+        <Landmark className="w-6 h-6 animate-pulse text-el-primary" />
+        <span className="text-el-on-surface-variant">جاري تحميل لوحة النتائج الرسمية...</span>
       </div>
     );
   }
 
+  // نأخذ نتيجة 2025 كنسخة عرض افتراضية رئيسية
+  const result2025 = results.find((r) => r.year === 2025) || results[0];
+
+  if (!result2025) {
+    return (
+      <div className="bg-el-surface-container border border-el-outline-variant rounded-xl p-8 text-center flex flex-col items-center gap-3">
+        <Landmark className="w-12 h-12 text-el-on-surface-variant/40" />
+        <p className="text-el-on-surface font-semibold font-bold">لا توجد نتائج انتخابات مسجلة</p>
+      </div>
+    );
+  }
+
+  const partyGroups = getPartyGroups(result2025.candidates, result2025.validVotes);
+  const sumWinningVotes = partyGroups.reduce((s, p) => s + p.totalVotes, 0);
+  const winPercentOfValid = result2025.validVotes > 0 
+    ? Math.round((sumWinningVotes / result2025.validVotes) * 1000) / 10 
+    : 0;
+
   return (
-    <div className="flex flex-col gap-4 max-w-[1440px] mx-auto w-full">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-[24px] font-bold text-el-primary flex items-center gap-2">
-            <Landmark className="w-6 h-6" /> نتائج الانتخابات التاريخية والرسمية
-          </h1>
-          <p className="text-[12px] text-el-on-surface-variant mt-1">
-            تسجيل وتوثيق وتحليل نتائج الانتخابات الرسمية مع توزيع المقاعد بـ Saint-Laguë وحساب نسب التصويت
-          </p>
-        </div>
-        <button
-          onClick={() => setShowDialog(true)}
-          className="bg-el-primary text-el-on-primary px-5 py-2.5 rounded-lg flex items-center gap-2 hover:opacity-90 transition-all shadow-sm font-bold text-[14px] cursor-pointer"
-        >
-          <Plus className="w-[18px] h-[18px]" /> إضافة نتائج رسمية
-        </button>
+    <div className="flex flex-col gap-5 max-w-[1440px] mx-auto w-full text-right" dir="rtl">
+      {/* Page Title */}
+      <div className="flex flex-col gap-1 border-b border-el-outline-variant pb-4">
+        <h1 className="text-[26px] font-bold text-el-primary flex items-center gap-2.5">
+          <Landmark className="w-7 h-7 text-el-primary" />
+          النتائج النهائية لانتخاب مجلس النواب العراقي {result2025.year}
+        </h1>
+        <p className="text-[14px] text-el-on-surface-variant">
+          توزيع الفائزين والأصوات والمقاعد — محافظة ذي قار
+        </p>
       </div>
 
-      {/* Grid List of Results */}
-      {results.length === 0 ? (
-        <div className="bg-el-surface-container border border-el-outline-variant rounded-xl p-8 text-center flex flex-col items-center gap-3">
-          <Landmark className="w-12 h-12 text-el-on-surface-variant/40" />
-          <p className="text-el-on-surface font-semibold">لا توجد نتائج انتخابات مسجلة حتى الآن</p>
-          <p className="text-[12px] text-el-on-surface-variant/60">
-            يمكنك إدخال نتائج دورات انتخابية سابقة أو حالية لعرض مقارنات دقة التنبؤ ونسب المشاركة.
-          </p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column: General Statistics (14 Rows exactly) */}
+        <div className="lg:col-span-4 bg-el-surface-container-lowest border border-el-outline-variant rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 border-b border-el-outline-variant pb-3 mb-4">
+            <FileText className="w-5 h-5 text-el-primary" />
+            <h2 className="text-[16px] font-bold text-el-on-surface">الإحصائيات العامة</h2>
+          </div>
+
+          <div className="space-y-3">
+            <StatRow label="عدد مراكز الاقتراع الكلية" value="527" />
+            <StatRow label="عدد محطات الاقتراع الكلية" value="2,212" />
+            <StatRow label="عدد الناخبين الكلي" value="1,099,438" />
+            <StatRow label="عدد المصوتين الكلي" value="538,390" />
+            <StatRow label="نسبة التصويت الكلية" value="48.97%" isHighlight />
+            <StatRow label="عدد المصوتين الذكور" value="322,970" />
+            <StatRow label="عدد المصوتين الإناث" value="215,420" />
+            <StatRow label="عدد الأصوات الصحيحة" value="513,087" />
+            <StatRow label="عدد الأصوات الباطلة" value="25,303" />
+            <StatRow label="عدد المقاعد الكلي" value="19" />
+            <StatRow label="عدد المقاعد العامة" value="19" />
+            <StatRow label="عدد مقاعد الكوتا" value="0" />
+            <StatRow label="عدد مقاعد النساء" value="5" />
+            <StatRow label="مجموع المقاعد الموزّعة" value="19" isHighlight />
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-el-outline-variant flex items-start gap-2 text-[11px] text-el-on-surface-variant bg-el-surface-container-high/25 p-3 rounded-xl">
+            <Info className="w-4 h-4 text-el-primary shrink-0 mt-0.5" />
+            <span>
+              <strong>المصدر:</strong> المفوضية العليا المستقلة للانتخابات — النتائج النهائية 2025. تم توزيع المقاعد باستخدام طريقة Saint-Laguë بقاسم أول 1.7.
+            </span>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {results.map((r) => (
-            <div key={r.id} className="bg-el-surface-container-lowest border border-el-outline-variant rounded-xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-              <div>
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <span className="text-[11px] bg-el-primary-container text-el-on-primary-container px-2 py-0.5 rounded-full font-bold">
-                      {r.electionType}
-                    </span>
-                    <h3 className="text-[18px] font-bold text-el-on-surface mt-1">
-                      انتخابات سنة {r.year}
-                    </h3>
-                  </div>
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
-                    r.status === 'مصادق' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {r.status}
-                  </span>
-                </div>
 
-                <div className="space-y-2 text-[13px] border-t border-el-outline-variant pt-3">
-                  <div className="flex justify-between">
-                    <span className="text-el-on-surface-variant">النطاق الجغرافي:</span>
-                    <span className="font-bold flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-el-primary" />
-                      {r.scope === 'قضاء' ? `قضاء ${r.district}` : 'على مستوى المحافظة'}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-el-on-surface-variant">الأصوات الصحيحة / الكلية:</span>
-                    <span className="font-mono">
-                      {r.validVotes.toLocaleString()} / {r.totalVotes.toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-el-on-surface-variant">نسبة المشاركة:</span>
-                    <span className="font-mono font-bold text-el-primary">{r.participationRate}%</span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-el-on-surface-variant">عتبة الفوز (الحد الأدنى):</span>
-                    <span className="font-mono">{r.thresholdVotes.toLocaleString()} صوت</span>
-                  </div>
-
-                  {r.winnerName && (
-                    <div className="flex justify-between items-center bg-el-surface-container-highest p-2 rounded-lg mt-2">
-                      <span className="text-[12px] font-semibold text-el-primary flex items-center gap-1">
-                        <Trophy className="w-4 h-4 text-yellow-500" /> الفائز الأول:
-                      </span>
-                      <span className="font-bold text-[12px]">
-                        {r.winnerName} ({r.winnerVotes.toLocaleString()} صوت)
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between mt-2 text-[12px] bg-el-secondary-container/30 p-2 rounded-lg">
-                    <span className="font-semibold text-el-on-secondary-container">مقاعدنا المحققة:</span>
-                    <span className="font-bold text-el-primary font-mono text-[14px]">
-                      {r.seatsWon} / {r.totalSeats} مقاعد
-                    </span>
-                  </div>
-                </div>
+        {/* Right Column: Winning Entities Table */}
+        <div className="lg:col-span-8 flex flex-col gap-4">
+          <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between border-b border-el-outline-variant pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Award className="w-5 h-5 text-el-primary" />
+                <h2 className="text-[16px] font-bold text-el-on-surface">الكيانات الفائزة والأصوات</h2>
               </div>
-
-              <div className="flex gap-2 mt-4 pt-3 border-t border-el-outline-variant">
-                <button
-                  onClick={() => setShowDetailsDialog(r)}
-                  className="flex-1 bg-el-surface-container-high hover:bg-el-surface-container-highest text-el-on-surface py-2 rounded-lg text-[13px] font-bold flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Eye className="w-4 h-4" /> عرض التفاصيل الكاملة
-                </button>
-                <button
-                  onClick={() => handleDelete(r.id)}
-                  className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-lg cursor-pointer"
-                  title="حذف السجل"
-                >
-                  <Trash2 className="w-[18px] h-[18px]" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Dialog for Adding New Result */}
-      {showDialog && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="p-4 border-b border-el-outline-variant flex justify-between items-center">
-              <h2 className="text-[18px] font-bold text-el-primary flex items-center gap-2">
-                <Landmark className="w-5 h-5" /> إضافة نتائج الانتخابات الرسمية
-              </h2>
-              <button onClick={() => setShowDialog(false)} className="text-el-on-surface-variant hover:text-el-on-surface p-1 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
+              <span className="text-[11px] bg-green-50 text-green-700 px-2.5 py-1 rounded-full font-bold">
+                توزيع مقاعد Saint-Laguë (1.7)
+              </span>
             </div>
 
-            {/* Form Content */}
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">السنة</label>
-                  <input
-                    type="number"
-                    value={year}
-                    onChange={(e) => setYear(Number(e.target.value))}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">نوع الانتخابات</label>
-                  <select
-                    value={electionType}
-                    onChange={(e) => setElectionType(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  >
-                    <option value="برلمانية">برلمانية</option>
-                    <option value="مجالس محافظات">مجالس محافظات</option>
-                    <option value="بلدية">بلدية</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">النطاق الجغرافي</label>
-                  <select
-                    value={scope}
-                    onChange={(e) => setScope(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  >
-                    <option value="محافظة">محافظة كاملة</option>
-                    <option value="قضاء">قضاء محدد</option>
-                  </select>
-                </div>
-
-                {scope === 'قضاء' && (
-                  <div>
-                    <label className="block text-[12px] font-bold text-el-on-surface mb-1">القضاء</label>
-                    <select
-                      value={district}
-                      onChange={(e) => setDistrict(e.target.value)}
-                      className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                    >
-                      <option value="">اختر القضاء...</option>
-                      {DISTRICTS_21.map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">إجمالي الناخبين المسجلين</label>
-                  <input
-                    type="number"
-                    placeholder="مثال: 1099438"
-                    value={totalRegistered}
-                    onChange={(e) => setTotalRegistered(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">إجمالي المصوتين (المشاركة)</label>
-                  <input
-                    type="number"
-                    placeholder="مثال: 538390"
-                    value={totalVotes}
-                    onChange={(e) => setTotalVotes(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">الأصوات الباطلة</label>
-                  <input
-                    type="number"
-                    placeholder="مثال: 25000"
-                    value={invalidVotes}
-                    onChange={(e) => setInvalidVotes(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">عدد المقاعد الكلية المتاحة</label>
-                  <input
-                    type="number"
-                    placeholder="مثال: 18"
-                    value={totalSeats}
-                    onChange={(e) => setTotalSeats(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">الحالة</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  >
-                    <option value="أولية">أولية</option>
-                    <option value="نهائية">نهائية</option>
-                    <option value="مصادق">مصادق عليها</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-bold text-el-on-surface mb-1">ملاحظات إضافية</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="ملاحظات توثيقية عن الدورة الانتخابية..."
-                  rows={2}
-                  className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary resize-none"
-                />
-              </div>
-
-              {/* Add Candidate/Party Section */}
-              <div className="bg-el-surface-container-high rounded-xl p-4 border border-el-outline-variant">
-                <h3 className="text-[14px] font-bold text-el-primary mb-3 flex items-center gap-1.5">
-                  <Calculator className="w-4 h-4" /> إدخال أصوات الكيانات والمرشحين
-                </h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
-                  <input
-                    type="text"
-                    placeholder="اسم المرشح أو القائمة"
-                    value={cName}
-                    onChange={(e) => setCName(e.target.value)}
-                    className="bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[13px] focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    placeholder="اسم الحزب/التحالف"
-                    value={cParty}
-                    onChange={(e) => setCParty(e.target.value)}
-                    className="bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[13px] focus:outline-none"
-                  />
-                  <input
-                    type="number"
-                    placeholder="عدد الأصوات"
-                    value={cVotes}
-                    onChange={(e) => setCVotes(e.target.value)}
-                    className="bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[13px] focus:outline-none"
-                  />
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2 cursor-pointer text-[12px] font-semibold text-el-on-surface">
-                      <input
-                        type="checkbox"
-                        checked={cIsOur}
-                        onChange={(e) => setCIsOur(e.target.checked)}
-                        className="w-4 h-4 accent-el-primary rounded"
-                      />
-                      مرشحنا / قائمتنا
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleAddCandidate}
-                      className="bg-el-primary text-el-on-primary p-2 rounded-lg mr-auto text-[13px] font-bold flex items-center gap-1 hover:opacity-90 cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" /> إضافة
-                    </button>
-                  </div>
-                </div>
-
-                {/* Candidate List Table */}
-                {candidates.length > 0 && (
-                  <div className="overflow-x-auto border border-el-outline-variant rounded-lg bg-el-surface-container-lowest">
-                    <table className="w-full text-right text-[12px]">
-                      <thead>
-                        <tr className="bg-el-surface-container-high border-b border-el-outline-variant">
-                          <th className="p-2 font-bold">الاسم</th>
-                          <th className="p-2 font-bold">الحزب</th>
-                          <th className="p-2 font-bold">الأصوات</th>
-                          <th className="p-2 font-bold">النوع</th>
-                          <th className="p-2 font-bold text-center">إجراء</th>
+            <div className="overflow-hidden border border-el-outline-variant rounded-xl bg-el-surface-container-lowest">
+              <table className="w-full text-right text-[13px] border-collapse">
+                <thead>
+                  <tr className="bg-el-surface-container-high border-b border-el-outline-variant text-el-on-surface">
+                    <th className="p-3 font-bold w-12 text-center">ت</th>
+                    <th className="p-3 font-bold w-20 text-center">رقم الكيان</th>
+                    <th className="p-3 font-bold">اسم الكيان</th>
+                    <th className="p-3 font-bold text-center">مجموع الأصوات</th>
+                    <th className="p-3 font-bold text-center">نسبة الأصوات</th>
+                    <th className="p-3 font-bold text-center">عدد المقاعد</th>
+                    <th className="p-3 font-bold w-16 text-center">تفاصيل</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {partyGroups.map((p, idx) => {
+                    const isExpanded = expandedParty === p.partyName;
+                    return (
+                      <React.Fragment key={p.partyName}>
+                        <tr 
+                          onClick={() => togglePartyExpand(p.partyName)}
+                          className={`border-b border-el-outline-variant cursor-pointer hover:bg-el-surface-container-highest/20 transition-all ${
+                            isExpanded ? 'bg-el-primary/5' : ''
+                          }`}
+                        >
+                          <td className="p-3 text-center font-bold text-el-on-surface-variant">{idx + 1}</td>
+                          <td className="p-3 text-center font-mono font-bold text-el-primary">{p.partyCode}</td>
+                          <td className="p-3 font-bold text-el-on-surface flex items-center gap-2">
+                            {p.partyName}
+                            {p.candidates.some(c => c.isOurCandidate) && (
+                              <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">تحالفنا</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center font-mono font-bold">{p.totalVotes.toLocaleString()}</td>
+                          <td className="p-3 text-center font-mono text-el-on-surface-variant">{p.votePercentage}%</td>
+                          <td className="p-3 text-center">
+                            <span className="bg-yellow-100 text-yellow-800 font-bold px-2.5 py-0.5 rounded-full text-[12px] inline-flex items-center gap-1 shadow-sm font-mono">
+                              {p.seatsAllocated}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4 mx-auto text-el-on-surface-variant" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 mx-auto text-el-on-surface-variant" />
+                            )}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {candidates.map((c, idx) => (
-                          <tr key={idx} className="border-b border-el-outline-variant last:border-0">
-                            <td className="p-2 font-bold">{c.candidateName}</td>
-                            <td className="p-2">{c.partyName || '—'}</td>
-                            <td className="p-2 font-mono font-bold">{c.votes.toLocaleString()}</td>
-                            <td className="p-2">
-                              {c.isOurCandidate ? (
-                                <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                                  مرشحنا
-                                </span>
-                              ) : (
-                                <span className="text-el-on-surface-variant opacity-70">منافس</span>
-                              )}
-                            </td>
-                            <td className="p-2 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveCandidate(idx)}
-                                className="text-red-500 hover:text-red-700 p-1"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+
+                        {/* Nested Candidate Votes list (عدد أصوات المرشح) */}
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={7} className="p-3 bg-el-surface-container-high/30 border-b border-el-outline-variant">
+                              <div className="px-4 py-2 space-y-2">
+                                <div className="text-[12px] font-bold text-el-primary flex items-center gap-1">
+                                  <Users className="w-4 h-4" />
+                                  تفاصيل أصوات المرشحين داخل {p.partyName}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                  {p.candidates.map((c, cIdx) => (
+                                    <div key={c.id} className="bg-white border border-el-outline-variant rounded-lg p-2.5 flex justify-between items-center shadow-xs">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[11px] text-el-on-surface-variant">مرشح {cIdx + 1}:</span>
+                                        <span className="font-bold text-[13px]">{c.candidateName}</span>
+                                        {c.isOurCandidate && (
+                                          <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <span className="font-mono text-[12px] text-el-on-surface-variant">
+                                          {c.votes.toLocaleString()} صوت
+                                        </span>
+                                        {c.seatsAllocated > 0 ? (
+                                          <span className="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-0.5">
+                                            <Trophy className="w-3 h-3 text-yellow-600" /> فائز بمقعد
+                                          </span>
+                                        ) : (
+                                          <span className="text-[11px] text-el-on-surface-variant/40">لم يفز</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
-            {/* Actions */}
-            <div className="p-4 border-t border-el-outline-variant bg-el-surface-container-high flex justify-end gap-3">
-              <button
-                onClick={() => setShowDialog(false)}
-                className="bg-el-surface-container-lowest border border-el-outline-variant hover:bg-el-surface-container text-el-on-surface px-5 py-2.5 rounded-lg text-[14px] font-bold cursor-pointer"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={handleSave}
-                className="bg-el-primary text-el-on-primary px-5 py-2.5 rounded-lg text-[14px] font-bold hover:opacity-90 cursor-pointer"
-              >
-                حفظ النتائج وتشغيل المحاكاة
-              </button>
+            {/* Aggregates footer */}
+            <div className="mt-4 p-4 bg-el-surface-container border border-el-outline-variant rounded-xl flex flex-col sm:flex-row justify-between gap-3 text-[13px]">
+              <div className="font-bold text-el-on-surface">
+                مجموع المقاعد الموزّعة: <span className="font-mono text-el-primary font-bold text-[15px]">19 مقعداً</span>
+              </div>
+              <div className="font-bold text-el-on-surface">
+                مجموع أصوات الكيانات الفائزة: <span className="font-mono font-bold">{sumWinningVotes.toLocaleString()} صوت</span>
+                <span className="text-el-on-surface-variant/70 font-normal mr-1">({winPercentOfValid}% من الأصوات الصحيحة)</span>
+              </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
 
-      {/* Dialog for Full Details View */}
-      {showDetailsDialog && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="p-4 border-b border-el-outline-variant flex justify-between items-center">
-              <h2 className="text-[18px] font-bold text-el-primary flex items-center gap-2">
-                <Landmark className="w-5 h-5" /> تفاصيل نتائج انتخابات سنة {showDetailsDialog.year}
-              </h2>
-              <button onClick={() => setShowDetailsDialog(null)} className="text-el-on-surface-variant hover:text-el-on-surface p-1 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+// مكون لسطر إحصائيات عامة
+interface StatRowProps {
+  label: string;
+  value: string;
+  isHighlight?: boolean;
+}
 
-            {/* Details Content */}
-            <div className="p-6 space-y-6">
-              {/* Summary Stats Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-right">
-                <div className="bg-el-surface-container-high border border-el-outline-variant rounded-xl p-3">
-                  <div className="text-[11px] text-el-on-surface-variant font-bold">نسبة المشاركة</div>
-                  <div className="text-[20px] font-mono font-bold text-el-primary">{showDetailsDialog.participationRate}%</div>
-                </div>
-                <div className="bg-el-surface-container-high border border-el-outline-variant rounded-xl p-3">
-                  <div className="text-[11px] text-el-on-surface-variant font-bold">الأصوات الصحيحة</div>
-                  <div className="text-[20px] font-mono font-bold text-el-primary">{showDetailsDialog.validVotes.toLocaleString()}</div>
-                </div>
-                <div className="bg-el-surface-container-high border border-el-outline-variant rounded-xl p-3">
-                  <div className="text-[11px] text-el-on-surface-variant font-bold">الأصوات الباطلة</div>
-                  <div className="text-[20px] font-mono font-bold text-red-600">{showDetailsDialog.invalidVotes.toLocaleString()}</div>
-                </div>
-                <div className="bg-el-surface-container-high border border-el-outline-variant rounded-xl p-3">
-                  <div className="text-[11px] text-el-on-surface-variant font-bold">مقاعدنا المحققة</div>
-                  <div className="text-[20px] font-mono font-bold text-green-600">{showDetailsDialog.seatsWon} / {showDetailsDialog.totalSeats}</div>
-                </div>
-              </div>
-
-              {/* Candidates List with Saint-Laguë details */}
-              <div className="space-y-3">
-                <h3 className="text-[15px] font-bold text-el-primary flex items-center gap-1.5">
-                  <Calculator className="w-4 h-4" /> توزيع المقاعد والأصوات بالتفصيل (Saint-Laguë)
-                </h3>
-
-                <div className="overflow-x-auto border border-el-outline-variant rounded-xl bg-el-surface-container-lowest">
-                  <table className="w-full text-right text-[13px]">
-                    <thead>
-                      <tr className="bg-el-surface-container-high border-b border-el-outline-variant">
-                        <th className="p-3 font-bold">الاسم (المرشح / القائمة)</th>
-                        <th className="p-3 font-bold">الحزب/التحالف</th>
-                        <th className="p-3 font-bold">الأصوات</th>
-                        <th className="p-3 font-bold">النسبة من الأصوات الصحيحة</th>
-                        <th className="p-3 font-bold">النسبة من إجمالي الحضور</th>
-                        <th className="p-3 font-bold text-center">المقاعد المخصصة</th>
-                        <th className="p-3 font-bold text-center">الحالة</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {showDetailsDialog.candidates.map((c) => (
-                        <tr key={c.id} className="border-b border-el-outline-variant last:border-0 hover:bg-el-surface-container-highest/20 transition-all">
-                          <td className="p-3 font-bold flex items-center gap-1.5">
-                            {c.isOurCandidate && <span className="w-2 h-2 rounded-full bg-blue-600"></span>}
-                            {c.candidateName}
-                          </td>
-                          <td className="p-3">{c.partyName || '—'}</td>
-                          <td className="p-3 font-mono font-bold">{c.votes.toLocaleString()}</td>
-                          <td className="p-3 font-mono text-el-primary font-semibold flex items-center gap-1">
-                            <Percent className="w-3.5 h-3.5" />
-                            {c.votePercentage}%
-                          </td>
-                          <td className="p-3 font-mono text-el-on-surface-variant">{c.votePercentageOfTurnout}%</td>
-                          <td className="p-3 text-center">
-                            {c.seatsAllocated > 0 ? (
-                              <span className="bg-yellow-100 text-yellow-800 font-bold px-3 py-1 rounded-full text-[12px] inline-flex items-center gap-1 shadow-sm">
-                                <Landmark className="w-3.5 h-3.5 text-yellow-600" />
-                                {c.seatsAllocated} مقاعد
-                              </span>
-                            ) : (
-                              <span className="text-el-on-surface-variant/40">—</span>
-                            )}
-                          </td>
-                          <td className="p-3 text-center">
-                            {c.isOurCandidate ? (
-                              <span className="bg-blue-100 text-blue-800 text-[11px] px-2.5 py-0.5 rounded-full font-bold">
-                                مرشحنا
-                              </span>
-                            ) : (
-                              <span className="text-el-on-surface-variant/50">منافس</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {showDetailsDialog.notes && (
-                <div className="bg-el-surface-container-high p-4 rounded-xl border border-el-outline-variant flex items-start gap-2.5">
-                  <Info className="w-5 h-5 text-el-primary shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-[13px] font-bold text-el-on-surface">ملاحظات مسجلة</h4>
-                    <p className="text-[12px] text-el-on-surface-variant mt-1 leading-relaxed">
-                      {showDetailsDialog.notes}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 border-t border-el-outline-variant bg-el-surface-container-high flex justify-end">
-              <button
-                onClick={() => setShowDetailsDialog(null)}
-                className="bg-el-primary text-el-on-primary px-6 py-2.5 rounded-lg text-[14px] font-bold hover:opacity-90 cursor-pointer"
-              >
-                إغلاق النافذة
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+function StatRow({ label, value, isHighlight = false }: StatRowProps) {
+  return (
+    <div className={`flex justify-between items-center py-2 px-3 rounded-lg border-b border-el-outline-variant/30 last:border-0 ${
+      isHighlight ? 'bg-el-primary/5 font-bold text-el-primary border-el-primary/20' : 'text-el-on-surface'
+    }`}>
+      <span className="text-[13px]">{label}:</span>
+      <span className="font-mono font-bold text-[14px]">{value}</span>
     </div>
   );
 }
