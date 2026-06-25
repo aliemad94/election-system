@@ -19,6 +19,7 @@ import {
   Filter,
   Eye,
   Trash2,
+  Zap,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import EvaluateKeyPage from './evaluatekeypage';
@@ -1098,6 +1099,40 @@ export default function ElectoralKeyManagement() {
                   <div className="h-2 w-full bg-el-surface-variant rounded-full overflow-hidden">
                     <div className={`h-full ${selectedKey.weightedScore >= 100 ? 'bg-green-500' : selectedKey.weightedScore >= 50 ? 'bg-blue-500' : selectedKey.weightedScore >= 20 ? 'bg-yellow-500' : 'bg-red-500'}`}
                       style={{ width: `${Math.min(selectedKey.weightedScore / 2, 100)}%` }} />
+                  </div>
+                </div>
+
+                {/* تشخيص الذكاء الاصطناعي ومخاطر تسرب الأصوات */}
+                <div className="border-t border-el-outline-variant/60 pt-3 space-y-2">
+                  <span className="text-el-on-surface-variant font-bold block text-[12px] flex items-center gap-1">
+                    <Zap className="w-3.5 h-3.5 text-blue-500 animate-pulse" /> تشخيص مخاطر تسرب الأصوات (AI Diagnostic):
+                  </span>
+                  <div className="bg-[var(--el-surface-container)] p-2.5 rounded border border-[var(--el-line)] text-[11px] space-y-1 text-right">
+                    <div className="flex justify-between items-center pb-1 border-b border-[var(--el-line)] mb-1.5">
+                      <span className="text-[var(--el-muted)]">احتمالية الالتزام الانتخابي:</span>
+                      <span className={`font-bold font-mono ${selectedKey.weightedScore >= 70 ? 'text-emerald-500' : selectedKey.weightedScore >= 45 ? 'text-amber-500' : 'text-rose-500'}`}>
+                        {selectedKey.weightedScore}%
+                      </span>
+                    </div>
+                    {(() => {
+                      const warnings = [];
+                      const loyalty = (selectedKey as any).loyaltyScore || (selectedKey as any).loyaltyLevel || 3;
+                      const needs = selectedKey.needsLevel || 3;
+                      const protection = selectedKey.voteProtection || 3;
+                      const org = selectedKey.organizationalNote || 3;
+                      
+                      if (loyalty <= 2) warnings.push('ولاء متذبذب أو ضعيف للجهة المنظمة.');
+                      if (needs <= 2) warnings.push('مطالب خدمية مرتفعة جداً قد تؤدي لانشقاق.');
+                      if (protection <= 2) warnings.push('ضعف المتابعة الميدانية وحماية أصوات الصناديق.');
+                      if (org <= 2) warnings.push('ضعف الانضباط والتعاون مع الكادر التنظيمي.');
+                      
+                      if (warnings.length === 0) {
+                        return <p className="text-emerald-500 flex gap-1 items-center">✅ <span>الوضع مستقر ولا توجد مؤشرات خطر نشطة.</span></p>;
+                      }
+                      return warnings.map((w, i) => (
+                        <p key={i} className="text-amber-500 flex gap-1.5 items-start">⚠️ <span>{w}</span></p>
+                      ));
+                    })()}
                   </div>
                 </div>
 
