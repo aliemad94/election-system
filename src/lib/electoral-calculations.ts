@@ -462,15 +462,43 @@ export function calculateElectionResults(input: ElectionResultInput): ElectionRe
     Math.max(0, validVotes) * DHI_QAR_CONSTANTS.ELECTORAL_THRESHOLD
   );
 
-  // توزيع المقاعد بطريقة Saint-Laguë المعدّلة (قاسم أول 1.7)
-  const parties = input.candidates.map(c => ({
-    partyName: c.candidateName,
-    votes: c.votes,
-  }));
-  const allocated = allocateSeatsLaguë(parties, input.totalSeats);
-  const allocationMap = new Map(allocated.map(a => [a.partyName, a.seats]));
+  // توزيع المقاعد بطريقة Saint-Laguë المعدّلة (قاسم أول 1.7) على مستوى الكيانات/الأحزاب
+  const partyVotesMap = new Map<string, number>();
+  input.candidates.forEach(c => {
+    const pName = c.partyName || 'مستقلون / أخرى';
+    partyVotesMap.set(pName, (partyVotesMap.get(pName) || 0) + c.votes);
+  });
 
-  // بناء النتائج مع النسبتين
+  const parties = Array.from(partyVotesMap.entries()).map(([partyName, votes]) => ({
+    partyName,
+    votes,
+  }));
+
+  const allocatedParties = allocateSeatsLaguë(parties, input.totalSeats);
+  const partySeatsMap = new Map(allocatedParties.map(p => [p.partyName, p.seats]));
+
+  // توزيع مقاعد كل حزب على مرشحيه الحاصلين على أعلى الأصوات
+  const partyCandidatesMap = new Map<string, typeof input.candidates>();
+  input.candidates.forEach(c => {
+    const pName = c.partyName || 'مستقلون / أخرى';
+    if (!partyCandidatesMap.has(pName)) {
+      partyCandidatesMap.set(pName, []);
+    }
+    partyCandidatesMap.get(pName)!.push(c);
+  });
+
+  const candidateSeatsMap = new Map<string, number>();
+  partyCandidatesMap.forEach((pCandidates, pName) => {
+    const seatsAvailable = partySeatsMap.get(pName) || 0;
+    // ترتيب مرشحي هذا الحزب تنازلياً حسب الأصوات الشخصية
+    const sorted = [...pCandidates].sort((a, b) => b.votes - a.votes);
+    sorted.forEach((c, index) => {
+      // يحصل المرشح على مقعد إذا كان ترتيبه ضمن عدد المقاعد المخصصة للحزب
+      candidateSeatsMap.set(`${c.partyName || ''}_${c.candidateName}`, index < seatsAvailable ? 1 : 0);
+    });
+  });
+
+  // بناء النتائج مع النسبتين وتوزيع المقاعد الفردية
   const candidates = input.candidates.map(c => ({
     candidateName: c.candidateName,
     partyName: c.partyName || '',
@@ -481,7 +509,7 @@ export function calculateElectionResults(input: ElectionResultInput): ElectionRe
     votePercentageOfTurnout: input.totalVotes > 0
       ? Math.round((c.votes / input.totalVotes) * 10000) / 100
       : 0,
-    seatsAllocated: allocationMap.get(c.candidateName) || 0,
+    seatsAllocated: candidateSeatsMap.get(`${c.partyName || ''}_${c.candidateName}`) || 0,
     isOurCandidate: c.isOurCandidate || false,
   }));
 

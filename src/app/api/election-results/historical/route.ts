@@ -19,7 +19,7 @@ async function getHandler(_req: NextRequest) {
       },
     });
 
-    // إذا كانت قاعدة البيانات فارغة، نقم ببذر نتائج 2025 الرسمية لذي قار تلقائياً
+    // إذا كانت قاعدة البيانات فارغة، نقم ببذر نتائج 2025 الرسمية لذي قار تلقائياً بالبيانات المحددة فقط
     if (list.length === 0) {
       const seededResult = await prisma.electionResult.create({
         data: {
@@ -32,54 +32,65 @@ async function getHandler(_req: NextRequest) {
           invalidVotes: 25303,
           participationRate: 48.97,
           totalSeats: 19,
-          seatsWon: 3, // ائتلاف الاعمار والتنمية يمثلنا
+          seatsWon: 3, 
           thresholdVotes: 25654,
           status: "مصادق",
-          winnerName: "ائتلاف الاعمار والتنمية (207)",
+          winnerName: "ائتلاف الاعمار والتنمية",
           winnerVotes: 80892,
           notes: "النتائج النهائية لانتخاب مجلس النواب العراقي 2025 — توزيع الفائزين — محافظة ذي قار. المصدر: المفوضية العليا المستقلة للانتخابات.",
           candidates: {
             create: [
-              // 1. ائتلاف الاعمار والتنمية (207) — 80,892 أصوات، 3 مقاعد
-              { candidateName: "حسن جابر العبادي", partyName: "ائتلاف الاعمار والتنمية (207)", votes: 35000, votePercentage: 6.82, votePercentageOfTurnout: 6.5, seatsAllocated: 1, isOurCandidate: true },
-              { candidateName: "أثير كاظم الغزي", partyName: "ائتلاف الاعمار والتنمية (207)", votes: 25000, votePercentage: 4.87, votePercentageOfTurnout: 4.64, seatsAllocated: 1, isOurCandidate: true },
-              { candidateName: "مريم هادي الركابي", partyName: "ائتلاف الاعمار والتنمية (207)", votes: 20892, votePercentage: 4.07, votePercentageOfTurnout: 3.88, seatsAllocated: 1, isOurCandidate: true },
+              // 1. ائتلاف الاعمار والتنمية (207) — مجموع الأصوات: 80,892، مقاعد: 3
+              { candidateName: "ناصر تركي ياسر لفته ال عواد", partyName: "ائتلاف الاعمار والتنمية (207)", votes: 7474, votePercentage: 1.46, votePercentageOfTurnout: 1.39, seatsAllocated: 1, isOurCandidate: true, notes: "مرشح فائز - رقم 5" },
+              { candidateName: "باقر يوسف خلف علي الياسري", partyName: "ائتلاف الاعمار والتنمية (207)", votes: 7406, votePercentage: 1.44, votePercentageOfTurnout: 1.38, seatsAllocated: 1, isOurCandidate: true, notes: "مرشح فائز - رقم 3" },
+              { candidateName: "زينب وحيد سلمان علي الخزرجي", partyName: "ائتلاف الاعمار والتنمية (207)", votes: 2588, votePercentage: 0.5, votePercentageOfTurnout: 0.48, seatsAllocated: 1, isOurCandidate: true, notes: "مرشح فائز - رقم 4" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "ائتلاف الاعمار والتنمية (207)", votes: 63424, votePercentage: 12.36, votePercentageOfTurnout: 11.78, seatsAllocated: 0, isOurCandidate: true, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
 
-              // 2. ائتلاف دولة القانون (257) — 74,563 أصوات، 3 مقاعد
-              { candidateName: "عبد الهادي موحان", partyName: "ائتلاف دولة القانون (257)", votes: 30000, votePercentage: 5.85, votePercentageOfTurnout: 5.57, seatsAllocated: 1, isOurCandidate: false },
-              { candidateName: "داخل راضي", partyName: "ائتلاف دولة القانون (257)", votes: 24000, votePercentage: 4.68, votePercentageOfTurnout: 4.46, seatsAllocated: 1, isOurCandidate: false },
-              { candidateName: "منى صالح", partyName: "ائتلاف دولة القانون (257)", votes: 20563, votePercentage: 4.01, votePercentageOfTurnout: 3.82, seatsAllocated: 1, isOurCandidate: false },
+              // 2. ائتلاف دولة القانون (257) — مجموع الأصوات: 74,563، مقاعد: 3
+              { candidateName: "حسن وريوش دخيل محمد جويس الاسدي", partyName: "ائتلاف دولة القانون (257)", votes: 16213, votePercentage: 3.16, votePercentageOfTurnout: 3.01, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 3" },
+              { candidateName: "حسين نعمة دخيل كاظم البطاط", partyName: "ائتلاف دولة القانون (257)", votes: 9783, votePercentage: 1.91, votePercentageOfTurnout: 1.82, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 1" },
+              { candidateName: "منى قاسم باقر جابر الفراجي", partyName: "ائتلاف دولة القانون (257)", votes: 4957, votePercentage: 0.97, votePercentageOfTurnout: 0.92, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 9" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "ائتلاف دولة القانون (257)", votes: 43610, votePercentage: 8.5, votePercentageOfTurnout: 8.1, seatsAllocated: 0, isOurCandidate: false, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
 
-              // 3. حركة الصادقون (202) — 61,696 أصوات، 3 مقاعد
-              { candidateName: "أحمد طه طه", partyName: "حركة الصادقون (202)", votes: 25000, votePercentage: 4.87, votePercentageOfTurnout: 4.64, seatsAllocated: 1, isOurCandidate: false },
-              { candidateName: "ضياء هلال", partyName: "حركة الصادقون (202)", votes: 20000, votePercentage: 3.9, votePercentageOfTurnout: 3.71, seatsAllocated: 1, isOurCandidate: false },
-              { candidateName: "رنا حميد", partyName: "حركة الصادقون (202)", votes: 16696, votePercentage: 3.25, votePercentageOfTurnout: 3.1, seatsAllocated: 1, isOurCandidate: false },
+              // 3. حركة الصادقون (202) — مجموع الأصوات: 61,696، مقاعد: 3
+              { candidateName: "احمد كاظم فارس محسن الرميض", partyName: "حركة الصادقون (202)", votes: 7545, votePercentage: 1.47, votePercentageOfTurnout: 1.4, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 7" },
+              { candidateName: "عادل حاشوش جابر جاسم الحاتمي", partyName: "حركة الصادقون (202)", votes: 7269, votePercentage: 1.42, votePercentageOfTurnout: 1.35, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 1" },
+              { candidateName: "وفاء ضياء لازم عليوي الطائي", partyName: "حركة الصادقون (202)", votes: 2908, votePercentage: 0.57, votePercentageOfTurnout: 0.54, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 8" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "حركة الصادقون (202)", votes: 43974, votePercentage: 8.57, votePercentageOfTurnout: 8.17, seatsAllocated: 0, isOurCandidate: false, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
 
-              // 4. تحالف قوى الدولة الوطنية (231) — 46,607 أصوات، 2 مقاعد
-              { candidateName: "حميد الغزي", partyName: "تحالف قوى الدولة الوطنية (231)", votes: 26000, votePercentage: 5.07, votePercentageOfTurnout: 4.83, seatsAllocated: 1, isOurCandidate: false },
-              { candidateName: "رجاء الخفاجي", partyName: "تحالف قوى الدولة الوطنية (231)", votes: 20607, votePercentage: 4.02, votePercentageOfTurnout: 3.83, seatsAllocated: 1, isOurCandidate: false },
+              // 4. تحالف قوى الدولة الوطنية (231) — مجموع الأصوات: 46,607، مقاعد: 2
+              { candidateName: "قسطل ابوطالب ظاهر حاتم ال عجيل", partyName: "تحالف قوى الدولة الوطنية (231)", votes: 6468, votePercentage: 1.26, votePercentageOfTurnout: 1.2, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 3" },
+              { candidateName: "مرتضى عبد خزعل ظاهر ال ابراهيمي", partyName: "تحالف قوى الدولة الوطنية (231)", votes: 6306, votePercentage: 1.23, votePercentageOfTurnout: 1.17, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 1" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "تحالف قوى الدولة الوطنية (231)", votes: 33833, votePercentage: 6.59, votePercentageOfTurnout: 6.28, seatsAllocated: 0, isOurCandidate: false, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
 
-              // 5. منظمة بدر (218) — 44,421 أصوات، 2 مقاعد
-              { candidateName: "حسين السهلاني", partyName: "منظمة بدر (218)", votes: 24000, votePercentage: 4.68, votePercentageOfTurnout: 4.46, seatsAllocated: 1, isOurCandidate: false },
-              { candidateName: "زينب وحيد", partyName: "منظمة بدر (218)", votes: 20421, votePercentage: 3.98, votePercentageOfTurnout: 3.79, seatsAllocated: 1, isOurCandidate: false },
+              // 5. منظمة بدر (218) — مجموع الأصوات: 44,421، مقاعد: 2
+              { candidateName: "رزاق محيسن عجيمي تويلي الرماحي", partyName: "منظمة بدر (218)", votes: 9364, votePercentage: 1.83, votePercentageOfTurnout: 1.74, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 1" },
+              { candidateName: "عبدالله حامد حسين شبيب الحميدي", partyName: "منظمة بدر (218)", votes: 3788, votePercentage: 0.74, votePercentageOfTurnout: 0.7, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 2" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "منظمة بدر (218)", votes: 31269, votePercentage: 6.09, votePercentageOfTurnout: 5.81, seatsAllocated: 0, isOurCandidate: false, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
 
-              // 6. حركة سومريون (239) — 36,611 أصوات، 1 مقعد
-              { candidateName: "علي عجيل", partyName: "حركة سومريون (239)", votes: 36611, votePercentage: 7.14, votePercentageOfTurnout: 6.8, seatsAllocated: 1, isOurCandidate: false },
+              // 6. حركة سومريون (239) — مجموع الأصوات: 36,611، مقاعد: 1
+              { candidateName: "هديه جاسم عليوي لفته الجميعان", partyName: "حركة سومريون (239)", votes: 5884, votePercentage: 1.15, votePercentageOfTurnout: 1.09, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 38" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "حركة سومريون (239)", votes: 30727, votePercentage: 5.99, votePercentageOfTurnout: 5.71, seatsAllocated: 0, isOurCandidate: false, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
 
-              // 7. تحالف خدمات (271) — 31,171 أصوات، 1 مقعد
-              { candidateName: "غائب العميري", partyName: "تحالف خدمات (271)", votes: 31171, votePercentage: 6.07, votePercentageOfTurnout: 5.79, seatsAllocated: 1, isOurCandidate: false },
+              // 7. تحالف خدمات (271) — مجموع الأصوات: 31,171، مقاعد: 1
+              { candidateName: "علا عوده لايذ شناوه الشناوه", partyName: "تحالف خدمات (271)", votes: 11484, votePercentage: 2.24, votePercentageOfTurnout: 2.13, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 1" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "تحالف خدمات (271)", votes: 19687, votePercentage: 3.84, votePercentageOfTurnout: 3.66, seatsAllocated: 0, isOurCandidate: false, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
 
-              // 8. ابشر يا عراق (224) — 23,214 أصوات، 1 مقعد
-              { candidateName: "خالد الأسدي", partyName: "ابشر يا عراق (224)", votes: 23214, votePercentage: 4.52, votePercentageOfTurnout: 4.31, seatsAllocated: 1, isOurCandidate: false },
+              // 8. ابشر يا عراق (224) — مجموع الأصوات: 23,214، مقاعد: 1
+              { candidateName: "علي صابر كاظم عجيل الكناني", partyName: "ابشر يا عراق (224)", votes: 3732, votePercentage: 0.73, votePercentageOfTurnout: 0.69, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 4" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "ابشر يا عراق (224)", votes: 19482, votePercentage: 3.8, votePercentageOfTurnout: 3.62, seatsAllocated: 0, isOurCandidate: false, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
 
-              // 9. اشراقة كانون (245) — 22,521 أصوات، 1 مقعد
-              { candidateName: "محمد الخفاجي", partyName: "اشراقة كانون (245)", votes: 22521, votePercentage: 4.39, votePercentageOfTurnout: 4.18, seatsAllocated: 1, isOurCandidate: false },
+              // 9. اشراقة كانون (245) — مجموع الأصوات: 22,521، مقاعد: 1
+              { candidateName: "فاروق عدنان يوسف يعقوب الهاشم", partyName: "اشراقة كانون (245)", votes: 6471, votePercentage: 1.26, votePercentageOfTurnout: 1.2, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 9" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "اشراقة كانون (245)", votes: 16050, votePercentage: 3.13, votePercentageOfTurnout: 2.98, seatsAllocated: 0, isOurCandidate: false, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
 
-              // 10. كتلة دعم الدولة (289) — 21,615 أصوات، 1 مقعد
-              { candidateName: "سعران الغزي", partyName: "كتلة دعم الدولة (289)", votes: 21615, votePercentage: 4.21, votePercentageOfTurnout: 4.01, seatsAllocated: 1, isOurCandidate: false },
+              // 10. كتلة دعم الدولة (289) — مجموع الأصوات: 21,615، مقاعد: 1
+              { candidateName: "عماد قاسم عزيز عبد علي", partyName: "كتلة دعم الدولة (289)", votes: 3226, votePercentage: 0.63, votePercentageOfTurnout: 0.6, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 5" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "كتلة دعم الدولة (289)", votes: 18389, votePercentage: 3.58, votePercentageOfTurnout: 3.42, seatsAllocated: 0, isOurCandidate: false, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
 
-              // 11. حركة حقوق (251) — 21,184 أصوات، 1 مقعد
-              { candidateName: "سعود الساعدي", partyName: "حركة حقوق (251)", votes: 21184, votePercentage: 4.13, votePercentageOfTurnout: 3.93, seatsAllocated: 1, isOurCandidate: false },
+              // 11. حركة حقوق (251) — مجموع الأصوات: 21,184، مقاعد: 1
+              { candidateName: "محمد جبار مناتي مشيعل ال سلطان", partyName: "حركة حقوق (251)", votes: 6267, votePercentage: 1.22, votePercentageOfTurnout: 1.16, seatsAllocated: 1, isOurCandidate: false, notes: "مرشح فائز - رقم 1" },
+              { candidateName: "أصوات بقية مرشحي القائمة", partyName: "حركة حقوق (251)", votes: 14917, votePercentage: 2.91, votePercentageOfTurnout: 2.77, seatsAllocated: 0, isOurCandidate: false, notes: "أصوات بقية مرشحي القائمة غير الفائزين" },
             ],
           },
         },
@@ -111,7 +122,7 @@ async function postHandler(req: NextRequest, { user }: { user: any }) {
       totalSeats,
       status,
       notes,
-      candidates, // array of { candidateName, partyName, votes, isOurCandidate }
+      candidates, // array of { candidateName, partyName, votes, isOurCandidate, notes: "الترتيب: X", votePercentage: winPct }
     } = body;
 
     if (!year || !scope || !electionType || !candidates || !Array.isArray(candidates)) {
@@ -119,7 +130,12 @@ async function postHandler(req: NextRequest, { user }: { user: any }) {
     }
 
     const calculated = calculateElectionResults({
-      candidates,
+      candidates: candidates.map(c => ({
+        candidateName: c.candidateName,
+        partyName: c.partyName,
+        votes: Number(c.votes) || 0,
+        isOurCandidate: c.isOurCandidate,
+      })),
       totalRegistered: Number(totalRegistered) || 0,
       totalVotes: Number(totalVotes) || 0,
       invalidVotes: Number(invalidVotes) || 0,
@@ -146,15 +162,20 @@ async function postHandler(req: NextRequest, { user }: { user: any }) {
           winnerVotes: calculated.winnerVotes,
           notes,
           candidates: {
-            create: calculated.candidates.map((c) => ({
-              candidateName: c.candidateName,
-              partyName: c.partyName,
-              votes: c.votes,
-              votePercentage: c.votePercentage,
-              votePercentageOfTurnout: c.votePercentageOfTurnout,
-              seatsAllocated: c.seatsAllocated,
-              isOurCandidate: c.isOurCandidate,
-            })),
+            create: candidates.map((c) => {
+              const calcCandidate = calculated.candidates.find(cc => cc.candidateName === c.candidateName);
+              return {
+                candidateName: c.candidateName,
+                partyName: c.partyName,
+                votes: Number(c.votes) || 0,
+                // نستخدم نسبة فوز المرشح المدخلة يدوياً أو نحسبها تلقائياً
+                votePercentage: c.votePercentage !== undefined ? Number(c.votePercentage) : (calcCandidate?.votePercentage ?? 0),
+                votePercentageOfTurnout: calcCandidate?.votePercentageOfTurnout ?? 0,
+                seatsAllocated: calcCandidate?.seatsAllocated ?? 0,
+                isOurCandidate: c.isOurCandidate || false,
+                notes: c.notes, // لتخزين ترتيب المرشح
+              };
+            }),
           },
         },
         include: {
