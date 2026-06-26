@@ -490,11 +490,27 @@ export function calculateElectionResults(input: ElectionResultInput): ElectionRe
   const candidateSeatsMap = new Map<string, number>();
   partyCandidatesMap.forEach((pCandidates, pName) => {
     const seatsAvailable = partySeatsMap.get(pName) || 0;
-    // ترتيب مرشحي هذا الحزب تنازلياً حسب الأصوات الشخصية
-    const sorted = [...pCandidates].sort((a, b) => b.votes - a.votes);
+    
+    // استبعاد السجلات النائبة (المخصصة للأصوات المتبقية) من الحصول على مقاعد فردية
+    const realCandidates = pCandidates.filter(c => 
+      !c.candidateName.includes("أصوات بقية") && 
+      !c.candidateName.includes("بقية أصوات") &&
+      !c.candidateName.includes("بقية مرشحي")
+    );
+    
+    // ترتيب مرشحي هذا الحزب الفعليين تنازلياً حسب الأصوات الشخصية
+    const sorted = [...realCandidates].sort((a, b) => b.votes - a.votes);
     sorted.forEach((c, index) => {
       // يحصل المرشح على مقعد إذا كان ترتيبه ضمن عدد المقاعد المخصصة للحزب
       candidateSeatsMap.set(`${c.partyName || ''}_${c.candidateName}`, index < seatsAvailable ? 1 : 0);
+    });
+
+    // السجلات النائبة المستبعدة تحصل تلقائياً على 0 مقاعد
+    pCandidates.forEach(c => {
+      const key = `${c.partyName || ''}_${c.candidateName}`;
+      if (!candidateSeatsMap.has(key)) {
+        candidateSeatsMap.set(key, 0);
+      }
     });
   });
 
@@ -520,7 +536,9 @@ export function calculateElectionResults(input: ElectionResultInput): ElectionRe
     .filter(c => c.isOurCandidate)
     .reduce((s, c) => s + c.seatsAllocated, 0);
 
-  const winner = candidates[0];
+  // تحديد اسم وصوت الكيان الفائز بالأغلبية (الحائز على أعلى الأصوات)
+  const sortedParties = [...parties].sort((a, b) => b.votes - a.votes);
+  const winningParty = sortedParties[0];
 
   return {
     validVotes,
@@ -528,7 +546,7 @@ export function calculateElectionResults(input: ElectionResultInput): ElectionRe
     thresholdVotes,
     candidates,
     seatsWon,
-    winnerName: winner?.candidateName || '',
-    winnerVotes: winner?.votes || 0,
+    winnerName: winningParty?.partyName || '',
+    winnerVotes: winningParty?.votes || 0,
   };
 }
