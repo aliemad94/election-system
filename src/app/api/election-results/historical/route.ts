@@ -19,8 +19,34 @@ async function getHandler(_req: NextRequest) {
       },
     });
 
-    // إذا كانت قاعدة البيانات فارغة، نقم ببذر نتائج 2025 الرسمية لذي قار تلقائياً بالبيانات المحددة فقط
-    if (list.length === 0) {
+    // الفحص الذاتي للبيانات الوهمية القديمة لتطهير قاعدة البيانات الإنتاجية تلقائياً
+    const hasOldMockData = list.some(r => 
+      r.year === 2025 && 
+      r.candidates.some(c => c.candidateName === "حسن جابر العبادي" || c.candidateName === "أثير كاظم الغزي")
+    );
+
+    if (hasOldMockData) {
+      const oldRecords = list.filter(r => 
+        r.year === 2025 && 
+        r.candidates.some(c => c.candidateName === "حسن جابر العبادي" || c.candidateName === "أثير كاظم الغزي")
+      );
+      for (const record of oldRecords) {
+        await prisma.electionResult.delete({ where: { id: record.id } });
+      }
+      // إعادة جلب القائمة بعد الحذف
+      list = await prisma.electionResult.findMany({
+        include: {
+          candidates: true,
+        },
+        orderBy: {
+          year: "desc",
+        },
+      });
+    }
+
+    // إذا كانت نتائج 2025 غير موجودة في قاعدة البيانات، نقم ببذرها بالبيانات الحقيقية تلقائياً
+    const has2025Result = list.some(r => r.year === 2025);
+    if (!has2025Result) {
       const seededResult = await prisma.electionResult.create({
         data: {
           year: 2025,
