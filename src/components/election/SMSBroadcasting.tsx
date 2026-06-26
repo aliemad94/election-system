@@ -38,7 +38,29 @@ interface CampaignHistory {
   username: string;
 }
 
-const DISTRICTS = ['الناصرية', 'الشطرة', 'سوق الشيوخ', 'الرفاعي', 'قلعة سكر', 'الغراف', 'البطحاء'];
+const DISTRICTS = [
+  'الناصرية',
+  'الشطرة',
+  'سوق الشيوخ',
+  'الرفاعي',
+  'الجبايش',
+  'قلعة سكر',
+  'الغراف',
+  'النصر',
+  'الفجر',
+  'الفهود',
+  'البطحاء',
+  'سيد دخيل',
+  'الإصلاح',
+  'الدواية',
+  'الفضلية',
+  'العكيكة',
+  'الطار',
+  'كرمة بني سعيد',
+  'أور',
+  'المنار',
+  'الحمار'
+];
 
 export default function SMSBroadcasting() {
   const [confidenceScore, setConfidenceScore] = useState<number[]>([3, 4, 5]);
