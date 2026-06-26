@@ -14,7 +14,29 @@ interface Tribe {
   voterCount: number;
 }
 
-const DISTRICTS = ['الناصرية', 'الشطرة', 'سوق الشيوخ', 'الرفاعي', 'قلعة سكر', 'عشيرة', 'البطحاء'];
+const DISTRICTS = [
+  'الناصرية',
+  'الشطرة',
+  'سوق الشيوخ',
+  'الرفاعي',
+  'الجبايش',
+  'قلعة سكر',
+  'الغراف',
+  'النصر',
+  'الفجر',
+  'الفهود',
+  'البطحاء',
+  'سيد دخيل',
+  'الإصلاح',
+  'الدواية',
+  'الفضلية',
+  'العكيكة',
+  'الطار',
+  'كرمة بني سعيد',
+  'أور',
+  'المنار',
+  'الحمار'
+];
 
 export default function CommunicationEngine() {
   const [confidenceScore, setConfidenceScore] = useState<number[]>([4, 5]);

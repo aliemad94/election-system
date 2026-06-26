@@ -27,7 +27,29 @@ import { useToast } from './toastprovider';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import EvaluateKeyPage from './evaluatekeypage';
 
-const DISTRICTS = ['الناصرية', 'الشطرة', 'سوق الشيوخ', 'الرفاعي', 'قلعة سكر', 'عشيرة', 'البطحاء'];
+const DISTRICTS = [
+  'الناصرية',
+  'الشطرة',
+  'سوق الشيوخ',
+  'الرفاعي',
+  'الجبايش',
+  'قلعة سكر',
+  'الغراف',
+  'النصر',
+  'الفجر',
+  'الفهود',
+  'البطحاء',
+  'سيد دخيل',
+  'الإصلاح',
+  'الدواية',
+  'الفضلية',
+  'العكيكة',
+  'الطار',
+  'كرمة بني سعيد',
+  'أور',
+  'المنار',
+  'الحمار'
+];
 const EDUCATION_LEVELS = ['يقرا ويكتب', 'ابتدائية', 'متوسطة', 'اعدادية', 'دبلوم', 'بكالوريوس', 'ماجستير', 'دكتوراه'];
 const GENDER_OPTIONS = ['ذكر', 'أنثى'];
 const MARITAL_STATUS_MALE = ['أعزب', 'متزوج', 'مطلق', 'أرمل'];
