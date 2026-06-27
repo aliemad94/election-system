@@ -50,7 +50,7 @@ async function getHandler(req: NextRequest, { user }: any) {
 
     const findOptions: any = {
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "asc" },
       include: {
         tribe: { select: { name: true } },
         _count: { select: { voters: true } },

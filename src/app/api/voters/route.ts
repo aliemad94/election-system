@@ -56,7 +56,7 @@ async function getHandler(req: NextRequest, { user }: any) {
     const [voters, total] = await Promise.all([
       prisma.voter.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "asc" },
         skip: (page - 1) * limit,
         take: limit,
         include: {
