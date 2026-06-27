@@ -105,7 +105,7 @@ async function putHandler(
 
     invalidateComprehensiveIndicatorsCache();
 
-    return NextResponse.json(updated);
+    return NextResponse.json({ ...updated, code: updated.keyCode });
   } catch (error) {
     return handleApiError(error, "electoral-keys-put");
   }

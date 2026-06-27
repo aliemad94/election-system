@@ -71,6 +71,7 @@ async function getHandler(req: NextRequest, { user }: any) {
 
     const result = (keys as any[]).map((k) => ({
       id: k.id,
+      code: k.keyCode, // موائمة مع المتوقع في الواجهة الأمامية
       keyCode: k.keyCode,
       fullName: [k.firstName, k.fatherName, k.grandfatherName, k.fourthName]
         .filter(Boolean)
@@ -303,7 +304,7 @@ async function postHandler(req: NextRequest, { user }: any) {
       details: { keyCode: key.keyCode, name: key.firstName },
     });
 
-    return NextResponse.json(key, { status: 201 });
+    return NextResponse.json({ ...key, code: key.keyCode }, { status: 201 });
   } catch (error) {
     return handleApiError(error, "electoral-keys-post");
   }

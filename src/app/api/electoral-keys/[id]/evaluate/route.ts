@@ -78,7 +78,7 @@ async function postHandler(
 
     return NextResponse.json({
       success: true,
-      key: updated,
+      key: { ...updated, code: updated.keyCode },
       report,
       result,
     });
