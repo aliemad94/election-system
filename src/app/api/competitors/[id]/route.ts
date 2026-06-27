@@ -9,14 +9,15 @@ import { handleApiError, auditLog } from "@/lib/security";
 
 async function putHandler(
   req: NextRequest,
-  { params, user }: { params: Record<string, any>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: any }
 ) {
   try {
+    const { id } = await params;
     const body = await req.json();
     const { candidateName, partyOrList, strengthLevel, district, primaryArea, estimatedVotesBase, keyStrengths, keyWeaknesses, counterStrategy } = body;
 
     const existing = await prisma.competitor.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
     if (!existing) {
       return NextResponse.json(
@@ -26,7 +27,7 @@ async function putHandler(
     }
 
     const updated = await prisma.competitor.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name: candidateName !== undefined ? candidateName : existing.name,
         party: partyOrList !== undefined ? partyOrList : existing.party,
@@ -45,7 +46,7 @@ async function putHandler(
       username: user.username,
       action: "UPDATE",
       entity: "Competitor",
-      entityId: params.id,
+      entityId: id,
       details: { name: updated.name },
     });
 
@@ -57,11 +58,12 @@ async function putHandler(
 
 async function deleteHandler(
   _req: NextRequest,
-  { params, user }: { params: Record<string, any>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: any }
 ) {
   try {
+    const { id } = await params;
     const existing = await prisma.competitor.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true, name: true },
     });
     if (!existing) {
@@ -71,14 +73,14 @@ async function deleteHandler(
       );
     }
 
-    await prisma.competitor.delete({ where: { id: params.id } });
+    await prisma.competitor.delete({ where: { id } });
 
     await auditLog({
       userId: user.userId,
       username: user.username,
       action: "DELETE",
       entity: "Competitor",
-      entityId: params.id,
+      entityId: id,
       details: { name: existing.name },
     });
 

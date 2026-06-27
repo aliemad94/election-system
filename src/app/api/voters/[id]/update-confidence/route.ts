@@ -8,10 +8,10 @@ import { withAuth } from "@/lib/auth-guard";
 
 async function postHandler(
   request: NextRequest,
-  { params, user }: { params: { id: string }; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: any }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const { newScore, reason } = body;
 

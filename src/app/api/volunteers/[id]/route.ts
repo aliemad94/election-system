@@ -9,14 +9,15 @@ import { handleApiError, auditLog } from "@/lib/security";
 
 async function putHandler(
   req: NextRequest,
-  { params, user }: { params: Record<string, any>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: any }
 ) {
   try {
+    const { id } = await params;
     const body = await req.json();
     const { fullName, phone, email, role, district, area, notes, efficiencyScore } = body;
 
     const existing = await prisma.volunteer.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
     if (!existing) {
       return NextResponse.json(
@@ -37,7 +38,7 @@ async function putHandler(
     }
 
     const updated = await prisma.volunteer.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         fullName: fullName !== undefined ? fullName : existing.fullName,
         phone: phone !== undefined ? phone : existing.phone,
@@ -55,7 +56,7 @@ async function putHandler(
       username: user.username,
       action: "UPDATE",
       entity: "Volunteer",
-      entityId: params.id,
+      entityId: id,
       details: { name: updated.fullName, role: updated.role },
     });
 
@@ -67,11 +68,12 @@ async function putHandler(
 
 async function deleteHandler(
   _req: NextRequest,
-  { params, user }: { params: Record<string, any>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: any }
 ) {
   try {
+    const { id } = await params;
     const existing = await prisma.volunteer.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true, fullName: true },
     });
     if (!existing) {
@@ -81,14 +83,14 @@ async function deleteHandler(
       );
     }
 
-    await prisma.volunteer.delete({ where: { id: params.id } });
+    await prisma.volunteer.delete({ where: { id } });
 
     await auditLog({
       userId: user.userId,
       username: user.username,
       action: "DELETE",
       entity: "Volunteer",
-      entityId: params.id,
+      entityId: id,
       details: { name: existing.fullName },
     });
 
