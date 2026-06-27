@@ -9,10 +9,10 @@ import { evaluateKeyDoubleFilter, generateDoubleFilterReport, type RatingDataV2 
 
 async function postHandler(
   request: NextRequest,
-  { params, user }: { params: { id: string }; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: any }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const key = await prisma.electionKey.findUnique({
       where: { id },

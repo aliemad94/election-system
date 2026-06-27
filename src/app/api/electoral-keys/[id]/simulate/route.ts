@@ -9,10 +9,10 @@ import { simulateScenario, type ElectoralKeyData } from "@/lib/electoral-calcula
 
 async function postHandler(
   request: NextRequest,
-  { params }: { params: { id: string }; user: any }
+  { params }: { params: Promise<{ id: string }>; user: any }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const overrides = await request.json().catch(() => ({}));
 
     const key = await prisma.electionKey.findUnique({

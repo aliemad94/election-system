@@ -13,9 +13,10 @@ import { calculateAll } from "@/lib/electoral-calculations";
 // PUT /api/electoral-keys/[id]
 async function putHandler(
   req: NextRequest,
-  { params, user }: { params: Record<string, any>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: any }
 ) {
   try {
+    const { id } = await params;
     const body = await req.json();
     const parsed = updateElectionKeySchema.safeParse(body);
     if (!parsed.success) {
@@ -26,7 +27,7 @@ async function putHandler(
     }
 
     const existing = await prisma.electionKey.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
     if (!existing) {
       return NextResponse.json(
@@ -90,7 +91,7 @@ async function putHandler(
     }
 
     const updated = await prisma.electionKey.update({
-      where: { id: params.id },
+      where: { id },
       data,
     });
 
@@ -99,7 +100,7 @@ async function putHandler(
       username: user.username,
       action: "UPDATE",
       entity: "ElectionKey",
-      entityId: params.id,
+      entityId: id,
       details: { fields: Object.keys(parsed.data).join(', ') },
     });
 
@@ -114,11 +115,12 @@ async function putHandler(
 // DELETE /api/electoral-keys/[id]
 async function deleteHandler(
   _req: NextRequest,
-  { params, user }: { params: Record<string, any>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: any }
 ) {
   try {
+    const { id } = await params;
     const existing = await prisma.electionKey.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true, firstName: true, keyCode: true, phone: true },
     });
     if (!existing) {
@@ -129,14 +131,14 @@ async function deleteHandler(
     }
 
     // حذف المفتاح يضمن حذف الناخبين المرتبطين (cascade عبر Prisma)
-    await prisma.electionKey.delete({ where: { id: params.id } });
+    await prisma.electionKey.delete({ where: { id } });
 
     await auditLog({
       userId: user.userId,
       username: user.username,
       action: "DELETE",
       entity: "ElectionKey",
-      entityId: params.id,
+      entityId: id,
       details: { keyCode: existing.keyCode, name: existing.firstName },
     });
 
