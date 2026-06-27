@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Landmark, Plus, X, Trash2, Trophy, Percent, Users, Award, MapPin, FileText, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const DISTRICTS_21 = [
   'الناصرية',
@@ -34,6 +35,7 @@ interface CandidateInput {
   votePercentage: number; // نسبة فوز المرشح
   notes: string;          // ترتيب المرشح
   isOurCandidate: boolean;
+  gender: string;         // الجنس (ذكر / أنثى)
 }
 
 interface CandidateRecord {
@@ -46,6 +48,7 @@ interface CandidateRecord {
   seatsAllocated: number;
   isOurCandidate: boolean;
   notes: string | null;
+  gender: string;
 }
 
 interface ElectionResultRecord {
@@ -104,6 +107,56 @@ export default function ElectionResultsManagement() {
   const [cWinPct, setCWinPct] = useState('');
   const [cVotes, setCVotes] = useState('');
   const [cIsOur, setCIsOur] = useState(false);
+  const [cGender, setCGender] = useState('ذكر');
+
+  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json<any>(ws);
+
+        const importedCandidates: CandidateInput[] = data.map((row: any) => {
+          const candidateName = row["المرشح"] || row["اسم المرشح"] || row["Name"] || row["candidateName"] || "";
+          const partyName = row["القائمة"] || row["الحزب"] || row["اسم القائمة"] || row["Party"] || row["partyName"] || "";
+          const votes = Number(row["الأصوات"] || row["عدد الأصوات"] || row["Votes"] || row["votes"] || 0);
+          const genderRaw = String(row["الجنس"] || row["Gender"] || row["gender"] || "ذكر").trim();
+          const gender = (genderRaw === "أنثى" || genderRaw.toLowerCase() === "female" || genderRaw.toLowerCase() === "f") ? "أنثى" : "ذكر";
+          const isOurRaw = String(row["مرشحنا"] || row["هو مرشحنا؟"] || row["IsOur"] || row["isOurCandidate"] || "لا").trim();
+          const isOurCandidate = (isOurRaw === "نعم" || isOurRaw.toLowerCase() === "yes" || isOurRaw === "true" || isOurRaw === "1" || isOurRaw === "Y");
+          const notes = row["ملاحظات"] || row["الترتيب"] || row["Notes"] || row["notes"] || "";
+
+          return {
+            candidateName,
+            partyName,
+            votes,
+            votePercentage: 0,
+            notes,
+            isOurCandidate,
+            gender,
+          };
+        }).filter(c => c.candidateName && c.votes > 0);
+
+        if (importedCandidates.length === 0) {
+          alert("لم يتم العثور على بيانات مرشحين صالحة في ملف Excel.");
+          return;
+        }
+
+        setCandidates(prev => [...prev, ...importedCandidates]);
+      } catch (err) {
+        console.error("Error parsing Excel:", err);
+        alert("حدث خطأ أثناء قراءة ملف Excel. يرجى التأكد من هيكلية الملف.");
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  };
 
   const fetchResults = useCallback(async () => {
     try {
@@ -137,6 +190,7 @@ export default function ElectionResultsManagement() {
         votePercentage: Number(cWinPct) || 0,
         notes: cOrder ? `الترتيب: ${cOrder}` : '',
         isOurCandidate: cIsOur,
+        gender: cGender,
       },
     ]);
     // تصفير الخانات مع الإبقاء على اسم القائمة لتسهيل الإدخال المتكرر لنفس الحزب
@@ -145,6 +199,7 @@ export default function ElectionResultsManagement() {
     setCWinPct('');
     setCVotes('');
     setCIsOur(false);
+    setCGender('ذكر');
   };
 
   const handleRemoveCandidate = (index: number) => {
@@ -448,6 +503,8 @@ export default function ElectionResultsManagement() {
                                         <div className="flex gap-2 text-[10px] text-el-on-surface-variant/80">
                                           <span>{c.notes || `الترتيب: ${cIdx + 1}`}</span>
                                           <span>•</span>
+                                          <span>الجنس: {c.gender || 'ذكر'}</span>
+                                          <span>•</span>
                                           <span className="flex items-center text-el-primary font-bold">
                                             نسبة فوز المرشح: {c.votePercentage}%
                                           </span>
@@ -619,17 +676,34 @@ export default function ElectionResultsManagement() {
 
               {/* Candidates Add Form Container */}
               <div className="bg-el-surface-container-high rounded-xl p-4 border border-el-outline-variant space-y-3">
-                <h3 className="text-[13px] font-bold text-el-primary flex items-center gap-1.5 border-b border-el-outline-variant/30 pb-2">
-                  <Users className="w-4 h-4" />
-                  إدخال أصوات وترتيب ونسب فوز المرشحين
-                </h3>
+                <div className="flex justify-between items-center border-b border-el-outline-variant/30 pb-2">
+                  <h3 className="text-[13px] font-bold text-el-primary flex items-center gap-1.5">
+                    <Users className="w-4 h-4" />
+                    إدخال أصوات وترتيب ونسب فوز المرشحين
+                  </h3>
+                  <div>
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={handleExcelImport}
+                      className="hidden"
+                      id="excel-import-input"
+                    />
+                    <label
+                      htmlFor="excel-import-input"
+                      className="bg-el-secondary text-el-on-secondary px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 hover:opacity-90 cursor-pointer shadow-sm"
+                    >
+                      <FileText className="w-3.5 h-3.5" /> استيراد من Excel
+                    </label>
+                  </div>
+                </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-6 gap-2.5">
                   <div>
                     <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">اسم القائمة</label>
                     <input
                       type="text"
-                      placeholder="اسم الكيان/القائمة"
+                      placeholder="اسم القائمة"
                       value={cPartyName}
                       onChange={(e) => setCPartyName(e.target.value)}
                       className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[12px] focus:outline-none"
@@ -648,10 +722,22 @@ export default function ElectionResultsManagement() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">ترتيب المرشح</label>
+                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">الجنس</label>
+                    <select
+                      value={cGender}
+                      onChange={(e) => setCGender(e.target.value)}
+                      className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[12px] focus:outline-none cursor-pointer"
+                    >
+                      <option value="ذكر">ذكر</option>
+                      <option value="أنثى">أنثى</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">الترتيب</label>
                     <input
                       type="number"
-                      placeholder="مثال: 1"
+                      placeholder="ترتيب"
                       value={cOrder}
                       onChange={(e) => setCOrder(e.target.value)}
                       className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[12px] focus:outline-none"
@@ -659,10 +745,10 @@ export default function ElectionResultsManagement() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">نسبة فوز المرشح (%)</label>
+                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">نسبة الفوز (%)</label>
                     <input
                       type="number"
-                      placeholder="مثال: 85"
+                      placeholder="نسبة"
                       value={cWinPct}
                       onChange={(e) => setCWinPct(e.target.value)}
                       className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[12px] focus:outline-none"
@@ -670,7 +756,7 @@ export default function ElectionResultsManagement() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">عدد الأصوات للمرشح</label>
+                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">عدد الأصوات</label>
                     <input
                       type="number"
                       placeholder="الأصوات"
@@ -708,6 +794,7 @@ export default function ElectionResultsManagement() {
                         <tr className="bg-el-surface-container-high border-b border-el-outline-variant">
                           <th className="p-2 font-bold">اسم القائمة</th>
                           <th className="p-2 font-bold">اسم المرشح</th>
+                          <th className="p-2 font-bold text-center">الجنس</th>
                           <th className="p-2 font-bold text-center">الترتيب</th>
                           <th className="p-2 font-bold text-center">نسبة الفوز</th>
                           <th className="p-2 font-bold text-center">الأصوات</th>
@@ -720,6 +807,7 @@ export default function ElectionResultsManagement() {
                           <tr key={idx} className="border-b border-el-outline-variant last:border-0">
                             <td className="p-2 font-bold">{c.partyName}</td>
                             <td className="p-2">{c.candidateName}</td>
+                            <td className="p-2 text-center font-bold">{c.gender}</td>
                             <td className="p-2 text-center font-mono">{c.notes.replace('الترتيب: ', '') || '—'}</td>
                             <td className="p-2 text-center font-mono">{c.votePercentage}%</td>
                             <td className="p-2 text-center font-mono font-bold">{c.votes.toLocaleString()}</td>

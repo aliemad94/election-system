@@ -161,6 +161,7 @@ async function postHandler(req: NextRequest, { user }: { user: any }) {
         partyName: c.partyName,
         votes: Number(c.votes) || 0,
         isOurCandidate: c.isOurCandidate,
+        gender: c.gender, // تمرير الجنس للحسابات
       })),
       totalRegistered: Number(totalRegistered) || 0,
       totalVotes: Number(totalVotes) || 0,
@@ -194,12 +195,12 @@ async function postHandler(req: NextRequest, { user }: { user: any }) {
                 candidateName: c.candidateName,
                 partyName: c.partyName,
                 votes: Number(c.votes) || 0,
-                // نستخدم نسبة فوز المرشح المدخلة يدوياً أو نحسبها تلقائياً
                 votePercentage: c.votePercentage !== undefined ? Number(c.votePercentage) : (calcCandidate?.votePercentage ?? 0),
                 votePercentageOfTurnout: calcCandidate?.votePercentageOfTurnout ?? 0,
                 seatsAllocated: calcCandidate?.seatsAllocated ?? 0,
                 isOurCandidate: c.isOurCandidate || false,
-                notes: c.notes, // لتخزين ترتيب المرشح
+                gender: c.gender || "ذكر", // حفظ الجنس
+                notes: c.notes,
               };
             }),
           },

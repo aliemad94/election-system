@@ -109,6 +109,7 @@ interface ElectoralKeyData {
   maritalStatus?: string | null;
   familySize?: number | null;
   firstContactDate?: string | null;
+  lastEvaluationAt?: string | null;
   createdAt: string;
 }
 
@@ -423,6 +424,14 @@ export default function ElectoralKeyManagement() {
 
 
 
+  const isStale = (k: ElectoralKeyData) => {
+    if (!k.lastEvaluationAt) return true;
+    const date = new Date(k.lastEvaluationAt);
+    const diffTime = Math.abs(Date.now() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 30;
+  };
+
   return (
     <div className="flex flex-col gap-4 max-w-[1440px] mx-auto w-full">
       {/* رأس الصفحة */}
@@ -656,9 +665,16 @@ export default function ElectoralKeyManagement() {
                       <span className="font-mono font-bold">{key.weightedScore}%</span>
                     </td>
                     <td className="px-3 py-1 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getClassColor(key.classification)}`}>
-                        {key.classification}
-                      </span>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getClassColor(key.classification)}`}>
+                          {key.classification}
+                        </span>
+                        {isStale(key) && (
+                          <span className="text-[8px] bg-red-900/20 text-red-400 border border-red-900/50 px-1 rounded font-bold animate-pulse" title="التقييم قديم (مر عليه أكثر من 30 يوماً)">
+                            ⚠️ بحاجة لتحديث
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-1 text-center">
                       <div className="flex items-center justify-center gap-1">

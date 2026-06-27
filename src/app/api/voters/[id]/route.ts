@@ -34,6 +34,34 @@ async function putHandler(
       );
     }
 
+    // التحقق من تكرار الهاتف باستثناء السجل الحالي
+    if (parsed.data.phone) {
+      const phoneExists = await prisma.voter.findFirst({
+        where: { phone: parsed.data.phone, id: { not: params.id } },
+        select: { id: true, firstName: true, fatherName: true, electionKey: { select: { firstName: true } } },
+      });
+      if (phoneExists) {
+        return NextResponse.json(
+          { error: `رقم الهاتف مسجل مسبقاً للناخب ${phoneExists.firstName} ${phoneExists.fatherName} تحت المفتاح ${phoneExists.electionKey?.firstName || "غير معروف"}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // التحقق من تكرار الهوية الوطنية باستثناء السجل الحالي
+    if (parsed.data.nationalId) {
+      const nationalIdExists = await prisma.voter.findFirst({
+        where: { nationalId: parsed.data.nationalId, id: { not: params.id } },
+        select: { id: true, firstName: true, fatherName: true, electionKey: { select: { firstName: true } } },
+      });
+      if (nationalIdExists) {
+        return NextResponse.json(
+          { error: `رقم الهوية الوطنية مسجل مسبقاً للناخب ${nationalIdExists.firstName} ${nationalIdExists.fatherName} تحت المفتاح ${nationalIdExists.electionKey?.firstName || "غير معروف"}` },
+          { status: 400 }
+        );
+      }
+    }
+
     const data: Record<string, unknown> = { ...parsed.data };
     if (parsed.data.dateOfBirth) {
       data.birthDate = new Date(parsed.data.dateOfBirth);

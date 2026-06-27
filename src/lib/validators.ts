@@ -9,6 +9,11 @@ import { z } from "zod";
 export const createTribeSchema = z.object({
   name: z.string().min(1, "اسم العشيرة مطلوب").max(200),
   description: z.string().max(2000).optional().nullable(),
+  leaderName: z.string().max(200).optional().nullable(),
+  leaderPhone: z.string().max(50).optional().nullable(),
+  district: z.string().max(100).optional().nullable(),
+  influence: z.number().int().min(1).max(5).optional().default(3),
+  notes: z.string().max(2000).optional().nullable(),
 });
 
 export const updateTribeSchema = createTribeSchema.partial();

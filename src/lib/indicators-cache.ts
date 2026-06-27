@@ -13,7 +13,7 @@ interface CachedIndicators {
   timestamp: number;
 }
 
-const CACHE_TTL_MS = 15_000; // 15 ثانية
+const CACHE_TTL_MS = 60_000; // 60 ثانية (1 دقيقة)
 let cache: CachedIndicators | null = null;
 let inFlight: Promise<CompositeIndicatorsResult> | null = null;
 

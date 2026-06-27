@@ -163,6 +163,17 @@ export default function SMSBroadcasting() {
   const renderedPreviewText = useMemo(() => {
     if (!smsText) return 'اكتب رسالة لمعاينتها هنا...';
     let text = smsText;
+
+    // فك Spintax للرسالة (مثل {أهلاً|مرحباً})
+    const spintaxRegex = /\{([^{}]+)\}/g;
+    text = text.replace(spintaxRegex, (match, choicesStr) => {
+      if (choicesStr.includes('|')) {
+        const choices = choicesStr.split('|');
+        return choices[0]; // للمعاينة نختار الخيار الأول دائماً
+      }
+      return match;
+    });
+
     const firstVoter = previewVoters[0];
     const name = firstVoter ? firstVoter.fullName : 'أحمد عبد الله الحسيني';
     const center = firstVoter ? firstVoter.pollingCenter : 'مدرسة الكندي الابتدائية';
@@ -172,6 +183,50 @@ export default function SMSBroadcasting() {
     text = text.replace(/{polling_center}/g, center);
     text = text.replace(/{tribe}/g, tribe);
     return text;
+  }, [smsText, previewVoters]);
+
+  // محاكي أقصى طول متوقع (Worst-Case Length Simulator) لتفادي مفاجأة الفاتورة
+  const worstCaseMetrics = useMemo(() => {
+    let maxNameLen = 25; // افتراضي اسم طويل
+    let maxCenterLen = 35; // افتراضي مركز طويل
+    let maxTribeLen = 25; // افتراضي عشيرة طويلة
+
+    if (previewVoters.length > 0) {
+      previewVoters.forEach(v => {
+        if (v.fullName && v.fullName.length > maxNameLen) maxNameLen = v.fullName.length;
+        if (v.pollingCenter && v.pollingCenter.length > maxCenterLen) maxCenterLen = v.pollingCenter.length;
+        if (v.tribeName && v.tribeName.length > maxTribeLen) maxTribeLen = v.tribeName.length;
+      });
+    }
+
+    let simulatedText = smsText;
+    
+    // فك Spintax واختيار الكلمة الأطول لتقدير أسوأ حالة طول
+    const spintaxRegex = /\{([^{}]+)\}/g;
+    simulatedText = simulatedText.replace(spintaxRegex, (match, choicesStr) => {
+      if (choicesStr.includes('|')) {
+        const choices = choicesStr.split('|');
+        return choices.reduce((longest: string, current: string) => current.length > longest.length ? current : longest, '');
+      }
+      return match;
+    });
+
+    simulatedText = simulatedText
+      .replace(/{voter_name}/g, 'س'.repeat(maxNameLen))
+      .replace(/{polling_center}/g, 'س'.repeat(maxCenterLen))
+      .replace(/{tribe}/g, 'س'.repeat(maxTribeLen));
+
+    const isArabic = /[\u0600-\u06FF]/.test(smsText);
+    const limit = isArabic ? 70 : 160;
+    const worstCaseLen = simulatedText.length;
+    const worstCaseParts = Math.ceil(worstCaseLen / limit) || 1;
+
+    return {
+      length: worstCaseLen,
+      parts: worstCaseParts,
+      isArabic,
+      limit,
+    };
   }, [smsText, previewVoters]);
 
   // 5. Send campaign handler
@@ -367,9 +422,15 @@ export default function SMSBroadcasting() {
                   value={smsText}
                   onChange={(e) => setSmsText(e.target.value)}
                 />
-                <div className="flex justify-between items-center text-[10.5px] text-[var(--el-muted)] font-mono">
-                  <span>الأحرف: {charCount} · الأجزاء: <b className="text-el-primary">{smsParts}</b> رسالة</span>
-                  <span>(70 حرفاً للرسالة الواحدة بالعربية)</span>
+                <div className="flex flex-col gap-1 text-[10.5px] text-[var(--el-muted)] font-mono border-t border-[var(--el-line)] pt-2 mt-1">
+                  <div className="flex justify-between items-center">
+                    <span>قالب الرسالة الأساسي: {charCount} حرفاً · الأجزاء: <b className="text-el-secondary font-bold">{smsParts}</b> رسالة</span>
+                    <span>({worstCaseMetrics.isArabic ? 'عربي' : 'إنجليزي'}: {worstCaseMetrics.limit} حرف)</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] font-bold text-amber-500 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 mt-1">
+                    <span>⚠️ الأطول متوقع بعد الدمج: <b className="font-mono">{worstCaseMetrics.length}</b> حرفاً</span>
+                    <span>الأجزاء المتوقعة: <b className="font-mono text-lg text-amber-400">{worstCaseMetrics.parts}</b> رسالة</span>
+                  </div>
                 </div>
               </div>
             </div>
