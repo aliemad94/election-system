@@ -91,6 +91,21 @@ async function postHandler(req: NextRequest, { user }: any) {
       .filter(Boolean)
       .join("، ");
 
+    // فك صياغة Spintax للرسالة لتقدير طول النص الفعلي
+    let cleanedMessage = message;
+    const spintaxRegex = /\{([^{}]+)\}/g;
+    cleanedMessage = cleanedMessage.replace(spintaxRegex, (match, choicesStr) => {
+      if (choicesStr.includes('|')) {
+        const choices = choicesStr.split('|');
+        return choices[0]; // استخدام الخيار الأول كقيمة افتراضية للحساب
+      }
+      return match;
+    });
+
+    // كشف ما إذا كانت الرسالة تحتوي على أحرف عربية (Unicode)
+    const isArabic = /[\u0600-\u06FF]/.test(cleanedMessage);
+    const charLimit = isArabic ? 70 : 160;
+
     await auditLog({
       userId: user.userId,
       username: user.username,
@@ -107,7 +122,7 @@ async function postHandler(req: NextRequest, { user }: any) {
       success: true,
       recipients: recipientCount,
       message: `تم تسجيل حملة SMS لـ ${recipientCount} مستلم`,
-      smsCount: Math.ceil(message.length / 160) * recipientCount,
+      smsCount: Math.ceil(cleanedMessage.length / charLimit) * recipientCount,
     });
   } catch (error) {
     return handleApiError(error, "sms-post");

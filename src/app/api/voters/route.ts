@@ -128,6 +128,34 @@ async function postHandler(req: NextRequest, { user }: any) {
     const d = parsed.data;
     const birthDate = d.dateOfBirth ? new Date(d.dateOfBirth) : new Date("1990-01-01");
 
+    // التحقق من تكرار الهاتف
+    if (d.phone) {
+      const phoneExists = await prisma.voter.findFirst({
+        where: { phone: d.phone },
+        select: { id: true, firstName: true, fatherName: true, electionKey: { select: { firstName: true } } },
+      });
+      if (phoneExists) {
+        return NextResponse.json(
+          { error: `رقم الهاتف مسجل مسبقاً للناخب ${phoneExists.firstName} ${phoneExists.fatherName} تحت المفتاح ${phoneExists.electionKey?.firstName || "غير معروف"}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // التحقق من تكرار الهوية الوطنية
+    if (d.nationalId) {
+      const nationalIdExists = await prisma.voter.findFirst({
+        where: { nationalId: d.nationalId },
+        select: { id: true, firstName: true, fatherName: true, electionKey: { select: { firstName: true } } },
+      });
+      if (nationalIdExists) {
+        return NextResponse.json(
+          { error: `رقم الهوية الوطنية مسجل مسبقاً للناخب ${nationalIdExists.firstName} ${nationalIdExists.fatherName} تحت المفتاح ${nationalIdExists.electionKey?.firstName || "غير معروف"}` },
+          { status: 400 }
+        );
+      }
+    }
+
     // التحقق من وجود المفتاح (اختياري الآن)
     if (d.keyId) {
       const keyExists = await prisma.electionKey.findUnique({

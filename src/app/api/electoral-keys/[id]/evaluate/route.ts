@@ -61,6 +61,7 @@ async function postHandler(
         netVotes: Math.round(result.netVoters),
         weightedScore: result.efficiencyCoefficient,
         classification: result.classification,
+        lastEvaluationAt: new Date(),
       },
     });
 

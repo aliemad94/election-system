@@ -56,11 +56,17 @@ const DISTRICTS = [
 
 export default function TribalManagement() {
   const [tribes, setTribes] = useState<Tribe[]>([]);
+  const [allTribesForStats, setAllTribesForStats] = useState<Tribe[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedTribe, setSelectedTribe] = useState<Tribe | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Form state
   const [newTribe, setNewTribe] = useState({
@@ -72,23 +78,57 @@ export default function TribalManagement() {
     notes: '',
   });
 
+  const fetchAllTribes = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/tribes`);
+      const data = await res.json();
+      setAllTribesForStats(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching all tribes for stats:', err);
+    }
+  }, []);
+
   const fetchTribes = useCallback(async () => {
+    setLoading(true);
     try {
       const params = new URLSearchParams();
+      params.set('page', String(currentPage));
+      params.set('limit', '12'); // 12 items per page matches 3-column layout
       if (selectedDistrict) params.set('district', selectedDistrict);
+      if (searchQuery) params.set('search', searchQuery);
+      
       const res = await fetch(`/api/tribes?${params.toString()}`);
       const data = await res.json();
-      setTribes(Array.isArray(data) ? data : []);
+      if (data && data.list) {
+        setTribes(data.list);
+        setTotalPages(data.totalPages || 1);
+        setTotalItems(data.total || 0);
+      } else {
+        setTribes(Array.isArray(data) ? data : []);
+        setTotalPages(1);
+        setTotalItems(Array.isArray(data) ? data.length : 0);
+      }
     } catch (err) {
       console.error('Error fetching tribes:', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedDistrict]);
+  }, [currentPage, selectedDistrict, searchQuery]);
 
+  // Reset page when search filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedDistrict, searchQuery]);
+
+  // Load paginated list
   useEffect(() => {
     fetchTribes();
   }, [fetchTribes]);
+
+  // Load stats once on mount
+  useEffect(() => {
+    fetchAllTribes();
+  }, [fetchAllTribes]);
 
   const handleAddTribe = async () => {
     try {
@@ -101,17 +141,16 @@ export default function TribalManagement() {
         setShowAddDialog(false);
         setNewTribe({ name: '', leaderName: '', leaderPhone: '', influence: 3, district: 'الناصرية', notes: '' });
         fetchTribes();
+        fetchAllTribes(); // Refresh summaries
       }
     } catch (err) {
       console.error('Error adding tribe:', err);
     }
   };
 
-  const filteredTribes = tribes.filter(
-    (t) => !searchQuery || t.name.includes(searchQuery) || (t.leaderName && t.leaderName.includes(searchQuery))
-  );
+  const filteredTribes = tribes;
 
-  const maxInfluence = Math.max(...tribes.map((t) => t.influence), 1);
+  const maxInfluence = allTribesForStats.length > 0 ? Math.max(...allTribesForStats.map((t) => t.influence), 1) : 5;
 
   return (
     <div className="flex flex-col gap-4 max-w-[1440px] mx-auto w-full">
@@ -139,7 +178,7 @@ export default function TribalManagement() {
           ترتيب التأثير العشائري
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-          {tribes
+          {[...allTribesForStats]
             .sort((a, b) => b.influence - a.influence)
             .slice(0, 5)
             .map((tribe, index) => (
@@ -284,6 +323,47 @@ export default function TribalManagement() {
         </div>
       )}
 
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center bg-el-surface-container-lowest border border-el-outline-variant rounded-sm p-4 gap-4">
+          <div className="text-[12px] text-el-on-surface-variant">
+            عرض {filteredTribes.length} من أصل {totalItems} عشيرة (الصفحة {currentPage} من {totalPages})
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 h-8 text-[12px] font-medium border border-el-outline-variant rounded hover:bg-el-surface-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer text-el-on-surface"
+            >
+              السابق
+            </button>
+            {Array.from({ length: totalPages }).map((_, idx) => {
+              const pNum = idx + 1;
+              return (
+                <button
+                  key={pNum}
+                  onClick={() => setCurrentPage(pNum)}
+                  className={`w-8 h-8 text-[12px] font-medium rounded transition-colors cursor-pointer ${
+                    currentPage === pNum
+                      ? 'bg-el-primary text-el-on-primary font-bold'
+                      : 'border border-el-outline-variant text-el-on-surface hover:bg-el-surface-container'
+                  }`}
+                >
+                  {pNum}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 h-8 text-[12px] font-medium border border-el-outline-variant rounded hover:bg-el-surface-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer text-el-on-surface"
+            >
+              التالي
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* District Distribution */}
       <section className="bg-el-surface-container-lowest border border-el-outline-variant rounded-sm p-4">
         <h3 className="text-[18px] leading-[24px] font-semibold text-el-on-surface mb-3 flex items-center gap-2">
@@ -292,9 +372,9 @@ export default function TribalManagement() {
         </h3>
         <div className="space-y-3">
           {DISTRICTS.map((district) => {
-            const districtTribes = tribes.filter((t) => t.district === district);
+            const districtTribes = allTribesForStats.filter((t) => t.district === district);
             const totalVotersInDistrict = districtTribes.reduce((sum, t) => sum + t.voterCount, 0);
-            const maxVoters = Math.max(...DISTRICTS.map((d) => tribes.filter((t) => t.district === d).reduce((s, t) => s + t.voterCount, 0)), 1);
+            const maxVoters = Math.max(...DISTRICTS.map((d) => allTribesForStats.filter((t) => t.district === d).reduce((s, t) => s + t.voterCount, 0)), 1);
             return (
               <div key={district}>
                 <div className="flex justify-between text-[12px] leading-[16px] mb-1">

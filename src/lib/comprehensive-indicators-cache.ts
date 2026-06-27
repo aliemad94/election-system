@@ -12,7 +12,7 @@ interface CachedResult {
   timestamp: number;
 }
 
-const CACHE_TTL_MS = 15_000;
+const CACHE_TTL_MS = 60_000; // 60 ثانية (1 دقيقة)
 let cache: CachedResult | null = null;
 let inFlight: Promise<unknown> | null = null;
 

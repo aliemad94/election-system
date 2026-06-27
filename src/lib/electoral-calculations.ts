@@ -422,6 +422,7 @@ export interface ElectionResultInput {
     partyName?: string;
     votes: number;
     isOurCandidate?: boolean;
+    gender?: string; // ذكر | أنثى
   }[];
   totalRegistered: number;
   totalVotes: number;
@@ -441,6 +442,7 @@ export interface ElectionResultOutput {
     votePercentageOfTurnout: number;   // نسبة من إجمالي المصوتين
     seatsAllocated: number;
     isOurCandidate: boolean;
+    gender: string;
   }[];
   seatsWon: number;
   winnerName: string;
@@ -449,9 +451,7 @@ export interface ElectionResultOutput {
 
 /**
  * حساب نتائج الانتخابات الشاملة من أصوات المرشحين الفعلية.
- * يحسب نسبتين لكل مرشح:
- *   - votePercentage: من الأصوات الصحيحة (validVotes) — أساس Saint-Laguë
- *   - votePercentageOfTurnout: من إجمالي المصوتين (totalVotes) — المرجع الإعلامي
+ * يحسب نسبتين لكل مرشح مع تطبيق كوتا النساء بنسبة 25% وفقاً للقانون العراقي.
  */
 export function calculateElectionResults(input: ElectionResultInput): ElectionResultOutput {
   const validVotes = input.totalVotes - input.invalidVotes;
@@ -487,12 +487,22 @@ export function calculateElectionResults(input: ElectionResultInput): ElectionRe
     partyCandidatesMap.get(pName)!.push(c);
   });
 
-  const candidateSeatsMap = new Map<string, number>();
+  // 1. التخصيص الأولي للمقاعد داخل كل حزب (الأعلى أصواتاً)
+  const candidateAllocations = input.candidates.map(c => ({
+    candidateName: c.candidateName,
+    partyName: c.partyName || 'مستقلون / أخرى',
+    votes: c.votes,
+    gender: c.gender || 'ذكر',
+    isOurCandidate: c.isOurCandidate || false,
+    hasSeat: false,
+  }));
+
   partyCandidatesMap.forEach((pCandidates, pName) => {
     const seatsAvailable = partySeatsMap.get(pName) || 0;
     
     // استبعاد السجلات النائبة (المخصصة للأصوات المتبقية) من الحصول على مقاعد فردية
-    const realCandidates = pCandidates.filter(c => 
+    const realCandidates = candidateAllocations.filter(c => 
+      c.partyName === pName &&
       !c.candidateName.includes("أصوات بقية") && 
       !c.candidateName.includes("بقية أصوات") &&
       !c.candidateName.includes("بقية مرشحي")
@@ -501,23 +511,73 @@ export function calculateElectionResults(input: ElectionResultInput): ElectionRe
     // ترتيب مرشحي هذا الحزب الفعليين تنازلياً حسب الأصوات الشخصية
     const sorted = [...realCandidates].sort((a, b) => b.votes - a.votes);
     sorted.forEach((c, index) => {
-      // يحصل المرشح على مقعد إذا كان ترتيبه ضمن عدد المقاعد المخصصة للحزب
-      candidateSeatsMap.set(`${c.partyName || ''}_${c.candidateName}`, index < seatsAvailable ? 1 : 0);
-    });
-
-    // السجلات النائبة المستبعدة تحصل تلقائياً على 0 مقاعد
-    pCandidates.forEach(c => {
-      const key = `${c.partyName || ''}_${c.candidateName}`;
-      if (!candidateSeatsMap.has(key)) {
-        candidateSeatsMap.set(key, 0);
+      if (index < seatsAvailable) {
+        c.hasSeat = true;
       }
     });
   });
 
-  // بناء النتائج مع النسبتين وتوزيع المقاعد الفردية
-  const candidates = input.candidates.map(c => ({
+  // 2. تطبيق كوتا النساء بنسبة 25% (معدل كوتا النساء في المحافظة)
+  const targetFemaleSeats = Math.ceil(input.totalSeats * 0.25);
+  let currentFemaleSeats = candidateAllocations.filter(c => c.hasSeat && c.gender === 'أنثى').length;
+
+  if (currentFemaleSeats < targetFemaleSeats) {
+    const neededFemales = targetFemaleSeats - currentFemaleSeats;
+
+    for (let step = 0; step < neededFemales; step++) {
+      let bestSwap: {
+        maleWinnerIndex: number;
+        femaleNonWinnerIndex: number;
+        cost: number;
+      } | null = null;
+
+      // فحص إمكانيات التبديل داخل كل قائمة لضمان عدم سرقة مقاعد الكتل الأخرى
+      for (const [pName, seatsAvailable] of partySeatsMap.entries()) {
+        if (seatsAvailable === 0) continue;
+
+        const partyCandidates = candidateAllocations.map((c, idx) => ({ c, idx }))
+          .filter(x => x.c.partyName === pName);
+
+        const maleWinners = partyCandidates.filter(x => x.c.hasSeat && x.c.gender === 'ذكر');
+        const femaleNonWinners = partyCandidates.filter(x => 
+          !x.c.hasSeat && 
+          x.c.gender === 'أنثى' &&
+          !x.c.candidateName.includes("أصوات بقية") && 
+          !x.c.candidateName.includes("بقية أصوات") &&
+          !x.c.candidateName.includes("بقية مرشحي")
+        );
+
+        if (maleWinners.length > 0 && femaleNonWinners.length > 0) {
+          // نجد الرجل الفائز بالأقل أصوات
+          const lowestMaleWinner = maleWinners.reduce((prev, curr) => prev.c.votes < curr.c.votes ? prev : curr);
+          // نجد المرأة غير الفائزة بالأعلى أصوات
+          const highestFemaleNonWinner = femaleNonWinners.reduce((prev, curr) => prev.c.votes > curr.c.votes ? prev : curr);
+
+          const cost = lowestMaleWinner.c.votes - highestFemaleNonWinner.c.votes;
+          
+          if (bestSwap === null || cost < bestSwap.cost) {
+            bestSwap = {
+              maleWinnerIndex: lowestMaleWinner.idx,
+              femaleNonWinnerIndex: highestFemaleNonWinner.idx,
+              cost,
+            };
+          }
+        }
+      }
+
+      if (bestSwap) {
+        candidateAllocations[bestSwap.maleWinnerIndex].hasSeat = false;
+        candidateAllocations[bestSwap.femaleNonWinnerIndex].hasSeat = true;
+      } else {
+        break; // لا توجد خيارات تبديل أخرى
+      }
+    }
+  }
+
+  // بناء النتيجة النهائية المرتبة
+  const candidates = candidateAllocations.map(c => ({
     candidateName: c.candidateName,
-    partyName: c.partyName || '',
+    partyName: c.partyName,
     votes: c.votes,
     votePercentage: validVotes > 0
       ? Math.round((c.votes / validVotes) * 10000) / 100
@@ -525,8 +585,9 @@ export function calculateElectionResults(input: ElectionResultInput): ElectionRe
     votePercentageOfTurnout: input.totalVotes > 0
       ? Math.round((c.votes / input.totalVotes) * 10000) / 100
       : 0,
-    seatsAllocated: candidateSeatsMap.get(`${c.partyName || ''}_${c.candidateName}`) || 0,
-    isOurCandidate: c.isOurCandidate || false,
+    seatsAllocated: c.hasSeat ? 1 : 0,
+    isOurCandidate: c.isOurCandidate,
+    gender: c.gender,
   }));
 
   // ترتيب تنازلي بالأصوات
