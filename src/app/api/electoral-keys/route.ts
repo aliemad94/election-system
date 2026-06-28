@@ -116,6 +116,7 @@ async function getHandler(req: NextRequest, { user }: any) {
       trainingStatus: k.trainingStatus || null,
       dataAccuracy: k.dataAccuracy || null,
       createdBy: k.createdBy || null,
+      lastEvaluationAt: k.lastEvaluationAt ? k.lastEvaluationAt.toISOString() : null,
 
       // الأصوات
       totalVotes: k.totalVotes,
