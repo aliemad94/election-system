@@ -12,6 +12,9 @@ import {
   TrendingUp,
   Crown,
   X,
+  AlertTriangle,
+  RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface Tribe {
@@ -77,6 +80,17 @@ export default function TribalManagement() {
     district: 'الناصرية',
     notes: '',
   });
+
+  // تنقية البيانات والتكرار
+  const [showDeduplicateDialog, setShowDeduplicateDialog] = useState(false);
+  const [dedupTab, setDedupTab] = useState<'tribes' | 'nicknames'>('tribes');
+  const [duplicateGroups, setDuplicateGroups] = useState<any[]>([]);
+  const [loadingDuplicates, setLoadingDuplicates] = useState(false);
+  const [mergingInProcess, setMergingInProcess] = useState(false);
+  const [selectedPrimaries, setSelectedPrimaries] = useState<Record<string, string>>({});
+
+  const [duplicateNicknamesGroups, setDuplicateNicknamesGroups] = useState<any[]>([]);
+  const [selectedPrimaryNicknames, setSelectedPrimaryNicknames] = useState<Record<string, string>>({});
 
   const fetchAllTribes = useCallback(async () => {
     try {
@@ -148,6 +162,121 @@ export default function TribalManagement() {
     }
   };
 
+  const fetchDuplicates = async () => {
+    setLoadingDuplicates(true);
+    try {
+      const res = await fetch('/api/tribes/deduplicate');
+      if (res.ok) {
+        const data = await res.json();
+        setDuplicateGroups(data);
+        
+        // تعيين المقترح الافتراضي كخيار رئيسي
+        const initialPrimaries: Record<string, string> = {};
+        data.forEach((group: any) => {
+          initialPrimaries[group.normalized] = group.suggestedPrimary.id;
+        });
+        setSelectedPrimaries(initialPrimaries);
+      }
+    } catch (err) {
+      console.error('Error fetching duplicates:', err);
+    } finally {
+      setLoadingDuplicates(false);
+    }
+  };
+
+  const fetchNicknameDuplicates = async () => {
+    setLoadingDuplicates(true);
+    try {
+      const res = await fetch('/api/electoral-keys/deduplicate-nicknames');
+      if (res.ok) {
+        const data = await res.json();
+        setDuplicateNicknamesGroups(data);
+        
+        // تعيين المقترح الافتراضي كلقب رئيسي
+        const initialPrimaries: Record<string, string> = {};
+        data.forEach((group: any) => {
+          initialPrimaries[group.normalized] = group.suggestedPrimary;
+        });
+        setSelectedPrimaryNicknames(initialPrimaries);
+      }
+    } catch (err) {
+      console.error('Error fetching nickname duplicates:', err);
+    } finally {
+      setLoadingDuplicates(false);
+    }
+  };
+
+  const handleMerge = async (normalizedGroup: string, primaryId: string, allTribeIds: string[]) => {
+    const duplicateIds = allTribeIds.filter(id => id !== primaryId);
+    if (duplicateIds.length === 0) return;
+
+    if (!confirm('هل أنت متأكد من دمج هذه العشائر؟ لا يمكن التراجع عن هذه العملية وسيتم تحويل كافة الناخبين والمفاتيح والبيانات تلقائياً.')) {
+      return;
+    }
+
+    setMergingInProcess(true);
+    try {
+      const res = await fetch('/api/tribes/deduplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          primaryTribeId: primaryId,
+          duplicateTribeIds: duplicateIds,
+        }),
+      });
+
+      if (res.ok) {
+        // تحديث البيانات
+        fetchDuplicates();
+        fetchTribes();
+        fetchAllTribes();
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'فشلت عملية الدمج');
+      }
+    } catch (err) {
+      console.error('Error merging tribes:', err);
+      alert('حدث خطأ غير متوقع أثناء محاولة الدمج.');
+    } finally {
+      setMergingInProcess(false);
+    }
+  };
+
+  const handleMergeNicknames = async (normalizedGroup: string, primaryNickname: string, allNicknames: string[]) => {
+    const duplicateNicknames = allNicknames.filter(n => n !== primaryNickname);
+    if (duplicateNicknames.length === 0) return;
+
+    if (!confirm(`هل أنت متأكد من توحيد هذه الألقاب؟ سيتم استبدال كل الألقاب المتشابهة لتصبح باللقب المعتمد: "${primaryNickname}".`)) {
+      return;
+    }
+
+    setMergingInProcess(true);
+    try {
+      const res = await fetch('/api/electoral-keys/deduplicate-nicknames', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          primaryNickname,
+          duplicateNicknames,
+        }),
+      });
+
+      if (res.ok) {
+        fetchNicknameDuplicates();
+        fetchTribes();
+        fetchAllTribes();
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'فشلت عملية توحيد الألقاب');
+      }
+    } catch (err) {
+      console.error('Error merging nicknames:', err);
+      alert('حدث خطأ غير متوقع أثناء محاولة توحيد الألقاب.');
+    } finally {
+      setMergingInProcess(false);
+    }
+  };
+
   const filteredTribes = tribes;
 
   const maxInfluence = allTribesForStats.length > 0 ? Math.max(...allTribesForStats.map((t) => t.influence), 1) : 5;
@@ -162,13 +291,25 @@ export default function TribalManagement() {
             العشائر والحمائل في محافظة ذي قار - المحرك الرئيسي للانتخابات
           </p>
         </div>
-        <button
-          onClick={() => setShowAddDialog(true)}
-          className="bg-el-primary text-el-on-primary px-4 py-2 rounded flex items-center gap-2 hover:opacity-90 transition-all shadow-sm"
-        >
-          <Plus className="w-[18px] h-[18px]" />
-          <span className="text-[14px] leading-[20px] font-medium">إضافة عشيرة</span>
-        </button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => {
+              setShowDeduplicateDialog(true);
+              fetchDuplicates();
+            }}
+            className="border border-el-outline-variant text-el-on-surface bg-el-surface-container-lowest px-4 py-2 rounded flex items-center gap-2 hover:bg-el-surface-container transition-all shadow-sm cursor-pointer text-[14px] leading-[20px] font-medium"
+          >
+            <Users className="w-[18px] h-[18px] text-el-secondary" />
+            <span>معالجة التكرار</span>
+          </button>
+          <button
+            onClick={() => setShowAddDialog(true)}
+            className="bg-el-primary text-el-on-primary px-4 py-2 rounded flex items-center gap-2 hover:opacity-90 transition-all shadow-sm cursor-pointer"
+          >
+            <Plus className="w-[18px] h-[18px]" />
+            <span className="text-[14px] leading-[20px] font-medium">إضافة عشيرة</span>
+          </button>
+        </div>
       </div>
 
       {/* Influence Ranking Summary */}
@@ -562,6 +703,208 @@ export default function TribalManagement() {
             >
               إغلاق
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Deduplication Dialog */}
+      {showDeduplicateDialog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-el-surface-container-lowest rounded-sm border border-el-outline-variant w-full max-w-2xl p-6 max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-el-outline-variant">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-el-secondary" />
+                <h3 className="text-[18px] leading-[24px] font-semibold text-el-on-surface">مركز تنقية وتطهير البيانات</h3>
+              </div>
+              <button onClick={() => setShowDeduplicateDialog(false)} className="text-el-on-surface-variant hover:text-el-on-surface">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tab selection for Tribes vs Nicknames */}
+            <div className="flex gap-2 mb-4 bg-el-surface-container-low p-1 rounded-sm border border-el-outline-variant/60">
+              <button
+                onClick={() => {
+                  setDedupTab('tribes');
+                  fetchDuplicates();
+                }}
+                className={`flex-1 py-1.5 text-[12.5px] font-bold rounded transition-all cursor-pointer ${dedupTab === 'tribes' ? 'bg-el-primary text-el-on-primary shadow-sm' : 'text-el-on-surface-variant hover:text-el-on-surface'}`}
+              >
+                تنقية العشائر المرتبطة
+              </button>
+              <button
+                onClick={() => {
+                  setDedupTab('nicknames');
+                  fetchNicknameDuplicates();
+                }}
+                className={`flex-1 py-1.5 text-[12.5px] font-bold rounded transition-all cursor-pointer ${dedupTab === 'nicknames' ? 'bg-el-primary text-el-on-primary shadow-sm' : 'text-el-on-surface-variant hover:text-el-on-surface'}`}
+              >
+                تنقية ألقاب المفاتيح الانتخابية
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              <div className="bg-el-primary-container/10 border border-el-primary-container/30 text-el-on-primary-container p-3 rounded text-[12.5px] leading-[18px]">
+                💡 **ملاحظة:** يعتمد هذا النظام على محرك ذكي يقوم بتطهير الألقاب والعشائر من أل التعريف، آلـ، البوـ، ياء النسب واللاواحق الأخرى، لتحديد التكرارات المحتملة ومساعدتك في دمجها لضمان عدم تشتيت أصوات العشيرة الواحدة.
+              </div>
+
+              {dedupTab === 'tribes' ? (
+                loadingDuplicates ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-el-on-surface-variant text-[13px]">
+                    <RefreshCw className="w-6 h-6 animate-spin text-el-primary" />
+                    <span>جاري فحص قاعدة البيانات ورصد تكرار العشائر...</span>
+                  </div>
+                ) : duplicateGroups.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+                    <CheckCircle2 className="w-10 h-10 text-green-500" />
+                    <span className="text-[15px] font-semibold text-el-on-surface mt-2">بيانات العشائر نظيفة!</span>
+                    <span className="text-[12px] text-el-on-surface-variant">لم يتم العثور على أي عشائر أو ألقاب مكررة أو متشابهة في النظام حالياً.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {duplicateGroups.map((group, gIdx) => {
+                      const primaryId = selectedPrimaries[group.normalized];
+                      const allIds = group.tribes.map((t: any) => t.id);
+                      return (
+                        <div key={gIdx} className="border border-el-outline-variant rounded p-4 bg-el-surface-container-low">
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="text-[12px] font-bold bg-el-secondary/15 text-el-secondary px-2.5 py-0.5 rounded font-mono">
+                              الجذر المطبع الموحد: {group.normalized}
+                            </span>
+                            <span className="text-[11px] text-el-on-surface-variant">
+                              وجدنا ({group.tribes.length}) صيغ مكررة
+                            </span>
+                          </div>
+
+                          <div className="space-y-2.5 mb-4">
+                            {group.tribes.map((t: any) => {
+                              const isChecked = primaryId === t.id;
+                              return (
+                                <label key={t.id} className={`flex items-start gap-3 p-2.5 rounded border cursor-pointer transition-all ${isChecked ? 'bg-el-primary-container/10 border-el-primary' : 'bg-el-surface-container-lowest border-el-outline-variant/60 hover:bg-el-surface-container'}`}>
+                                  <input
+                                    type="radio"
+                                    name={`primary-${group.normalized}`}
+                                    checked={isChecked}
+                                    onChange={() => setSelectedPrimaries(prev => ({ ...prev, [group.normalized]: t.id }))}
+                                    className="mt-1"
+                                  />
+                                  <div className="flex-1 text-[12.5px]">
+                                    <div className="font-semibold text-el-on-surface flex items-center justify-between">
+                                      <span>{t.name}</span>
+                                      <span className="text-[11px] bg-el-surface-variant text-el-on-surface-variant px-1.5 py-0.5 rounded font-mono font-bold">
+                                        {t.voterCount} ناخب · {t.keyCount} مفتاح
+                                      </span>
+                                    </div>
+                                    <div className="text-[11px] text-el-on-surface-variant mt-1">
+                                      الشيخ: {t.leaderName || 'غير محدد'} · القضاء: {t.district || 'غير محدد'}
+                                    </div>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex justify-between items-center bg-el-surface-container-lowest p-2.5 rounded border border-el-outline-variant/50">
+                            <span className="text-[11px] text-el-on-surface-variant flex items-center gap-1">
+                              <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" />
+                              سيتم دمج البقية فيها وحذف المكرر.
+                            </span>
+                            <button
+                              disabled={mergingInProcess}
+                              onClick={() => handleMerge(group.normalized, primaryId, allIds)}
+                              className="bg-el-secondary text-el-on-secondary px-4 py-1.5 rounded text-[12px] font-semibold hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer"
+                            >
+                              تأكيد دمج المجموعة
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              ) : (
+                /* NICKNAMES DEDUPLICATION TAB */
+                loadingDuplicates ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-el-on-surface-variant text-[13px]">
+                    <RefreshCw className="w-6 h-6 animate-spin text-el-primary" />
+                    <span>جاري فحص قاعدة البيانات ورصد تكرار الألقاب...</span>
+                  </div>
+                ) : duplicateNicknamesGroups.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+                    <CheckCircle2 className="w-10 h-10 text-green-500" />
+                    <span className="text-[15px] font-semibold text-el-on-surface mt-2">بيانات الألقاب نظيفة!</span>
+                    <span className="text-[12px] text-el-on-surface-variant">لم يتم العثور على أي ألقاب مكررة أو متشابهة إملائياً للمفاتيح حالياً.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {duplicateNicknamesGroups.map((group, gIdx) => {
+                      const primaryNickname = selectedPrimaryNicknames[group.normalized];
+                      const allNicknames = group.nicknames.map((n: any) => n.nickname);
+                      return (
+                        <div key={gIdx} className="border border-el-outline-variant rounded p-4 bg-el-surface-container-low">
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="text-[12px] font-bold bg-el-primary/15 text-el-primary px-2.5 py-0.5 rounded font-mono">
+                              الجذر المطبع الموحد: {group.normalized}
+                            </span>
+                            <span className="text-[11px] text-el-on-surface-variant">
+                              وجدنا ({group.nicknames.length}) صيغ مكررة
+                            </span>
+                          </div>
+
+                          <div className="space-y-2.5 mb-4">
+                            {group.nicknames.map((n: any) => {
+                              const isChecked = primaryNickname === n.nickname;
+                              return (
+                                <label key={n.nickname} className={`flex items-start gap-3 p-2.5 rounded border cursor-pointer transition-all ${isChecked ? 'bg-el-primary-container/10 border-el-primary' : 'bg-el-surface-container-lowest border-el-outline-variant/60 hover:bg-el-surface-container'}`}>
+                                  <input
+                                    type="radio"
+                                    name={`primary-nickname-${group.normalized}`}
+                                    checked={isChecked}
+                                    onChange={() => setSelectedPrimaryNicknames(prev => ({ ...prev, [group.normalized]: n.nickname }))}
+                                    className="mt-1"
+                                  />
+                                  <div className="flex-1 text-[12.5px]">
+                                    <div className="font-semibold text-el-on-surface flex items-center justify-between">
+                                      <span>{n.nickname}</span>
+                                      <span className="text-[11px] bg-el-surface-variant text-el-on-surface-variant px-1.5 py-0.5 rounded font-mono font-bold">
+                                        مستخدم في ({n.count}) مفتاح انتخابي
+                                      </span>
+                                    </div>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex justify-between items-center bg-el-surface-container-lowest p-2.5 rounded border border-el-outline-variant/50">
+                            <span className="text-[11px] text-el-on-surface-variant flex items-center gap-1">
+                              <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" />
+                              سيتم توحيد الألقاب الأخرى في اللقب الرئيسي المختار.
+                            </span>
+                            <button
+                              disabled={mergingInProcess}
+                              onClick={() => handleMergeNicknames(group.normalized, primaryNickname, allNicknames)}
+                              className="bg-el-primary text-el-on-primary px-4 py-1.5 rounded text-[12px] font-semibold hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer"
+                            >
+                              تأكيد توحيد اللقب
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              )}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-el-outline-variant flex justify-end">
+              <button
+                onClick={() => setShowDeduplicateDialog(false)}
+                className="border border-el-outline-variant text-el-on-surface-variant px-5 py-2 rounded text-[13.5px] font-medium hover:bg-el-surface-container transition-colors cursor-pointer"
+              >
+                إغلاق النافذة
+              </button>
+            </div>
           </div>
         </div>
       )}
