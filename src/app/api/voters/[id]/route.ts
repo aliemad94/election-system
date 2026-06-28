@@ -66,9 +66,14 @@ async function putHandler(
     const data: Record<string, unknown> = { ...parsed.data };
     if (parsed.data.dateOfBirth) {
       data.birthDate = new Date(parsed.data.dateOfBirth);
-      delete data.dateOfBirth;
     }
-    if (parsed.data.checkedInAt) {
+    delete data.dateOfBirth;
+
+    if (parsed.data.checkedInAt === undefined) {
+      delete data.checkedInAt;
+    } else if (parsed.data.checkedInAt === null || parsed.data.checkedInAt === "") {
+      data.checkedInAt = null;
+    } else {
       data.checkedInAt = new Date(parsed.data.checkedInAt);
     }
 

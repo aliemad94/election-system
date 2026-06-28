@@ -78,16 +78,19 @@ async function putHandler(
 
     if (d.dateOfBirth) {
       data.birthDate = new Date(d.dateOfBirth);
-      delete data.dateOfBirth;
     }
-    if (d.firstContactDate) {
-      data.firstContactDate = new Date(d.firstContactDate);
-    }
-    if (d.lastContactDate) {
-      data.lastContactDate = new Date(d.lastContactDate);
-    }
-    if (d.lastSpentDate) {
-      data.lastSpentDate = new Date(d.lastSpentDate);
+    delete data.dateOfBirth;
+
+    const dateFields = ["firstContactDate", "lastContactDate", "lastSpentDate"];
+    for (const field of dateFields) {
+      const val = d[field as keyof typeof d];
+      if (val === undefined) {
+        delete data[field];
+      } else if (val === null || val === "") {
+        data[field] = null;
+      } else {
+        data[field] = new Date(val as string);
+      }
     }
 
     const updated = await prisma.electionKey.update({
