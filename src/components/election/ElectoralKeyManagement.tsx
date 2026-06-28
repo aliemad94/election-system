@@ -157,6 +157,7 @@ export default function ElectoralKeyManagement() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedKey, setSelectedKey] = useState<ElectoralKeyData | null>(null);
+  const [editingKey, setEditingKey] = useState<ElectoralKeyData | null>(null);
   const [activeTab, setActiveTab] = useState<'identity' | 'power' | 'influence'>('identity');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDistrict, setFilterDistrict] = useState('');
@@ -232,7 +233,7 @@ export default function ElectoralKeyManagement() {
       delete (payload as any).loyaltyLevel;  // إزالة الاسم الداخلي
       delete (payload as any).mobilizationAbility;
 
-      const url = editMode ? `/api/electoral-keys/${selectedKey?.id}` : '/api/electoral-keys';
+      const url = editMode ? `/api/electoral-keys/${editingKey?.id || selectedKey?.id}` : '/api/electoral-keys';
       const method = editMode ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -243,7 +244,7 @@ export default function ElectoralKeyManagement() {
 
       if (res.ok) {
         const saved = await res.json();
-        const newId = saved?.id || selectedKey?.id;
+        const newId = saved?.id || editingKey?.id || selectedKey?.id;
 
         // تشغيل التقييم الخادمي بعد الحفظ مباشرة
         if (newId && editMode) {
@@ -262,10 +263,10 @@ export default function ElectoralKeyManagement() {
         setShowAddDialog(false);
         setEditMode(false);
         setForm(defaultForm);
+        setEditingKey(null);
         fetchKeys();
         if (selectedKey) {
-          const updated = await res.json();
-          setSelectedKey(updated);
+          setSelectedKey(saved);
         }
       } else {
         const err = await res.json();
@@ -372,6 +373,7 @@ export default function ElectoralKeyManagement() {
     });
     setEditMode(true);
     setShowAddDialog(true);
+    setEditingKey(key);
   };
 
   const calcNetVotes = (s: number, n: number, w: number) => {
@@ -711,7 +713,7 @@ export default function ElectoralKeyManagement() {
               <h3 className="text-[18px] font-semibold text-el-on-surface flex items-center gap-2">
                 <Key className="w-5 h-5 text-el-primary" /> إضافة مفتاح انتخابي جديد
               </h3>
-              <button onClick={() => { setShowAddDialog(false); setForm(defaultForm); }} className="text-el-on-surface-variant hover:text-el-on-surface">
+              <button onClick={() => { setShowAddDialog(false); setEditMode(false); setForm(defaultForm); setEditingKey(null); }} className="text-el-on-surface-variant hover:text-el-on-surface">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1043,7 +1045,7 @@ export default function ElectoralKeyManagement() {
                 {editMode ? 'حفظ التعديلات' : 'إضافة المفتاح'}
               </button>
               <button
-                onClick={() => { setShowAddDialog(false); setEditMode(false); setForm(defaultForm); }}
+                onClick={() => { setShowAddDialog(false); setEditMode(false); setForm(defaultForm); setEditingKey(null); }}
                 className="flex-1 border border-el-outline-variant text-el-on-surface-variant py-2 rounded text-[14px] hover:bg-el-surface-container"
               >
                 إلغاء
