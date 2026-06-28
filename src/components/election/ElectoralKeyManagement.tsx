@@ -406,8 +406,16 @@ export default function ElectoralKeyManagement() {
 
   // ملخص الإحصائيات
   const totalNetVotes = keys.reduce((s, k) => s + k.netVotes, 0);
-  const totalGuaranteed = Math.round(totalNetVotes);
-  const avgGuaranteed = keys.length ? parseFloat((totalNetVotes / keys.length).toFixed(1)) : 0;
+  
+  // دالة لحساب الأصوات المضمونة للمفتاح الواحد بعد تطبيق معامل كفاءة التقييم
+  const getGuaranteedVotes = (k: ElectoralKeyData) => {
+    const efficiencyCoeff = k.lastEvaluationAt ? (k.weightedScore / 100) : 1.0;
+    return k.netVotes * efficiencyCoeff;
+  };
+
+  const totalGuaranteed = Math.round(keys.reduce((s, k) => s + getGuaranteedVotes(k), 0));
+  const avgGuaranteed = keys.length ? parseFloat((keys.reduce((s, k) => s + getGuaranteedVotes(k), 0) / keys.length).toFixed(1)) : 0;
+
 
   const stats = {
     total: keys.length,
