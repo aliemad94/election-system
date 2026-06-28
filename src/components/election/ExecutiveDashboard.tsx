@@ -10,6 +10,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import dynamic from 'next/dynamic';
 
 const DistrictMap = dynamic(() => import('./districtmap'), { ssr: false });
+import IndicatorInfoBar from "./IndicatorInfoBar";
 
 
 interface DecisiveData {
@@ -158,7 +159,9 @@ export default function ExecutiveDashboard() {
       {/* ═══ Hero: المؤشرات الاستراتيجية ═══ */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* المقاعد المتوقعة - بنر عريض فاخر */}
-        <div className="bg-gradient-to-r from-el-primary via-[#0f3b7d] to-el-primary text-white rounded-lg p-6 relative overflow-hidden shadow-lg border border-el-primary/30 lg:col-span-3 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="lg:col-span-3">
+        <IndicatorInfoBar indicatorKey="PROJECTED_SEATS" />
+        <div className="bg-gradient-to-r from-el-primary via-[#0f3b7d] to-el-primary text-white rounded-lg p-6 relative overflow-hidden shadow-lg border border-el-primary/30 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-24 -translate-y-24 pointer-events-none" />
           <div className="absolute bottom-0 right-0 w-48 h-48 bg-white/5 rounded-full translate-x-16 translate-y-16 pointer-events-none" />
           
@@ -185,8 +188,11 @@ export default function ExecutiveDashboard() {
             </div>
           </div>
         </div>
+        </div>
 
         {/* 1. الأصوات المطلوبة للفوز */}
+        <div>
+        <IndicatorInfoBar indicatorKey="VOTES_NEEDED" compact />
         <div className="bg-gradient-to-br from-el-surface-container-lowest to-el-surface-container/30 dark:from-el-surface-container/30 dark:to-el-surface-container-low/10 border border-amber-500/30 rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:border-amber-500/50 hover:-translate-y-0.5 transition-all duration-300">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
@@ -203,8 +209,11 @@ export default function ExecutiveDashboard() {
             الحد الأدنى التقريبي لحسم مقعد في ذي قار
           </div>
         </div>
+        </div>
 
         {/* 2. عدد الأصوات المتوقعة */}
+        <div>
+        <IndicatorInfoBar indicatorKey="EXPECTED_VOTES" compact />
         <div className="bg-gradient-to-br from-el-surface-container-lowest to-el-surface-container/30 dark:from-el-surface-container/30 dark:to-el-surface-container-low/10 border border-el-outline-variant/60 dark:border-el-outline-variant/30 rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:border-el-primary/50 hover:-translate-y-0.5 transition-all duration-300">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
@@ -221,8 +230,11 @@ export default function ExecutiveDashboard() {
             صافي الأصوات: <span className="font-bold text-el-primary font-mono">{totalNetVotes.toLocaleString()}</span> · المسجلون: <span className="font-mono">{totalRegistered.toLocaleString()}</span>
           </div>
         </div>
+        </div>
 
         {/* 3. مؤشر الفجوة الانتخابية */}
+        <div>
+        <IndicatorInfoBar indicatorKey="ELECTORAL_GAP" compact />
         <div className={`border rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-br ${electoralGap > 0 ? 'from-red-500/5 to-red-500/10 border-red-500/30 hover:border-red-500/50' : 'from-green-500/5 to-green-500/10 border-green-500/30 hover:border-green-500/50'}`}>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
@@ -241,8 +253,11 @@ export default function ExecutiveDashboard() {
             {electoralGap > 0 ? 'الفارق المطلوب تغطيته لحسم الفوز بالمقعد' : 'أصواتنا الحالية تتجاوز عتبة الفوز الآمنة'}
           </div>
         </div>
+        </div>
 
         {/* 4. نسبة المشاركة المتوقعة */}
+        <div>
+        <IndicatorInfoBar indicatorKey="PARTICIPATION" compact />
         <div className="bg-gradient-to-br from-el-surface-container-lowest to-el-surface-container/30 dark:from-el-surface-container/30 dark:to-el-surface-container-low/10 border border-el-secondary/30 rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:border-el-secondary/60 hover:-translate-y-0.5 transition-all duration-300">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
@@ -260,8 +275,11 @@ export default function ExecutiveDashboard() {
             </div>
           </div>
         </div>
+        </div>
 
         {/* 5. إمكانية الفوز */}
+        <div>
+        <IndicatorInfoBar indicatorKey="WIN_PROBABILITY" compact />
         <div className="bg-gradient-to-br from-el-surface-container-lowest to-el-surface-container/30 dark:from-el-surface-container/30 dark:to-el-surface-container-low/10 border border-purple-500/30 rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:border-purple-500/60 hover:-translate-y-0.5 transition-all duration-300">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
@@ -282,8 +300,11 @@ export default function ExecutiveDashboard() {
             </div>
           </div>
         </div>
+        </div>
 
         {/* 6. مؤشر المخاطر الانتخابية الشامل */}
+        <div>
+        <IndicatorInfoBar indicatorKey="OVERALL_RISK" compact />
         <div className={`border rounded-lg p-5 flex flex-col justify-between hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-br ${overallRisk > 50 ? 'from-red-500/5 to-red-500/10 border-red-500/30 hover:border-red-500/50' : overallRisk > 25 ? 'from-yellow-500/5 to-yellow-500/10 border-yellow-500/30 hover:border-yellow-500/50' : 'from-green-500/5 to-green-500/10 border-green-500/30 hover:border-green-500/50'}`}>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
@@ -302,6 +323,7 @@ export default function ExecutiveDashboard() {
               <div className={`h-full transition-all duration-500 ${overallRisk > 50 ? 'bg-red-500' : overallRisk > 25 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${overallRisk}%` }} />
             </div>
           </div>
+        </div>
         </div>
       </section>
 
