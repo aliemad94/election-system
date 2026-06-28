@@ -77,6 +77,16 @@ async function putHandler(
       data.checkedInAt = new Date(parsed.data.checkedInAt);
     }
 
+    if (data.tribeId === "" || data.tribeId === null) {
+      data.tribeId = null;
+    }
+    if (data.subTribeId === "" || data.subTribeId === null) {
+      data.subTribeId = null;
+    }
+    if (data.keyId === "" || data.keyId === null) {
+      delete data.keyId;
+    }
+
     const updated = await prisma.voter.update({
       where: { id },
       data,
