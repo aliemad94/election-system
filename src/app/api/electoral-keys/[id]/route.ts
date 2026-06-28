@@ -93,6 +93,13 @@ async function putHandler(
       }
     }
 
+    if (data.tribeId === "" || data.tribeId === null) {
+      data.tribeId = null;
+    }
+    if (data.subTribeId === "" || data.subTribeId === null) {
+      data.subTribeId = null;
+    }
+
     const updated = await prisma.electionKey.update({
       where: { id },
       data,
