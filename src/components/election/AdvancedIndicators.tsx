@@ -50,6 +50,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import IndicatorInfoBar from "./IndicatorInfoBar";
 
 interface AreaMetrics {
   eiiScore: number;
@@ -205,6 +206,7 @@ export default function AdvancedIndicators() {
       </div>
 
       {/* بطاقة EFI الرئيسية */}
+      <IndicatorInfoBar indicatorKey="EFI" />
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
@@ -265,41 +267,60 @@ export default function AdvancedIndicators() {
 
             {/* المؤشرات السريعة */}
             <div className="p-6 grid grid-cols-2 gap-4 border-l border-[var(--el-outline-variant)]">
-              <MiniMetric
-                label="EII"
-                sub="التأثير الانتخابي"
-                value={gov.eiiScore}
-              />
-              <MiniMetric
-                label="KRI"
-                sub="موثوقية المفتاح"
-                value={gov.kriScore}
-              />
-              <MiniMetric
-                label="VPS"
-                sub="احتمالية التصويت"
-                value={gov.vpsScore}
-              />
-              <MiniMetric
-                label="DRS"
-                sub="خطر الانشقاق"
-                value={gov.drsScore}
-                inverted
-              />
-              <MiniMetric
-                label="API"
-                sub="اختراق المنطقة"
-                value={gov.apiScore}
-              />
-              <MiniMetric
-                label="EDRI"
-                sub="جاهزية يوم الاقتراع"
-                value={gov.edriScore}
-              />
+              <div>
+                <IndicatorInfoBar indicatorKey="EII" compact />
+                <MiniMetric
+                  label="EII"
+                  sub="التأثير الانتخابي"
+                  value={gov.eiiScore}
+                />
+              </div>
+              <div>
+                <IndicatorInfoBar indicatorKey="KRI" compact />
+                <MiniMetric
+                  label="KRI"
+                  sub="موثوقية المفتاح"
+                  value={gov.kriScore}
+                />
+              </div>
+              <div>
+                <IndicatorInfoBar indicatorKey="VPS" compact />
+                <MiniMetric
+                  label="VPS"
+                  sub="احتمالية التصويت"
+                  value={gov.vpsScore}
+                />
+              </div>
+              <div>
+                <IndicatorInfoBar indicatorKey="DRS" compact />
+                <MiniMetric
+                  label="DRS"
+                  sub="خطر الانشقاق"
+                  value={gov.drsScore}
+                  inverted
+                />
+              </div>
+              <div>
+                <IndicatorInfoBar indicatorKey="API" compact />
+                <MiniMetric
+                  label="API"
+                  sub="اختراق المنطقة"
+                  value={gov.apiScore}
+                />
+              </div>
+              <div>
+                <IndicatorInfoBar indicatorKey="EDRI" compact />
+                <MiniMetric
+                  label="EDRI"
+                  sub="جاهزية يوم الاقتراع"
+                  value={gov.edriScore}
+                />
+              </div>
             </div>
 
             {/* المقاعد المتوقعة */}
             <div className="p-6 flex flex-col justify-center">
+              <IndicatorInfoBar indicatorKey="PROJECTED_SEATS" compact />
               <div className="flex items-center gap-2 mb-3">
                 <Trophy className="w-5 h-5 text-[var(--el-secondary)]" />
                 <h3 className="font-bold text-[var(--el-on-surface)]">
@@ -360,6 +381,7 @@ export default function AdvancedIndicators() {
               <Activity className="w-4 h-4 text-[var(--el-primary)]" />
               خريطة المؤشرات (محافظة ذي قار)
             </CardTitle>
+            <IndicatorInfoBar indicatorKey="EFI" compact />
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -401,6 +423,7 @@ export default function AdvancedIndicators() {
               <Trophy className="w-4 h-4 text-[var(--el-secondary)]" />
               توزيع المقاعد التشريعية
             </CardTitle>
+            <IndicatorInfoBar indicatorKey="PROJECTED_SEATS" compact />
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -439,6 +462,7 @@ export default function AdvancedIndicators() {
             <Map className="w-4 h-4 text-[var(--el-primary)]" />
             مقارنة المؤشرات حسب القضاء (EFI)
           </CardTitle>
+          <IndicatorInfoBar indicatorKey="EFI" compact />
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={320}>
