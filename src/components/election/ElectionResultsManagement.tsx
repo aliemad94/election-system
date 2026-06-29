@@ -807,11 +807,9 @@ export default function ElectionResultsManagement() {
                     <thead>
                       <tr className="bg-el-surface-container-high border-b border-el-outline-variant text-el-on-surface">
                         <th className="p-3 font-bold w-12 text-center">ت</th>
-                        <th className="p-3 font-bold w-20 text-center">رقم الكيان</th>
                         <th className="p-3 font-bold">اسم الكيان</th>
                         <th className="p-3 font-bold text-center">مجموع الأصوات</th>
                         <th className="p-3 font-bold text-center">نسبة الأصوات</th>
-                        <th className="p-3 font-bold text-center">عدد المقاعد</th>
                         <th className="p-3 font-bold w-16 text-center">تفاصيل</th>
                       </tr>
                     </thead>
@@ -827,17 +825,11 @@ export default function ElectionResultsManagement() {
                               }`}
                             >
                               <td className="p-3 text-center font-bold text-el-on-surface-variant">{idx + 1}</td>
-                              <td className="p-3 text-center font-mono font-bold text-el-primary">{p.partyCode}</td>
                               <td className="p-3 font-bold text-el-on-surface flex items-center gap-2">
                                 {p.partyName}
                               </td>
                               <td className="p-3 text-center font-mono font-bold">{p.totalVotes.toLocaleString()}</td>
                               <td className="p-3 text-center font-mono text-el-on-surface-variant">{p.votePercentage}%</td>
-                              <td className="p-3 text-center">
-                                <span className="bg-yellow-100 text-yellow-800 font-bold px-2.5 py-0.5 rounded-full text-[12px] inline-flex items-center gap-1 shadow-sm font-mono">
-                                  {p.seatsAllocated}
-                                </span>
-                              </td>
                               <td className="p-3 text-center">
                                 {isExpanded ? (
                                   <ChevronUp className="w-4 h-4 mx-auto text-el-on-surface-variant" />
@@ -850,7 +842,7 @@ export default function ElectionResultsManagement() {
                             {/* Nested Candidate Votes list */}
                             {isExpanded && (
                               <tr>
-                                <td colSpan={7} className="p-3 bg-el-surface-container-high/30 border-b border-el-outline-variant">
+                                <td colSpan={5} className="p-3 bg-el-surface-container-high/30 border-b border-el-outline-variant">
                                   <div className="px-4 py-2 space-y-2">
                                     <div className="text-[12px] font-bold text-el-primary flex items-center gap-1">
                                       <Users className="w-4 h-4" />
