@@ -26,6 +26,7 @@ import {
 import { useToast } from './toastprovider';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import EvaluateKeyPage from './evaluatekeypage';
+import Explainable from './Explainable';
 
 const DISTRICTS = [
   'الناصرية',
@@ -475,21 +476,27 @@ export default function ElectoralKeyManagement() {
         </div>
         <div className="bg-el-outline-variant/10 border border-el-outline-variant/30 p-1 rounded-[1.25rem] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5">
           <div className="bg-el-surface-container-lowest rounded-[calc(1.25rem-0.25rem)] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">صافي الأصوات (قبل التقييم)</div>
+            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">
+              <Explainable termKey="NET_VOTES">صافي الأصوات (قبل التقييم)</Explainable>
+            </div>
             <div className="text-[32px] font-bold text-el-secondary mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.totalNetVotes.toLocaleString()}</div>
             <div className="text-[10px] text-el-on-surface-variant mt-1">(مؤيد×0.8 + محايد×0.5 + ضعيف×0.3)</div>
           </div>
         </div>
         <div className="bg-el-outline-variant/10 border border-el-outline-variant/30 p-1 rounded-[1.25rem] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5">
           <div className="bg-el-surface-container-lowest rounded-[calc(1.25rem-0.25rem)] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">متوسط الأصوات المضمونة</div>
+            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">
+              <Explainable termKey="GUARANTEED_VOTES">متوسط الأصوات المضمونة</Explainable>
+            </div>
             <div className="text-[32px] font-bold text-el-on-surface mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.avgGuaranteed.toLocaleString()}</div>
             <div className="text-[10px] text-el-on-surface-variant mt-1">للمفتاح الواحد بعد الفلترة الثنائية</div>
           </div>
         </div>
         <div className="bg-el-outline-variant/10 border border-el-outline-variant/30 p-1 rounded-[1.25rem] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.02] hover:shadow-lg hover:shadow-black/5">
           <div className="bg-el-surface-container-lowest rounded-[calc(1.25rem-0.25rem)] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">إجمالي الأصوات المضمونة</div>
+            <div className="text-[11px] text-el-on-surface-variant uppercase tracking-wider font-semibold">
+              <Explainable termKey="GUARANTEED_VOTES">إجمالي الأصوات المضمونة</Explainable>
+            </div>
             <div className="text-[32px] font-bold text-el-primary mt-1" style={{ fontFamily: 'var(--font-geist-mono)' }}>{stats.totalGuaranteed.toLocaleString()}</div>
             <div className="text-[10px] text-el-on-surface-variant mt-1">الأصوات المتوقعة في الصندوق</div>
           </div>
@@ -979,7 +986,8 @@ export default function ElectoralKeyManagement() {
                 <div className="space-y-4">
                   <div className="bg-el-primary/5 border border-el-primary/20 rounded-sm p-3">
                     <h4 className="text-[14px] font-semibold text-el-primary mb-2 flex items-center gap-1">
-                      <Shield className="w-4 h-4" /> نظام التقييم الموزون — 9 أبعاد × 5 مستويات
+                      <Shield className="w-4 h-4" />
+                      <Explainable termKey="WEIGHTED_SCORE">نظام التقييم الموزون — 9 أبعاد × 5 مستويات</Explainable>
                     </h4>
                     <p className="text-[12px] text-el-on-surface-variant">
                       كل حقل يُقيّم من 1-5 ويُضرب بالوزن المحدد، المجموع يحدد تصنيف المفتاح
@@ -1001,7 +1009,9 @@ export default function ElectoralKeyManagement() {
                   {/* النتيجة النهائية */}
                   <div className="bg-el-surface border border-el-outline-variant rounded-sm p-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-[14px] font-semibold text-el-on-surface">التقييم الموزون النهائي:</span>
+                      <span className="text-[14px] font-semibold text-el-on-surface">
+                        <Explainable termKey="WEIGHTED_SCORE">التقييم الموزون النهائي:</Explainable>
+                      </span>
                       <div className="flex items-center gap-2">
                         <span className="text-[24px] font-bold text-el-primary font-mono">{calcWeighted()}</span>
                         <span className="text-[12px] text-el-on-surface-variant">درجة</span>

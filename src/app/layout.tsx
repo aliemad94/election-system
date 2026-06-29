@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/election/toastprovider";
+import { ExplanationModalProvider } from "@/context/ExplanationModalContext";
 
 const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
   subsets: ["arabic"],
@@ -43,10 +44,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ToastProvider>
-            {children}
-            <Toaster />
-          </ToastProvider>
+          <ExplanationModalProvider>
+            <ToastProvider>
+              {children}
+              <Toaster />
+            </ToastProvider>
+          </ExplanationModalProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -16,6 +16,7 @@ import {
   RefreshCw,
   CheckCircle2,
 } from 'lucide-react';
+import Explainable from './Explainable';
 
 interface Tribe {
   id: string;
@@ -422,7 +423,9 @@ export default function TribalManagement() {
 
               <div className="space-y-2">
                 <div className="flex justify-between text-[12px] leading-[16px]">
-                  <span className="text-el-on-surface-variant">عدد الناخبين</span>
+                  <span className="text-el-on-surface-variant">
+                    <Explainable termKey="VOTER_CLASSIFICATION">عدد الناخبين</Explainable>
+                  </span>
                   <span className="text-el-on-surface font-semibold" style={{ fontFamily: 'var(--font-geist-mono)' }}>
                     {tribe.voterCount}
                   </span>
@@ -440,7 +443,9 @@ export default function TribalManagement() {
                   />
                 </div>
                 <div className="flex justify-between text-[12px] leading-[16px]">
-                  <span className="text-el-on-surface-variant">متوسط الثقة</span>
+                  <span className="text-el-on-surface-variant">
+                    <Explainable termKey="CONFIDENCE_DEGREE">متوسط الثقة</Explainable>
+                  </span>
                   <span className="text-el-secondary font-semibold" style={{ fontFamily: 'var(--font-geist-mono)' }}>
                     {tribe.avgConfidence} ⭐
                   </span>
@@ -714,7 +719,9 @@ export default function TribalManagement() {
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-el-outline-variant">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-el-secondary" />
-                <h3 className="text-[18px] leading-[24px] font-semibold text-el-on-surface">مركز تنقية وتطهير البيانات</h3>
+                <h3 className="text-[18px] leading-[24px] font-semibold text-el-on-surface">
+                  <Explainable termKey="TRIBAL_DEDUPLICATION" plain className="hover:text-el-secondary">مركز تنقية وتطهير البيانات</Explainable>
+                </h3>
               </div>
               <button onClick={() => setShowDeduplicateDialog(false)} className="text-el-on-surface-variant hover:text-el-on-surface">
                 <X className="w-5 h-5" />

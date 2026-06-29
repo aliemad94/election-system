@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic';
 
 const DistrictMap = dynamic(() => import('./districtmap'), { ssr: false });
 import IndicatorInfoBar from "./IndicatorInfoBar";
+import Explainable from "./Explainable";
 
 
 interface DecisiveData {
@@ -168,7 +169,9 @@ export default function ExecutiveDashboard() {
           <div className="relative z-10 flex-1 w-full text-right">
             <div className="flex items-center gap-2 mb-2">
               <Award className="w-6 h-6 text-el-secondary animate-pulse" />
-              <span className="text-[13px] text-white/80 font-bold uppercase tracking-wider">خلاصة تقدير المقاعد المقترحة</span>
+              <Explainable termKey="PROJECTED_SEATS" plain className="text-[13px] text-white/80 font-bold uppercase tracking-wider hover:text-white">
+                خلاصة تقدير المقاعد المقترحة
+              </Explainable>
             </div>
             <h2 className="text-[20px] font-bold text-white mb-1">مسار حصد المقاعد النيابية في مجلس محافظة ذي قار</h2>
             <p className="text-[12px] text-white/70">
@@ -197,7 +200,9 @@ export default function ExecutiveDashboard() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <Award className="w-5 h-5 text-amber-500 animate-pulse" />
-              <span className="text-[12px] text-el-on-surface-variant font-semibold">الأصوات المطلوبة للفوز</span>
+              <Explainable termKey="VOTES_NEEDED" plain className="text-[12px] text-el-on-surface-variant font-semibold hover:text-primary">
+                الأصوات المطلوبة للفوز
+              </Explainable>
             </div>
             <span className="text-[10px] text-amber-700 bg-amber-500/10 px-2 py-0.5 rounded font-bold">العتبة المستهدفة للمقعد</span>
           </div>
@@ -218,7 +223,9 @@ export default function ExecutiveDashboard() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <Vote className="w-5 h-5 text-el-primary" />
-              <span className="text-[12px] text-el-on-surface-variant font-semibold">عدد الأصوات المتوقعة</span>
+              <Explainable termKey="EXPECTED_VOTES" plain className="text-[12px] text-el-on-surface-variant font-semibold hover:text-primary">
+                عدد الأصوات المتوقعة
+              </Explainable>
             </div>
             <span className="text-[10px] text-el-primary bg-el-primary/10 px-2 py-0.5 rounded font-bold">معدل تقديري</span>
           </div>
@@ -239,7 +246,9 @@ export default function ExecutiveDashboard() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <AlertTriangle className={`w-5 h-5 ${electoralGap > 0 ? 'text-red-500' : 'text-green-500'}`} />
-              <span className="text-[12px] text-el-on-surface-variant font-semibold">مؤشر الفجوة الانتخابية</span>
+              <Explainable termKey="ELECTORAL_GAP" plain className="text-[12px] text-el-on-surface-variant font-semibold hover:text-primary">
+                مؤشر الفجوة الانتخابية
+              </Explainable>
             </div>
             <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${electoralGap > 0 ? 'text-red-700 bg-red-500/10' : 'text-green-700 bg-green-500/10'}`}>
               {electoralGap > 0 ? 'تحت المستهدف' : 'تم تخطي المستهدف'}
@@ -262,7 +271,9 @@ export default function ExecutiveDashboard() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <Activity className="w-5 h-5 text-el-secondary" />
-              <span className="text-[12px] text-el-on-surface-variant font-semibold">نسبة المشاركة المتوقعة</span>
+              <Explainable termKey="PARTICIPATION" plain className="text-[12px] text-el-on-surface-variant font-semibold hover:text-primary">
+                نسبة المشاركة المتوقعة
+              </Explainable>
             </div>
             <span className="text-[10px] text-el-secondary bg-el-secondary/15 px-2 py-0.5 rounded font-bold">تقدير الدائرة الميداني</span>
           </div>
@@ -284,7 +295,9 @@ export default function ExecutiveDashboard() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-purple-500 animate-pulse" />
-              <span className="text-[12px] text-el-on-surface-variant font-semibold">إمكانية الفوز</span>
+              <Explainable termKey="WIN_PROBABILITY" plain className="text-[12px] text-el-on-surface-variant font-semibold hover:text-primary">
+                إمكانية الفوز
+              </Explainable>
             </div>
             <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${winProbability >= 70 ? 'text-green-700 bg-green-500/10' : winProbability >= 40 ? 'text-purple-700 bg-purple-500/10' : 'text-red-700 bg-red-500/10'}`}>
               {winProbability >= 70 ? 'مرتفعة جداً' : winProbability >= 40 ? 'ممكنة' : 'ضعيفة'}
@@ -309,7 +322,9 @@ export default function ExecutiveDashboard() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <ShieldAlert className={`w-5 h-5 ${overallRisk > 50 ? 'text-red-500' : overallRisk > 25 ? 'text-yellow-500' : 'text-green-500'}`} />
-              <span className="text-[12px] text-el-on-surface-variant font-semibold">مؤشر المخاطر الشامل</span>
+              <Explainable termKey="OVERALL_RISK" plain className="text-[12px] text-el-on-surface-variant font-semibold hover:text-primary">
+                مؤشر المخاطر الشامل
+              </Explainable>
             </div>
             <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${overallRisk > 50 ? 'text-red-700 bg-red-500/10' : overallRisk > 25 ? 'text-yellow-700 bg-yellow-500/10' : 'text-green-700 bg-green-500/10'}`}>
               {overallRisk > 50 ? 'خطر مرتفع' : overallRisk > 25 ? 'خطر متوسط' : 'خطر منخفض'}
@@ -334,14 +349,18 @@ export default function ExecutiveDashboard() {
           {/* مؤشر دقة المفتاح KRI */}
           <div className={`rounded-lg p-4 border-2 ${avgKRI >= 60 ? 'border-green-200 bg-green-50/50' : avgKRI >= 40 ? 'border-yellow-200 bg-yellow-50/50' : 'border-red-200 bg-red-50/50'}`}>
             <Shield className={`w-5 h-5 mb-1 ${avgKRI >= 60 ? 'text-green-600' : avgKRI >= 40 ? 'text-yellow-600' : 'text-red-600'}`} />
-            <div className="text-[10px] text-el-on-surface-variant uppercase tracking-wider">دقة المفتاح</div>
+            <div className="text-[10px] text-el-on-surface-variant uppercase tracking-wider">
+              <Explainable termKey="KRI">دقة المفتاح</Explainable>
+            </div>
             <div className={`text-[32px] font-bold font-mono leading-none mt-1 ${avgKRI >= 60 ? 'text-green-700' : avgKRI >= 40 ? 'text-yellow-700' : 'text-red-700'}`}>{avgKRI}</div>
             <div className="text-[10px] text-el-on-surface-variant mt-1">KRI — من 100</div>
           </div>
           {/* مؤشر خطر التسرب DRS */}
           <div className={`rounded-lg p-4 border-2 ${avgDRS <= 30 ? 'border-green-200 bg-green-50/50' : avgDRS <= 50 ? 'border-yellow-200 bg-yellow-50/50' : 'border-red-200 bg-red-50/50'}`}>
             <AlertTriangle className={`w-5 h-5 mb-1 ${avgDRS <= 30 ? 'text-green-600' : avgDRS <= 50 ? 'text-yellow-600' : 'text-red-600'}`} />
-            <div className="text-[10px] text-el-on-surface-variant uppercase tracking-wider">خطر التسرب</div>
+            <div className="text-[10px] text-el-on-surface-variant uppercase tracking-wider">
+              <Explainable termKey="DRS">خطر التسرب</Explainable>
+            </div>
             <div className={`text-[32px] font-bold font-mono leading-none mt-1 ${avgDRS <= 30 ? 'text-green-700' : avgDRS <= 50 ? 'text-yellow-700' : 'text-red-700'}`}>{avgDRS}</div>
             <div className="text-[10px] text-el-on-surface-variant mt-1">DRS — الأقل أفضل</div>
           </div>
@@ -350,7 +369,8 @@ export default function ExecutiveDashboard() {
         {/* نسبة المؤيدين / المحايدين / الضعفاء */}
         <div className="lg:col-span-2 bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
           <h3 className="text-[14px] font-bold text-el-on-surface mb-3 flex items-center gap-2">
-            <Users className="w-4 h-4 text-el-primary" /> نسبة المؤيدين والمحايدين والضعفاء
+            <Users className="w-4 h-4 text-el-primary" />
+            <Explainable termKey="VOTER_CLASSIFICATION">نسبة المؤيدين والمحايدين والضعفاء</Explainable>
           </h3>
           <div className="flex gap-4 items-center">
             {/* شريط مركب */}
@@ -399,7 +419,7 @@ export default function ExecutiveDashboard() {
           {/* 1. التدقيق الجغرافي */}
           <div className="bg-el-surface-container rounded-lg p-4 flex flex-col justify-between border border-el-outline-variant/60">
             <div className="flex justify-between items-start">
-              <span className="text-[11px] font-bold text-el-on-surface-variant">نسبة التدقيق الجغرافي (GPS)</span>
+              <Explainable termKey="GPS_VERIFICATION" className="text-[11px] font-bold text-el-on-surface-variant">نسبة التدقيق الجغرافي (GPS)</Explainable>
               <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded">GPS Audited</span>
             </div>
             <div className="flex items-baseline gap-1 mt-2.5">
@@ -416,7 +436,7 @@ export default function ExecutiveDashboard() {
           {/* 2. مطابقة سجل المفوضية */}
           <div className="bg-el-surface-container rounded-lg p-4 flex flex-col justify-between border border-el-outline-variant/60">
             <div className="flex justify-between items-start">
-              <span className="text-[11px] font-bold text-el-on-surface-variant">التحقق البيومتري (المفوضية)</span>
+              <Explainable termKey="REGISTRY_VERIFICATION" className="text-[11px] font-bold text-el-on-surface-variant">التحقق البيومتري (المفوضية)</Explainable>
               <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Registry Match</span>
             </div>
             <div className="flex items-baseline gap-1 mt-2.5">
@@ -433,7 +453,7 @@ export default function ExecutiveDashboard() {
           {/* 3. متوسط دقة التقارير الفعلي */}
           <div className="bg-el-surface-container rounded-lg p-4 flex flex-col justify-between border border-el-outline-variant/60">
             <div className="flex justify-between items-start">
-              <span className="text-[11px] font-bold text-el-on-surface-variant">دقة تقارير المفاتيح (Calibrated)</span>
+              <Explainable termKey="KRI" className="text-[11px] font-bold text-el-on-surface-variant">دقة تقارير المفاتيح (Calibrated)</Explainable>
               <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Report Accuracy</span>
             </div>
             <div className="flex items-baseline gap-1 mt-2.5">
@@ -450,7 +470,7 @@ export default function ExecutiveDashboard() {
           {/* 4. معدل تحويل الأصوات الخدمي */}
           <div className="bg-el-surface-container rounded-lg p-4 flex flex-col justify-between border border-el-outline-variant/60">
             <div className="flex justify-between items-start">
-              <span className="text-[11px] font-bold text-el-on-surface-variant">معدل كسب الأصوات الخدمي (ROI)</span>
+              <Explainable termKey="SERVICE_CONVERSION" className="text-[11px] font-bold text-el-on-surface-variant">معدل كسب الأصوات الخدمي (ROI)</Explainable>
               <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Service ROI</span>
             </div>
             <div className="flex items-baseline gap-1 mt-2.5">
