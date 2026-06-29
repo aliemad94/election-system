@@ -62,6 +62,116 @@ function ScoreBar({ score, max = 100, color = 'bg-el-primary', height = 'h-2' }:
   );
 }
 
+const HelpContext = React.createContext<(number: number) => void>(() => {});
+
+function getIndicatorTheme(number: number) {
+  const redTheme = {
+    bg: 'bg-red-50/95 dark:bg-red-950/90',
+    border: 'border-red-200 dark:border-red-850',
+    text: 'text-red-850 dark:text-red-100',
+    accent: 'text-red-600 dark:text-red-400',
+    badge: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+    btn: 'bg-red-600 hover:bg-red-700 text-white',
+    title: 'خطر / تنبيه'
+  };
+
+  const greenTheme = {
+    bg: 'bg-green-50/95 dark:bg-green-950/90',
+    border: 'border-green-200 dark:border-green-800',
+    text: 'text-green-800 dark:text-green-100',
+    accent: 'text-green-600 dark:text-green-400',
+    badge: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
+    btn: 'bg-green-600 hover:bg-green-700 text-white',
+    title: 'قوة / نجاح'
+  };
+
+  const amberTheme = {
+    bg: 'bg-amber-50/95 dark:bg-amber-950/90',
+    border: 'border-amber-200 dark:border-amber-800',
+    text: 'text-amber-800 dark:text-amber-100',
+    accent: 'text-amber-650 dark:text-amber-400',
+    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+    btn: 'bg-amber-650 hover:bg-amber-700 text-white',
+    title: 'استثمار / مالية'
+  };
+
+  const blueTheme = {
+    bg: 'bg-blue-50/95 dark:bg-blue-950/90',
+    border: 'border-blue-200 dark:border-blue-800',
+    text: 'text-blue-800 dark:text-blue-100',
+    accent: 'text-blue-600 dark:text-blue-400',
+    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+    btn: 'bg-blue-600 hover:bg-blue-700 text-white',
+    title: 'تحليلات / انتشار'
+  };
+
+  const reds = [3, 6, 8, 10, 14, 17, 25, 28, 30, 43, 50, 51, 73, 74];
+  const greens = [1, 2, 4, 7, 13, 22, 23, 24, 29, 31, 41, 47, 52, 55, 67, 68, 69, 71, 72, 75, 80, 81];
+  const ambers = [12, 19, 21, 48, 61, 62, 63, 64, 65];
+
+  if (reds.includes(number)) return redTheme;
+  if (greens.includes(number)) return greenTheme;
+  if (ambers.includes(number)) return amberTheme;
+  return blueTheme;
+}
+
+function IndicatorHelpModal({ number, onClose }: { number: number; onClose: () => void }) {
+  const def = INDICATORS_DICTIONARY[number];
+  if (!def) return null;
+
+  const theme = getIndicatorTheme(number);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 max-w-md w-full rounded-2xl p-6 shadow-2xl relative flex flex-col gap-4 overflow-hidden transform scale-100 animate-in zoom-in-95 duration-200 text-right" dir="rtl">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3">
+          <div className="flex flex-col gap-1.5">
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold self-start ${theme.badge}`}>
+              مؤشر {number} · {theme.title}
+            </span>
+            <h2 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+              <Brain className={`w-5 h-5 ${theme.accent}`} />
+              {def.title}
+            </h2>
+          </div>
+          <button 
+            onClick={onClose}
+            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors text-xl p-1 font-sans cursor-pointer leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Description */}
+        <div className="text-[14px] text-zinc-700 dark:text-zinc-200 leading-relaxed font-medium">
+          <p>{def.description}</p>
+        </div>
+
+        {/* Formula Container */}
+        <div className={`rounded-xl border p-3.5 ${theme.bg} ${theme.border}`}>
+          <span className={`font-bold text-[11px] block mb-1.5 ${theme.accent}`}>
+            الآلية البرمجية والمعادلة الحسابية:
+          </span>
+          <code className="font-mono text-[11px] sm:text-xs block break-words text-zinc-900 dark:text-white leading-normal" dir="ltr" style={{ direction: "rtl", unicodeBidi: "plaintext" }}>
+            {def.formula}
+          </code>
+        </div>
+
+        {/* Footer Action */}
+        <button
+          onClick={onClose}
+          className={`w-full py-2.5 rounded-xl font-bold transition-all text-center text-xs cursor-pointer shadow-sm ${theme.btn}`}
+        >
+          فهمت آلية عمل المؤشر
+        </button>
+
+      </div>
+    </div>
+  );
+}
+
 function IndicatorCard({ 
   number, 
   title, 
@@ -81,8 +191,8 @@ function IndicatorCard({
   bgColor?: string;
   activationGuide?: string;
 }) {
-  const [showGuide, setShowGuide] = useState(false);
   const isZeroOrEmpty = value === 0 || value === '0' || value === '0%' || value === 'N/A' || (Array.isArray(value) && value.length === 0);
+  const onHelpClick = React.useContext(HelpContext);
 
   // Look up definition from INDICATORS_DICTIONARY
   const def = INDICATORS_DICTIONARY[number];
@@ -102,7 +212,7 @@ function IndicatorCard({
             <Icon className={`w-4 h-4 ${color}`} />
             {guideText && (
               <button 
-                onClick={() => setShowGuide(!showGuide)}
+                onClick={() => onHelpClick(number)}
                 title="كيف يتم تفعيل وحساب هذا المؤشر؟" 
                 className="text-el-on-surface-variant opacity-40 hover:opacity-100 transition-opacity cursor-pointer"
               >
@@ -122,34 +232,7 @@ function IndicatorCard({
         </div>
       </div>
 
-      {guideText && showGuide && (
-        <div className="absolute inset-0 bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 z-10 text-[10px] text-el-on-surface-variant leading-relaxed flex flex-col justify-between overflow-y-auto">
-          <div>
-            <p className="font-semibold text-el-primary flex items-center gap-1 mb-1">
-              <Brain className="w-3.5 h-3.5" /> {title} (مؤشر {number}):
-            </p>
-            <p className="mt-1 text-[10px] text-el-on-surface-variant leading-relaxed">
-              {def ? def.description : guideText}
-            </p>
-            {def && (
-              <div className="rounded bg-el-surface-container-high border border-el-outline-variant/30 p-1.5 mt-2 text-[9px]">
-                <span className="font-bold text-el-primary block mb-0.5">المعادلة الحسابية:</span>
-                <code className="font-mono text-el-secondary block break-words text-[9px]" dir="rtl" style={{ direction: "rtl", unicodeBidi: "plaintext" }}>
-                  {def.formula}
-                </code>
-              </div>
-            )}
-          </div>
-          <button 
-            onClick={() => setShowGuide(false)} 
-            className="text-[9px] text-el-secondary font-bold self-end hover:underline mt-2 cursor-pointer shrink-0"
-          >
-            إغلاق المساعدة
-          </button>
-        </div>
-      )}
-
-      {isZeroOrEmpty && guideText && !showGuide && (
+      {isZeroOrEmpty && guideText && (
         <div className="text-[9px] text-el-on-surface-variant/40 italic flex items-center gap-1 mt-1 border-t border-el-outline-variant/30 pt-1">
           <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
           بانتظار إدخال البيانات الميدانية
@@ -166,8 +249,8 @@ interface IndicatorHeaderProps {
 }
 
 function IndicatorHeader({ number, className = "", children }: IndicatorHeaderProps) {
-  const [show, setShow] = useState(false);
   const def = INDICATORS_DICTIONARY[number];
+  const onHelpClick = React.useContext(HelpContext);
 
   return (
     <div className={`relative flex items-center justify-between w-full ${className}`}>
@@ -180,34 +263,12 @@ function IndicatorHeader({ number, className = "", children }: IndicatorHeaderPr
       {def && (
         <div className="flex items-center gap-1 shrink-0 relative">
           <button
-            onClick={() => setShow(!show)}
+            onClick={() => onHelpClick(number)}
             title="شرح المؤشر وكيفية حسابه"
             className="text-el-on-surface-variant opacity-40 hover:opacity-100 transition-opacity cursor-pointer p-0.5"
           >
             <HelpCircle className="w-3.5 h-3.5" />
           </button>
-          {show && (
-            <div className="absolute right-0 top-6 w-72 bg-el-surface-container border border-el-outline-variant rounded-lg p-3 z-30 text-[10px] text-el-on-surface-variant leading-relaxed shadow-lg flex flex-col justify-between animate-in fade-in duration-200">
-              <div>
-                <p className="font-semibold text-el-primary flex items-center gap-1 mb-1">
-                  <Brain className="w-3 h-3" /> {def.title} (مؤشر {number}):
-                </p>
-                <p className="mb-2 whitespace-pre-line">{def.description}</p>
-                <div className="rounded bg-[var(--el-surface-container-high)] border border-[var(--el-outline-variant)]/20 px-2 py-1.5">
-                  <p className="font-bold mb-0.5 text-[9px]">المعادلة:</p>
-                  <p className="font-mono text-el-primary text-[9px]" dir="ltr" style={{ direction: "rtl", unicodeBidi: "plaintext" }}>
-                    {def.formula}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShow(false)}
-                className="text-[9px] text-el-secondary font-bold self-end hover:underline mt-2 cursor-pointer"
-              >
-                إغلاق
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -218,6 +279,7 @@ export default function DataAnalysis() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('decisive');
+  const [activeIndicatorHelp, setActiveIndicatorHelp] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -245,60 +307,69 @@ export default function DataAnalysis() {
   }
 
   return (
-    <div className="flex flex-col gap-4 max-w-[1440px] mx-auto w-full">
-      {/* رأس التحليل الفاخر */}
-      <div className="bg-gradient-to-l from-el-primary to-[#0a2a5e] text-white rounded-lg p-5 relative overflow-hidden shadow-sm">
-        <div className="absolute top-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-10 -translate-y-10" />
-        <div className="relative z-10">
-          <h1 className="text-[24px] leading-[32px] font-bold flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-el-secondary" /> غرفة التحليل والقياس الانتخابي — 80 مؤشرًا
-          </h1>
-          <p className="text-[12px] leading-[18px] text-white/70 mt-1 max-w-3xl">
-            العقل المركزي للحملة الانتخابية: تحويل العمل الميداني من العشوائية والتخمين إلى قرارات إدارية مبنية على البيانات، والتنبؤ الدقيق بالنتائج، وإدارة يوم الاقتراع بكفاءة عالية في محافظة ذي قار.
-          </p>
+    <HelpContext.Provider value={setActiveIndicatorHelp}>
+      <div className="flex flex-col gap-4 max-w-[1440px] mx-auto w-full">
+        {/* رأس التحليل الفاخر */}
+        <div className="bg-gradient-to-l from-el-primary to-[#0a2a5e] text-white rounded-lg p-5 relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-10 -translate-y-10" />
+          <div className="relative z-10">
+            <h1 className="text-[24px] leading-[32px] font-bold flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-el-secondary" /> غرفة التحليل والقياس الانتخابي — 80 مؤشرًا
+            </h1>
+            <p className="text-[12px] leading-[18px] text-white/70 mt-1 max-w-3xl">
+              العقل المركزي للحملة الانتخابية: تحويل العمل الميداني من العشوائية والتخمين إلى قرارات إدارية مبنية على البيانات، والتنبؤ الدقيق بالنتائج، وإدارة يوم الاقتراع بكفاءة عالية في محافظة ذي قار.
+            </p>
+          </div>
+        </div>
+
+        {/* التبويبات العشرة */}
+        <div className="flex gap-1 overflow-x-auto pb-1.5 border-b border-el-outline-variant scrollbar-thin">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[12px] whitespace-nowrap transition-all cursor-pointer border ${
+                  activeTab === tab.id
+                    ? 'bg-el-primary text-el-on-primary font-bold border-el-primary shadow-sm'
+                    : 'bg-el-surface-container text-el-on-surface-variant border-transparent hover:bg-el-surface-container-highest'
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="text-[12px] text-el-on-surface-variant bg-el-surface-container p-3 rounded-lg border border-el-outline-variant flex items-center gap-2">
+          <span className="font-bold text-el-primary">📊 لوحة المؤشرات المركزية:</span>
+          <span>جميع المؤشرات جاهزة لاستقبال البيانات الميدانية. انقر على أيقونة المساعدة <HelpCircle className="w-3.5 h-3.5 inline text-el-primary" /> بجوار أي مؤشر لمعرفة نوع البيانات المطلوب إدخالها ميدانياً لتفعيله.</span>
+        </div>
+
+        {/* محتوى التبويبات */}
+        <div className="min-h-[400px]">
+          {activeTab === 'decisive' && <DecisiveTab data={safeMerge(data.decisive, EMPTY_DECISIVE)} />}
+          {activeTab === 'regions' && <RegionsTab data={safeTab(data.regions)} />}
+          {activeTab === 'keys' && <KeysTab data={safeTab(data.keys)} />}
+          {activeTab === 'audience' && <AudienceTab data={safeTab(data.audience)} />}
+          {activeTab === 'influence' && <InfluenceTab data={safeTab(data.influence)} />}
+          {activeTab === 'performance' && <PerformanceTab data={safeTab(data.performance)} />}
+          {activeTab === 'media' && <MediaTab data={safeTab(data.media)} />}
+          {activeTab === 'investment' && <InvestmentTab data={safeTab(data.investment)} />}
+          {activeTab === 'pollingDay' && <PollingDayTab data={safeTab(data.pollingDay)} />}
+          {activeTab === 'strategic' && <StrategicTab data={safeTab(data.strategic)} />}
         </div>
       </div>
 
-      {/* التبويبات العشرة */}
-      <div className="flex gap-1 overflow-x-auto pb-1.5 border-b border-el-outline-variant scrollbar-thin">
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[12px] whitespace-nowrap transition-all cursor-pointer border ${
-                activeTab === tab.id
-                  ? 'bg-el-primary text-el-on-primary font-bold border-el-primary shadow-sm'
-                  : 'bg-el-surface-container text-el-on-surface-variant border-transparent hover:bg-el-surface-container-highest'
-              }`}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="text-[12px] text-el-on-surface-variant bg-el-surface-container p-3 rounded-lg border border-el-outline-variant flex items-center gap-2">
-        <span className="font-bold text-el-primary">📊 لوحة المؤشرات المركزية:</span>
-        <span>جميع المؤشرات جاهزة لاستقبال البيانات الميدانية. انقر على أيقونة المساعدة <HelpCircle className="w-3.5 h-3.5 inline text-el-primary" /> بجوار أي مؤشر لمعرفة نوع البيانات المطلوب إدخالها ميدانياً لتفعيله.</span>
-      </div>
-
-      {/* محتوى التبويبات */}
-      <div className="min-h-[400px]">
-        {activeTab === 'decisive' && <DecisiveTab data={safeMerge(data.decisive, EMPTY_DECISIVE)} />}
-        {activeTab === 'regions' && <RegionsTab data={safeTab(data.regions)} />}
-        {activeTab === 'keys' && <KeysTab data={safeTab(data.keys)} />}
-        {activeTab === 'audience' && <AudienceTab data={safeTab(data.audience)} />}
-        {activeTab === 'influence' && <InfluenceTab data={safeTab(data.influence)} />}
-        {activeTab === 'performance' && <PerformanceTab data={safeTab(data.performance)} />}
-        {activeTab === 'media' && <MediaTab data={safeTab(data.media)} />}
-        {activeTab === 'investment' && <InvestmentTab data={safeTab(data.investment)} />}
-        {activeTab === 'pollingDay' && <PollingDayTab data={safeTab(data.pollingDay)} />}
-        {activeTab === 'strategic' && <StrategicTab data={safeTab(data.strategic)} />}
-      </div>
-    </div>
+      {activeIndicatorHelp !== null && (
+        <IndicatorHelpModal 
+          number={activeIndicatorHelp} 
+          onClose={() => setActiveIndicatorHelp(null)} 
+        />
+      )}
+    </HelpContext.Provider>
   );
 }
 
