@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import InfluenceTab from '@/components/election/InfluenceTab';
 import { safeMerge, EMPTY_DECISIVE } from '@/lib/safedata';
+import { INDICATORS_DICTIONARY } from '@/lib/indicators-dictionary';
 
 /** دالة حماية عامة لأي تبويب — تضمن إن كل المصفوفات موجودة */
 function safeTab(data: any): any {
@@ -83,6 +84,10 @@ function IndicatorCard({
   const [showGuide, setShowGuide] = useState(false);
   const isZeroOrEmpty = value === 0 || value === '0' || value === '0%' || value === 'N/A' || (Array.isArray(value) && value.length === 0);
 
+  // Look up definition from INDICATORS_DICTIONARY
+  const def = INDICATORS_DICTIONARY[number];
+  const guideText = activationGuide || (def ? `${def.description}\n\nالمعادلة: ${def.formula}` : undefined);
+
   return (
     <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-3 hover:shadow-md transition-all relative flex flex-col justify-between min-h-[120px]">
       <div>
@@ -95,7 +100,7 @@ function IndicatorCard({
           </div>
           <div className="flex items-center gap-1">
             <Icon className={`w-4 h-4 ${color}`} />
-            {activationGuide && (
+            {guideText && (
               <button 
                 onClick={() => setShowGuide(!showGuide)}
                 title="كيف يتم تفعيل وحساب هذا المؤشر؟" 
@@ -117,12 +122,14 @@ function IndicatorCard({
         </div>
       </div>
 
-      {activationGuide && showGuide && (
-        <div className="absolute inset-0 bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 z-10 text-[10px] text-el-on-surface-variant leading-relaxed flex flex-col justify-between">
-          <p className="font-semibold text-el-primary flex items-center gap-1">
-            <Brain className="w-3 h-3" /> دليل المؤشر:
-          </p>
-          <p className="mt-1">{activationGuide}</p>
+      {guideText && showGuide && (
+        <div className="absolute inset-0 bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 z-10 text-[10px] text-el-on-surface-variant leading-relaxed flex flex-col justify-between overflow-y-auto">
+          <div>
+            <p className="font-semibold text-el-primary flex items-center gap-1">
+              <Brain className="w-3 h-3" /> دليل المؤشر:
+            </p>
+            <p className="mt-1 whitespace-pre-line">{guideText}</p>
+          </div>
           <button 
             onClick={() => setShowGuide(false)} 
             className="text-[9px] text-el-secondary font-bold self-end hover:underline mt-1 cursor-pointer"
@@ -132,10 +139,65 @@ function IndicatorCard({
         </div>
       )}
 
-      {isZeroOrEmpty && activationGuide && !showGuide && (
+      {isZeroOrEmpty && guideText && !showGuide && (
         <div className="text-[9px] text-el-on-surface-variant/40 italic flex items-center gap-1 mt-1 border-t border-el-outline-variant/30 pt-1">
           <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
           بانتظار إدخال البيانات الميدانية
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface IndicatorHeaderProps {
+  number: number;
+  className?: string;
+  children: React.ReactNode;
+}
+
+function IndicatorHeader({ number, className = "", children }: IndicatorHeaderProps) {
+  const [show, setShow] = useState(false);
+  const def = INDICATORS_DICTIONARY[number];
+
+  return (
+    <div className={`relative flex items-center justify-between w-full ${className}`}>
+      <h3 className="text-[13px] font-bold flex items-center gap-1.5 min-w-0 w-full">
+        <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary shrink-0">
+          {number}
+        </span>
+        <span className="truncate">{children}</span>
+      </h3>
+      {def && (
+        <div className="flex items-center gap-1 shrink-0 relative">
+          <button
+            onClick={() => setShow(!show)}
+            title="شرح المؤشر وكيفية حسابه"
+            className="text-el-on-surface-variant opacity-40 hover:opacity-100 transition-opacity cursor-pointer p-0.5"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+          </button>
+          {show && (
+            <div className="absolute right-0 top-6 w-72 bg-el-surface-container border border-el-outline-variant rounded-lg p-3 z-30 text-[10px] text-el-on-surface-variant leading-relaxed shadow-lg flex flex-col justify-between animate-in fade-in duration-200">
+              <div>
+                <p className="font-semibold text-el-primary flex items-center gap-1 mb-1">
+                  <Brain className="w-3 h-3" /> {def.title} (مؤشر {number}):
+                </p>
+                <p className="mb-2 whitespace-pre-line">{def.description}</p>
+                <div className="rounded bg-[var(--el-surface-container-high)] border border-[var(--el-outline-variant)]/20 px-2 py-1.5">
+                  <p className="font-bold mb-0.5 text-[9px]">المعادلة:</p>
+                  <p className="font-mono text-el-primary text-[9px]" dir="ltr" style={{ direction: "rtl", unicodeBidi: "plaintext" }}>
+                    {def.formula}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShow(false)}
+                className="text-[9px] text-el-secondary font-bold self-end hover:underline mt-2 cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -255,10 +317,9 @@ function DecisiveTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* نسبة المؤيدين والمحايدين والمعارضين */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4 lg:col-span-2">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-3 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">9</span>
+          <IndicatorHeader number={9} className="mb-3">
             نسبة المؤيدين والمحايدين والمعارضين
-          </h3>
+          </IndicatorHeader>
           <div className="h-6 w-full rounded-full overflow-hidden flex bg-el-surface-variant">
             <div className="bg-green-500 h-full transition-all flex items-center justify-center text-white text-[11px] font-bold" style={{ width: `${(d.supportersDistribution?.supported || d.supportDistribution?.supported?.percentage || 33.3)}%` }}>
               {(d.supportersDistribution?.supported || d.supportDistribution?.supported?.percentage || 0) > 0 ? `${d.supportersDistribution?.supported || d.supportDistribution?.supported?.percentage || 0}% مؤيد` : 'بدون مؤيد'}
@@ -277,10 +338,9 @@ function DecisiveTab({ data }: { data: any }) {
 
         {/* مؤشر خطر التسرب */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-red-50 text-red-500">10</span>
+          <IndicatorHeader number={10} className="mb-2">
             مؤشر خطر التسرب الانتخابي
-          </h3>
+          </IndicatorHeader>
           <div className="text-[36px] font-bold font-mono text-red-500 leading-none">{safe(d.defectionRisk) || safe(d.avgDRS, 0)}</div>
           <p className="text-[10px] text-el-on-surface-variant mt-1.5">
             يقيس احتمال خروج المفاتيح الانتخابية عن التحالف أو التراجع عن دعم المرشح بسبب الاحتياجات أو انقطاع الاتصال.
@@ -291,10 +351,9 @@ function DecisiveTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 11. خريطة المناطق */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-3 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">11</span>
+          <IndicatorHeader number={11} className="mb-3">
             خريطة المناطق الانتخابية (أخضر / أصفر / أحمر)
-          </h3>
+          </IndicatorHeader>
           {d.areaMap.length === 0 ? (
             <div className="text-center py-6 text-[12px] text-el-on-surface-variant/50">
               لا توجد مناطق لعرض قوتها. يرجى إدخال بيانات المفاتيح الانتخابية وتخصيص الأقضية لها.
@@ -317,10 +376,9 @@ function DecisiveTab({ data }: { data: any }) {
 
         {/* 12. توزيع القوة الجغرافية */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-3 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">12</span>
+          <IndicatorHeader number={12} className="mb-3">
             توزيع القوة الجغرافية (صافي الأصوات ونسبتها)
-          </h3>
+          </IndicatorHeader>
           {d.geoDistribution.length === 0 ? (
             <div className="text-center py-6 text-[12px] text-el-on-surface-variant/50">
               بانتظار إدخال المفاتيح وتوزيع أصواتهم جغرافياً.
@@ -352,10 +410,9 @@ function RegionsTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* مناطق القوة */}
         <div className="bg-green-50/50 border border-green-200 rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-green-800 mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-green-100 text-green-600">13</span>
+          <IndicatorHeader number={13} className="mb-2 text-green-800">
             🟢 مناطق القوة الانتخابية (قوة الأصوات &gt;= 50%)
-          </h3>
+          </IndicatorHeader>
           {(d.strongAreas || []).length === 0 ? (
             <p className="text-[11px] text-green-800/60 italic">لا توجد أقضية مصنفة كمنطقة قوة حالياً.</p>
           ) : (
@@ -372,10 +429,9 @@ function RegionsTab({ data }: { data: any }) {
 
         {/* مناطق الضعف */}
         <div className="bg-red-50/50 border border-red-200 rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-red-800 mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-red-100 text-red-600">14</span>
+          <IndicatorHeader number={14} className="mb-2 text-red-800">
             🔴 مناطق الضعف الانتخابية (قوة الأصوات &lt; 35%)
-          </h3>
+          </IndicatorHeader>
           {(d.weakAreas || []).length === 0 ? (
             <p className="text-[11px] text-red-800/60 italic">لا توجد مناطق ضعف (جميعها مستقرة أو لم تسجل بعد).</p>
           ) : (
@@ -405,10 +461,9 @@ function RegionsTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* التغير في المشاركة */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">20</span>
+          <IndicatorHeader number={20} className="mb-2">
             التغير في نسبة المشاركة التاريخية للأقضية
-          </h3>
+          </IndicatorHeader>
           {(d.turnoutChange || []).length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">
               يرجى إضافة نتائج انتخابات سابقة لجدول ElectionResult لعرض التحولات في المشاركة.
@@ -429,10 +484,9 @@ function RegionsTab({ data }: { data: any }) {
 
         {/* التحول التصويتي */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">21</span>
+          <IndicatorHeader number={21} className="mb-2">
             التحول في التصويت بين الانتخابات
-          </h3>
+          </IndicatorHeader>
           {(d.votingShift || []).length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">
               بانتظار توثيق تحولات القوى الحزبية التاريخية في قاعدة البيانات.
@@ -475,10 +529,9 @@ function KeysTab({ data }: { data: any }) {
         {/* 22. ترتيب المفاتيح الانتخابية */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg overflow-hidden">
           <div className="bg-el-surface-container px-4 py-2 border-b border-el-outline-variant">
-            <h3 className="text-[13px] font-bold text-el-on-surface flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">22</span>
+            <IndicatorHeader number={22}>
               ترتيب المفاتيح الانتخابية (الأعلى وزناً وتأثيراً)
-            </h3>
+            </IndicatorHeader>
           </div>
           {(d.ranking || []).length === 0 ? (
             <div className="p-6 text-center text-[12px] text-el-on-surface-variant/50">
@@ -513,10 +566,9 @@ function KeysTab({ data }: { data: any }) {
         {/* 26. مؤشر القيمة الاستراتيجية للمفتاح */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg overflow-hidden">
           <div className="bg-el-surface-container px-4 py-2 border-b border-el-outline-variant">
-            <h3 className="text-[13px] font-bold text-el-on-surface flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">26</span>
+            <IndicatorHeader number={26}>
               مؤشر القيمة الاستراتيجية للمفاتيح
-            </h3>
+            </IndicatorHeader>
           </div>
           {(d.strategicValue || []).length === 0 ? (
             <div className="p-6 text-center text-[12px] text-el-on-surface-variant/50">
@@ -549,10 +601,9 @@ function KeysTab({ data }: { data: any }) {
 
       {/* 28. مؤشر مخاطر فقدان المفتاح */}
       <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-        <h3 className="text-[13px] font-bold text-el-on-surface mb-2 flex items-center gap-1.5">
-          <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-red-50 text-red-500">28</span>
+        <IndicatorHeader number={28} className="mb-2">
           مؤشر مخاطر فقدان المفاتيح (الأكثر خطورة بالتسرب)
-        </h3>
+        </IndicatorHeader>
         {(d.lossRisk || []).length === 0 ? (
           <p className="text-[11px] text-el-on-surface-variant/60 italic">لا توجد مفاتيح في منطقة الخطر.</p>
         ) : (
@@ -588,10 +639,9 @@ function AudienceTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* الأكثر دعماً */}
         <div className="bg-green-50/50 border border-green-200 rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-green-800 mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-green-100 text-green-600">29</span>
+          <IndicatorHeader number={29} className="mb-2 text-green-800">
             🟢 الفئات العمرية الأكثر دعماً للحملة
-          </h3>
+          </IndicatorHeader>
           {(d.topAgeGroups || []).length === 0 ? (
             <p className="text-[11px] text-green-800/60 italic">لا توجد بيانات كافية للحساب.</p>
           ) : (
@@ -606,10 +656,9 @@ function AudienceTab({ data }: { data: any }) {
 
         {/* الأكثر تردداً */}
         <div className="bg-yellow-50/50 border border-yellow-200 rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-yellow-800 mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-yellow-100 text-yellow-600">30</span>
+          <IndicatorHeader number={30} className="mb-2 text-yellow-800">
             🟡 الفئات العمرية الأكثر تردداً (محايدون)
-          </h3>
+          </IndicatorHeader>
           {(d.hesitantAgeGroups || []).length === 0 ? (
             <p className="text-[11px] text-yellow-800/60 italic">لا توجد بيانات كافية للحساب.</p>
           ) : (
@@ -624,10 +673,9 @@ function AudienceTab({ data }: { data: any }) {
 
         {/* الأكثر التزاماً بالتصويت */}
         <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-blue-800 mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-blue-100 text-blue-600">31</span>
+          <IndicatorHeader number={31} className="mb-2 text-blue-800">
             🔵 الفئات العمرية الأكثر التزاماً بالتصويت
-          </h3>
+          </IndicatorHeader>
           {(d.votingAgeGroups || []).length === 0 ? (
             <p className="text-[11px] text-blue-800/60 italic">لا توجد بيانات كافية للحساب.</p>
           ) : (
@@ -644,10 +692,9 @@ function AudienceTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* تأثير التعليم */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-3 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">34</span>
+          <IndicatorHeader number={34} className="mb-3">
             تأثير التعليم على التصويت والتأييد
-          </h3>
+          </IndicatorHeader>
           {(d.educationImpact || []).length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">بانتظار إدخال بيانات التحصيل الدراسي للناخبين.</p>
           ) : (
@@ -667,10 +714,9 @@ function AudienceTab({ data }: { data: any }) {
 
         {/* المهن الأكثر تأييداً */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-3 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">35</span>
+          <IndicatorHeader number={35} className="mb-3">
             المهن الأكثر تأييداً ودعماً للحملة الانتخابية
-          </h3>
+          </IndicatorHeader>
           {(d.topProfessions || []).length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">أدخل مهن الناخبين في لوحة التسجيل لتصنيف الدعم حسب المهنة.</p>
           ) : (
@@ -689,10 +735,9 @@ function AudienceTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 37. القضايا الأكثر تأثيراً */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">37</span>
+          <IndicatorHeader number={37} className="mb-2">
             القضايا الأكثر تأثيراً على المزاج الانتخابي للمواطنين
-          </h3>
+          </IndicatorHeader>
           <div className="space-y-2">
             {(d.topIssues || []).map((issue: any, idx: number) => (
               <div key={idx}>
@@ -708,10 +753,9 @@ function AudienceTab({ data }: { data: any }) {
 
         {/* 38. نوع الخطاب المناسب لكل شريحة */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">38</span>
+          <IndicatorHeader number={38} className="mb-2">
             نوع الخطاب المناسب لكل شريحة تصويتية
-          </h3>
+          </IndicatorHeader>
           <div className="space-y-2">
             {(d.segmentMessaging || []).map((m: any, idx: number) => (
               <div key={idx} className="p-2 border border-el-outline-variant/60 rounded-lg text-[12px] bg-el-surface-container">
@@ -755,10 +799,9 @@ function PerformanceTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* المناطق الأكثر حاجة للجهد الميداني */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-3 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">50</span>
+          <IndicatorHeader number={50} className="mb-3">
             أكثر الأقضية والمناطق حاجة للجهد والتحشيد الميداني
-          </h3>
+          </IndicatorHeader>
           {d.needingEffort.length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">لا توجد أقضية نشطة.</p>
           ) : (
@@ -817,10 +860,9 @@ function MediaTab({ data }: { data: any }) {
 
       <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg overflow-hidden">
         <div className="bg-el-surface-container px-4 py-2 border-b border-el-outline-variant">
-          <h3 className="text-[13px] font-bold text-el-on-surface flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">56</span>
+          <IndicatorHeader number={56}>
             الرسائل الأكثر تأثيراً وكفاءة التوصيل الرقمي لحملات الـ SMS
-          </h3>
+          </IndicatorHeader>
         </div>
         {d.topMessages.length === 0 ? (
           <div className="p-6 text-center text-[12px] text-el-on-surface-variant/50">
@@ -873,10 +915,9 @@ function InvestmentTab({ data }: { data: any }) {
         {/* 64. قائمة المفاتيح المستحقة للاستثمار */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg overflow-hidden">
           <div className="bg-el-surface-container px-4 py-2 border-b border-el-outline-variant">
-            <h3 className="text-[13px] font-bold text-el-on-surface flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">64</span>
+            <IndicatorHeader number={64}>
               الوجهاء والمفاتيح المستحقون للاستثمار الانتخابي (فرص عالية الكسب)
-            </h3>
+            </IndicatorHeader>
           </div>
           {d.investmentKeys.length === 0 ? (
             <div className="p-6 text-center text-[12px] text-el-on-surface-variant/50">
@@ -911,10 +952,9 @@ function InvestmentTab({ data }: { data: any }) {
         {/* 65. أكثر الخدمات تأثيراً انتخابياً */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg overflow-hidden">
           <div className="bg-el-surface-container px-4 py-2 border-b border-el-outline-variant">
-            <h3 className="text-[13px] font-bold text-el-on-surface flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">65</span>
+            <IndicatorHeader number={65}>
               الخدمات الأكثر تأثيراً وجذباً للأصوات
-            </h3>
+            </IndicatorHeader>
           </div>
           {d.impactfulServices.length === 0 ? (
             <div className="p-6 text-center text-[12px] text-el-on-surface-variant/50">
@@ -973,10 +1013,9 @@ function PollingDayTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 66. نسبة التصويت الفعلية حسب الساعة */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-3 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">66</span>
+          <IndicatorHeader number={66} className="mb-3">
             نسبة المشاركة والتصويت الفعلية حسب ساعة يوم الاقتراع
-          </h3>
+          </IndicatorHeader>
           <div className="space-y-2">
             {d.hourlyTurnout.map((item: any, idx: number) => (
               <div key={idx}>
@@ -993,10 +1032,9 @@ function PollingDayTab({ data }: { data: any }) {
         {/* 70. مؤشر قوة مركز الاقتراع */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg overflow-hidden">
           <div className="bg-el-surface-container px-4 py-2 border-b border-el-outline-variant">
-            <h3 className="text-[13px] font-bold text-el-on-surface flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">70</span>
+            <IndicatorHeader number={70}>
               مؤشر قوة مراكز الاقتراع وتراكم أصواتنا فيها
-            </h3>
+            </IndicatorHeader>
           </div>
           {d.pollingCenterStrength.length === 0 ? (
             <div className="p-6 text-center text-[12px] text-el-on-surface-variant/50">
@@ -1038,10 +1076,9 @@ function StrategicTab({ data }: { data: any }) {
     <div className="flex flex-col gap-4">
       {/* 76. نسبة الفوز لكل حزب */}
       <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-        <h3 className="text-[13px] font-bold text-el-on-surface mb-3 flex items-center gap-1.5">
-          <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">76</span>
+        <IndicatorHeader number={76} className="mb-3">
           نسب الفوز التاريخية ومقاعد الكتل والأحزاب في محافظة ذي قار
-        </h3>
+        </IndicatorHeader>
         {d.partyWinRates.length === 0 ? (
           <p className="text-[11px] text-el-on-surface-variant/60 italic">
             يرجى تعبئة جدول النتائج التاريخية للمفوضية لتفعيل التحليلات الاستراتيجية للأحزاب.
@@ -1064,10 +1101,9 @@ function StrategicTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 77. التغيير في قوة الأحزاب */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">77</span>
+          <IndicatorHeader number={77} className="mb-2">
             التغيير والتحول في قوة ونسب الأحزاب والكتل السياسية
-          </h3>
+          </IndicatorHeader>
           {d.partyStrengthChange.length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">بانتظار إدخال المقارنات التاريخية.</p>
           ) : (
@@ -1086,10 +1122,9 @@ function StrategicTab({ data }: { data: any }) {
 
         {/* 78. التغيير في نسب المشاركة */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">78</span>
+          <IndicatorHeader number={78} className="mb-2">
             التغير التاريخي في نسب إقبال المشاركة للناخبين
-          </h3>
+          </IndicatorHeader>
           {d.participationChange.length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">بانتظار توثيق تباين مشاركة الناخبين بين الانتخابات.</p>
           ) : (
@@ -1110,10 +1145,9 @@ function StrategicTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 79. التحول التاريخي في التصويت */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">79</span>
+          <IndicatorHeader number={79} className="mb-2">
             معدل التحول التاريخي وهجرة الأصوات الكلية
-          </h3>
+          </IndicatorHeader>
           {d.historicalShifts.length === 0 ? (
             <p className="text-[11px] text-el-on-surface-variant/60 italic">لا توجد بيانات كافية.</p>
           ) : (
@@ -1132,10 +1166,9 @@ function StrategicTab({ data }: { data: any }) {
 
         {/* 80. توقع اتجاهات الانتخابات القادمة */}
         <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg p-4">
-          <h3 className="text-[13px] font-bold text-el-on-surface mb-2 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-el-primary/5 text-el-primary">80</span>
+          <IndicatorHeader number={80} className="mb-2">
             توقع التوجهات العامة ومشاركة الانتخابات القادمة
-          </h3>
+          </IndicatorHeader>
           <div className="p-3 border border-el-outline-variant/60 rounded-lg bg-el-surface-container text-[12px]">
             <p className="font-semibold text-el-primary">تحليل الاتجاه المقدر:</p>
             <p className="mt-1 text-el-on-surface-variant leading-relaxed">{d.nextElectionForecast.trend}</p>
