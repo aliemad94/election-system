@@ -32,6 +32,7 @@ import {
   Activity,
   Users,
   RefreshCw,
+  FileText,
 } from "lucide-react";
 import {
   Card,
@@ -193,16 +194,26 @@ export default function AdvancedIndicators() {
             محركات EII / KRI / EFI + توزيع المقاعد (Saint-Laguë)
           </p>
         </div>
-        <Button
-          onClick={handleRefresh}
-          variant="outline"
-          disabled={refreshing}
-        >
-          <RefreshCw
-            className={`w-4 h-4 ml-1 ${refreshing ? "animate-spin" : ""}`}
-          />
-          تحديث
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => window.open("/docs/electoral-indicators-guide.pdf", "_blank")}
+            variant="outline"
+            className="border-red-200 hover:bg-red-50 hover:text-red-700 text-red-600 cursor-pointer"
+          >
+            <FileText className="w-4 h-4 ml-1" />
+            تحميل دليل المؤشرات (PDF)
+          </Button>
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            disabled={refreshing}
+          >
+            <RefreshCw
+              className={`w-4 h-4 ml-1 ${refreshing ? "animate-spin" : ""}`}
+            />
+            تحديث
+          </Button>
+        </div>
       </div>
 
       {/* بطاقة EFI الرئيسية */}
