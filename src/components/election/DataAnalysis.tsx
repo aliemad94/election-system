@@ -125,14 +125,24 @@ function IndicatorCard({
       {guideText && showGuide && (
         <div className="absolute inset-0 bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 z-10 text-[10px] text-el-on-surface-variant leading-relaxed flex flex-col justify-between overflow-y-auto">
           <div>
-            <p className="font-semibold text-el-primary flex items-center gap-1">
-              <Brain className="w-3 h-3" /> دليل المؤشر:
+            <p className="font-semibold text-el-primary flex items-center gap-1 mb-1">
+              <Brain className="w-3.5 h-3.5" /> {title} (مؤشر {number}):
             </p>
-            <p className="mt-1 whitespace-pre-line">{guideText}</p>
+            <p className="mt-1 text-[10px] text-el-on-surface-variant leading-relaxed">
+              {def ? def.description : guideText}
+            </p>
+            {def && (
+              <div className="rounded bg-el-surface-container-high border border-el-outline-variant/30 p-1.5 mt-2 text-[9px]">
+                <span className="font-bold text-el-primary block mb-0.5">المعادلة الحسابية:</span>
+                <code className="font-mono text-el-secondary block break-words text-[9px]" dir="rtl" style={{ direction: "rtl", unicodeBidi: "plaintext" }}>
+                  {def.formula}
+                </code>
+              </div>
+            )}
           </div>
           <button 
             onClick={() => setShowGuide(false)} 
-            className="text-[9px] text-el-secondary font-bold self-end hover:underline mt-1 cursor-pointer"
+            className="text-[9px] text-el-secondary font-bold self-end hover:underline mt-2 cursor-pointer shrink-0"
           >
             إغلاق المساعدة
           </button>
