@@ -234,6 +234,7 @@ export default function ElectionResultsManagement() {
   const [showDetailsDialog, setShowDetailsDialog] = useState<ElectionResultRecord | null>(null);
   const [expandedParty, setExpandedParty] = useState<string | null>(null);
   const [activeResultsTab, setActiveResultsTab] = useState<'official' | 'dynamic'>('official');
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
 
   // Form State
   const [year, setYear] = useState(new Date().getFullYear());
@@ -340,6 +341,7 @@ export default function ElectionResultsManagement() {
       });
 
       if (res.ok) {
+        const savedData = await res.json();
         setShowDialog(false);
         // Reset form
         setDistrict('');
@@ -348,6 +350,10 @@ export default function ElectionResultsManagement() {
         setTotalVotes('');
         setTotalRegistered('');
         setNotes('');
+        
+        if (savedData.result?.id) {
+          setSelectedResultId(savedData.result.id);
+        }
         fetchResults();
       } else {
         const errData = await res.json();
@@ -419,7 +425,7 @@ export default function ElectionResultsManagement() {
     );
   }
 
-  const result2025 = results.find((r) => r.year === 2025) || results[0];
+  const result2025 = results.find((r) => r.id === selectedResultId) || results.find((r) => r.year === 2025) || results[0];
 
   return (
     <div className="flex flex-col gap-5 max-w-[1440px] mx-auto w-full text-right" dir="rtl">
@@ -717,10 +723,7 @@ export default function ElectionResultsManagement() {
                   <button
                     key={r.id}
                     onClick={() => {
-                      const found = results.find(x => x.id === r.id);
-                      if (found) {
-                        setResults([found, ...results.filter(x => x.id !== r.id)]);
-                      }
+                      setSelectedResultId(r.id);
                     }}
                     className={`px-3 py-1 rounded-lg text-[12px] font-bold border transition-all ${
                       r.id === result2025.id ? 'bg-el-primary text-el-on-primary border-el-primary' : 'bg-white text-el-on-surface border-el-outline-variant'
