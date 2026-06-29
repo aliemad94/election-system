@@ -95,7 +95,7 @@ function IndicatorCard({
           </div>
           <div className="flex items-center gap-1">
             <Icon className={`w-4 h-4 ${color}`} />
-            {activationGuide && isZeroOrEmpty && (
+            {activationGuide && (
               <button 
                 onClick={() => setShowGuide(!showGuide)}
                 title="كيف يتم تفعيل وحساب هذا المؤشر؟" 
@@ -240,7 +240,7 @@ function DecisiveTab({ data }: { data: any }) {
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <IndicatorCard number={1} title="عدد الأصوات المتوقعة" value={(safe(d.expectedVotes) || safe(d.expectedVotesOnDay)).toLocaleString()} subtitle="صوت محتمل" icon={Vote} activationGuide="يُحسب تلقائياً من الأصوات الصافية للمفاتيح الانتخابية الموزعة حسب نسبة المشاركة التاريخية لذي قار." />
-        <IndicatorCard number={2} title="الأصوات المطلوبة للفوز" value={safe(d.votesNeededToWin, 12000).toLocaleString()} subtitle="العتبة المستهدفة للمقعد" icon={Award} color="text-amber-600" bgColor="bg-amber-100" />
+        <IndicatorCard number={2} title="الأصوات المطلوبة للفوز" value={safe(d.votesNeededToWin, 12000).toLocaleString()} subtitle="العتبة المستهدفة للمقعد" icon={Award} color="text-amber-600" bgColor="bg-amber-100" activationGuide="العتبة الانتخابية الثابتة المطلوبة لحصد مقعد آمن لمجلس المحافظة (محددة بـ 12,000 صوت في ذي قار)." />
         <IndicatorCard number={3} title="مؤشر الفجوة الانتخابية" value={safe(d.electoralGap, 12000).toLocaleString()} subtitle="صوت للفوز" icon={AlertTriangle} color="text-red-600" bgColor="bg-red-100" activationGuide="هو الفرق المتبقي بين عدد الأصوات المتوقعة ومستهدف الفوز (12,000 صوت)." />
         <IndicatorCard number={4} title="احتمالية الفوز" value={`${safe(d.winProbability, 0)}%`} subtitle="جاهزية الحصول على مقعد" icon={Brain} color="text-purple-600" bgColor="bg-purple-100" activationGuide="يقيس نسبة حصد المقعد بناءً على الأصوات الصافية المتحققة مقارنة بالعتبة المطلوبة." />
       </div>
@@ -579,8 +579,8 @@ function AudienceTab({ data }: { data: any }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <IndicatorCard number={32} title="نسبة الذكور" value={`${d.genderRatio.malePercentage}%`} subtitle={`${d.genderRatio.male} ناخب مسجل`} icon={Users} color="text-blue-600" bgColor="bg-blue-100" />
-        <IndicatorCard number={32} title="نسبة الإناث" value={`${d.genderRatio.femalePercentage}%`} subtitle={`${d.genderRatio.female} ناخبة مسجلة`} icon={Users} color="text-pink-600" bgColor="bg-pink-100" />
+        <IndicatorCard number={32} title="نسبة الذكور" value={`${d.genderRatio.malePercentage}%`} subtitle={`${d.genderRatio.male} ناخب مسجل`} icon={Users} color="text-blue-600" bgColor="bg-blue-100" activationGuide="نسبة الناخبين الذكور المسجلين في قاعدة بيانات الحملة من إجمالي الناخبين." />
+        <IndicatorCard number={32} title="نسبة الإناث" value={`${d.genderRatio.femalePercentage}%`} subtitle={`${d.genderRatio.female} ناخبة مسجلة`} icon={Users} color="text-pink-600" bgColor="bg-pink-100" activationGuide="نسبة الناخبات الإناث المسجلات في قاعدة بيانات الحملة من إجمالي الناخبين." />
         <IndicatorCard number={33} title="نسبة الجامعيين" value={`${d.graduatesRatio}%`} subtitle="حملة شهادة بكالوريوس وأعلى" icon={Award} color="text-purple-600" bgColor="bg-purple-100" activationGuide="يُقرأ من حقل المستوى التعليمي للناخب والمفتاح." />
         <IndicatorCard number={36} title="شرائح الناخبين المفصلة" value={(d.segmentation || []).length} subtitle="فئة مستهدفة حالياً" icon={UserCheck} activationGuide="شرائح مصنفة بالاعتماد على الأعمار والولاء الميداني." />
       </div>
@@ -743,13 +743,13 @@ function PerformanceTab({ data }: { data: any }) {
         <IndicatorCard number={48} title="مؤشر الحشد الميداني" value={d.mobilization} subtitle="قدرة التحشيد للمفاتيح" icon={Megaphone} color="text-blue-600" bgColor="bg-blue-100" activationGuide="متوسط مستوى قدرة المفاتيح على التحشيد الميداني من 100 نقطة." />
         <IndicatorCard number={49} title="مؤشر الجاهزية الميدانية" value={`${d.readiness}%`} subtitle="كفاءة المتطوعين النشطين" icon={UserCheck} color="text-green-600" bgColor="bg-green-100" activationGuide="يتم قراءته من تقييم كفاءة المتطوعين والمهام المكتملة في إدارة الكوادر." />
         <IndicatorCard number={51} title="مؤشر استنزاف الحملة" value={d.exhaustion} subtitle="كفاءة ترشيد النفقات" icon={DollarSign} color="text-red-500" bgColor="bg-red-50" activationGuide="العائد المادي المصروف مقارنة بالأصوات الصافية المحرزة لحساب الفاعلية المالية." />
-        <IndicatorCard number={55} title="مؤشر الولاء العام للحملة" value={`${d.overallLoyalty}%`} subtitle="متوسط ولاء المفاتيح" icon={Shield} color="text-teal-600" bgColor="bg-teal-100" />
+        <IndicatorCard number={55} title="مؤشر الولاء العام للحملة" value={`${d.overallLoyalty}%`} subtitle="متوسط ولاء المفاتيح" icon={Shield} color="text-teal-600" bgColor="bg-teal-100" activationGuide="يمثل متوسط نسبة ثبات وولاء المفاتيح والناخبين الملتزمين بالكامل بالتصويت للحملة." />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <IndicatorCard number={52} title="المواطنون المخدومون فعلياً" value={d.servedCitizens.toLocaleString()} subtitle="طلب مكتمل بنجاح" icon={CheckCircle2} color="text-green-600" bgColor="bg-green-100" activationGuide="عدد طلبات الخدمات المنفذة والمكتملة بالكامل للمواطنين." />
-        <IndicatorCard number={53} title="أهم ملف خدمي مكرر" value={d.recurringServices.length > 0 ? d.recurringServices[0]?.type : 'لا يوجد'} subtitle={d.recurringServices.length > 0 ? `${d.recurringServices[0]?.count} طلب` : undefined} icon={Wrench} />
-        <IndicatorCard number={54} title="أكثر المناطق مراجعة" value={d.frequentAreas.length > 0 ? d.frequentAreas[0]?.district : 'لا يوجد'} subtitle={d.frequentAreas.length > 0 ? `${d.frequentAreas[0]?.count} طلب خدمة` : undefined} icon={MapPin} />
+        <IndicatorCard number={53} title="أهم ملف خدمي مكرر" value={d.recurringServices.length > 0 ? d.recurringServices[0]?.type : 'لا يوجد'} subtitle={d.recurringServices.length > 0 ? `${d.recurringServices[0]?.count} طلب` : undefined} icon={Wrench} activationGuide="يحدد نوع الطلبات الخدمية الأكثر تكراراً وإلحاحاً من قبل المواطنين لتوجيه الموارد لها." />
+        <IndicatorCard number={54} title="أكثر المناطق مراجعة" value={d.frequentAreas.length > 0 ? d.frequentAreas[0]?.district : 'لا يوجد'} subtitle={d.frequentAreas.length > 0 ? `${d.frequentAreas[0]?.count} طلب خدمة` : undefined} icon={MapPin} activationGuide="المناطق والأقضية الجغرافية الأكثر طلباً للخدمات وتلقياً للدعم الميداني." />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -812,7 +812,7 @@ function MediaTab({ data }: { data: any }) {
         <IndicatorCard number={57} title="كفاءة الحملات الرقمية" value={`${d.digitalCampaigns}%`} subtitle="نسبة تسليم الرسائل الموبيل" icon={Globe} color="text-green-600" bgColor="bg-green-100" activationGuide="تُحسب تلقائياً من تقارير توصيل رسائل SMS وبثها المباشر." />
         <IndicatorCard number={58} title="مؤشر النشاط الرقمي اليومي" value={d.dailyDigitalActivity} subtitle="نشاط الزيارات وتحديث البيانات" icon={Activity} activationGuide="نشاط الفرق الانتخابية الميدانية في تدوين وتحديث المهام الانتخابية." />
         <IndicatorCard number={59} title="مؤشر تأثير التواصل المباشر" value={`${d.directContactImpact}%`} subtitle="التواصل الدوري مع الوجهاء" icon={Users} color="text-blue-600" bgColor="bg-blue-100" activationGuide="نسبة الوجهاء والمفاتيح الذين تم التواصل معهم في أخر 14 يوم بنجاح." />
-        <IndicatorCard number={60} title="الجمهور القابل للوصول إعلامياً" value={d.mediaReachable.toLocaleString()} subtitle="مستلم رسائل SMS محتمل" icon={Phone} />
+        <IndicatorCard number={60} title="الجمهور القابل للوصول إعلامياً" value={d.mediaReachable.toLocaleString()} subtitle="مستلم رسائل SMS محتمل" icon={Phone} activationGuide="يقيس نسبة الناخبين المسجلة أرقام هواتفهم وحساباتهم الرقمية النشطة والجاهزين لتلقي الرسائل الإعلانية." />
       </div>
 
       <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg overflow-hidden">
@@ -866,7 +866,7 @@ function InvestmentTab({ data }: { data: any }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <IndicatorCard number={61} title="العائد الانتخابي للخدمات" value={d.serviceROI} subtitle="صوت كسب متوقع / مليون دينار" icon={Wrench} color="text-green-600" bgColor="bg-green-100" activationGuide="يقيس الكسب المتوقع للأصوات بناءً على إجمالي الإنفاق الفعلي المصروف للخدمات." />
         <IndicatorCard number={62} title="العائد الانتخابي المالي للمفاتيح" value={d.financialROI} subtitle="صوت كسب متوقع / 100 ألف دينار" icon={DollarSign} color="text-blue-600" bgColor="bg-blue-100" activationGuide="الأصوات الصافية المتحققة مقارنة بالإنفاق الكلي المخصص لدعم المفاتيح." />
-        <IndicatorCard number={63} title="تكلفة الصوت الانتخابي الواحد" value={d.costPerVote > 0 ? `${d.costPerVote.toLocaleString()} د.ع` : '0'} subtitle="إجمالي الإنفاق / الأصوات الصافية" icon={DollarSign} color="text-amber-600" bgColor="bg-amber-100" />
+        <IndicatorCard number={63} title="تكلفة الصوت الانتخابي الواحد" value={d.costPerVote > 0 ? `${d.costPerVote.toLocaleString()} د.ع` : '0'} subtitle="إجمالي الإنفاق / الأصوات الصافية" icon={DollarSign} color="text-amber-600" bgColor="bg-amber-100" activationGuide="معدل الإنفاق المالي الإجمالي مقسوماً على عدد الأصوات الصافية المتوقع حصدها." />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -960,14 +960,14 @@ function PollingDayTab({ data }: { data: any }) {
         <IndicatorCard number={67} title="نسبة حضور مؤيدينا" value={`${d.supportersTurnout}%`} subtitle="من صوتوا من المؤيدين المسجلين" icon={CheckCircle2} color="text-green-600" bgColor="bg-green-100" activationGuide="تُحسب يوم الاقتراع عند تأكيد حضور الناخبين المؤيدين في بوابة المندوب." />
         <IndicatorCard number={68} title="نسبة الحشد المنجز" value={`${d.mobilizationAchieved}%`} subtitle="المصوتون / إجمالي المستهدف الصافي" icon={Users} color="text-blue-600" bgColor="bg-blue-100" activationGuide="نسبة ما تم إنجازه وحشده من كتلتنا التصويتية الصافية المضمونة." />
         <IndicatorCard number={69} title="نسبة التغطية بالمراقبين" value={`${d.observerCoverage}%`} subtitle="مراكز الاقتراع المراقبة بالوكلاء" icon={Shield} color="text-purple-600" bgColor="bg-purple-100" activationGuide="نسبة تغطية مراكز الاقتراع بالوكلاء والمراقبين الانتخابيين المسجلين." />
-        <IndicatorCard number={71} title="مؤشر حماية الأصوات" value={d.voteProtection} subtitle="حماية ومنع التلاعب بالأصوات" icon={ShieldAlert} color="text-teal-600" bgColor="bg-teal-100" />
+        <IndicatorCard number={71} title="مؤشر حماية الأصوات" value={d.voteProtection} subtitle="حماية ومنع التلاعب بالأصوات" icon={ShieldAlert} color="text-teal-600" bgColor="bg-teal-100" activationGuide="يقيس مستوى تأمين أصواتنا ضد التزوير أو الإبطال بناءً على تدريب وتوزيع مراقبي الصناديق." />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <IndicatorCard number={72} title="نسبة الأصوات المحمية" value={`${d.protectedVotes}%`} subtitle="أصوات تحت مراقبة الوكلاء" icon={Shield} color="text-green-600" bgColor="bg-green-100" activationGuide="نسبة الأصوات التابعة لمفوضية الاقتراع المغطاة بالوكلاء المدربين." />
-        <IndicatorCard number={73} title="نسبة الشكاوى الانتخابية" value={`${d.complaintsRate}%`} subtitle="خروقات مسجلة لكل مركز" icon={AlertTriangle} color="text-red-500" bgColor="bg-red-50" />
-        <IndicatorCard number={74} title="إنذار يوم الاقتراع المبكر" value={d.earlyWarningEDay} subtitle="خطر تسرب أصوات يوم الاقتراع" icon={AlertTriangle} color="text-yellow-600" bgColor="bg-yellow-100" />
-        <IndicatorCard number={75} title="مؤشر الجاهزية الشامل ليوم الحسم" value={`${d.readinessEDay}%`} subtitle="جاهزية الماكينة الانتخابية" icon={Zap} color="text-purple-600" bgColor="bg-purple-100" />
+        <IndicatorCard number={73} title="نسبة الشكاوى الانتخابية" value={`${d.complaintsRate}%`} subtitle="خروقات مسجلة لكل مركز" icon={AlertTriangle} color="text-red-500" bgColor="bg-red-50" activationGuide="معدل الشكاوى المسجلة في مراكز الاقتراع من قبل مراقبينا يوم التصويت." />
+        <IndicatorCard number={74} title="إنذار يوم الاقتراع المبكر" value={d.earlyWarningEDay} subtitle="خطر تسرب أصوات يوم الاقتراع" icon={AlertTriangle} color="text-yellow-600" bgColor="bg-yellow-100" activationGuide="يتنبأ بأي تراجع أو خلل في نسب الحضور والتعبئة خلال الساعات الأولى ليوم التصويت." />
+        <IndicatorCard number={75} title="مؤشر الجاهزية الشامل ليوم الحسم" value={`${d.readinessEDay}%`} subtitle="جاهزية الماكينة الانتخابية" icon={Zap} color="text-purple-600" bgColor="bg-purple-100" activationGuide="مؤشر مركب يدمج نسب تغطية المراقبين، وتدريب المفاتيح، وحماية الأصوات لتحديد الاستعداد الكلي ليوم التصويت." />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
