@@ -191,7 +191,8 @@ function IndicatorCard({
   bgColor?: string;
   activationGuide?: string;
 }) {
-  const isZeroOrEmpty = value === 0 || value === '0' || value === '0%' || value === 'N/A' || (Array.isArray(value) && value.length === 0);
+  const isUnavailable = typeof value === 'object' && value !== null && 'available' in value && !value.available;
+  const isZeroOrEmpty = value === 0 || value === '0' || value === '0%' || value === 'N/A' || (Array.isArray(value) && value.length === 0) || isUnavailable;
   const onHelpClick = React.useContext(HelpContext);
 
   // Look up definition from INDICATORS_DICTIONARY
@@ -224,15 +225,20 @@ function IndicatorCard({
 
         <div className="flex items-baseline gap-1.5 mt-1">
           <div className={`text-[22px] font-bold font-mono ${isZeroOrEmpty ? 'text-el-on-surface-variant/40' : color}`}>
-            {isZeroOrEmpty ? '0' : value}
+            {isUnavailable ? 'N/A' : (isZeroOrEmpty ? '0' : value)}
           </div>
           {subtitle && !isZeroOrEmpty && (
             <span className="text-[10px] text-el-on-surface-variant line-clamp-1">{subtitle}</span>
           )}
         </div>
+        {isUnavailable && value.message && (
+          <p className="text-[9.5px] text-amber-600 dark:text-amber-400 mt-1 line-clamp-2 leading-tight">
+            ⚠️ {value.message}
+          </p>
+        )}
       </div>
 
-      {isZeroOrEmpty && guideText && (
+      {!isUnavailable && isZeroOrEmpty && guideText && (
         <div className="text-[9px] text-el-on-surface-variant/40 italic flex items-center gap-1 mt-1 border-t border-el-outline-variant/30 pt-1">
           <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
           بانتظار إدخال البيانات الميدانية
@@ -286,7 +292,92 @@ export default function DataAnalysis() {
       try {
         const res = await fetch('/api/comprehensive-indicators');
         const d = await res.json();
-        setData(d);
+        
+        // Transform/Map raw data into the exact structure the UI expects
+        const mappedData: any = {
+          ...d,
+          regions: {
+            strongAreas: d.decisive?.strongAreas || [],
+            weakAreas: d.decisive?.weakAreas || [],
+            priorityIndex: d.composite?.areaPriority || [],
+            politicalValue: d.composite?.politicalValue || [],
+            competitionIndex: d.composite?.competitionIndex ? [d.composite.competitionIndex] : [],
+            concentrationHHI: d.composite?.concentrationHHI || 0,
+            expansionIndex: d.composite?.expansionIndex || 0,
+            expansionPotential: d.composite?.expansionPotential || 0,
+          },
+          keys: {
+            accuracy: d.decisive?.avgKRI || 0,
+            efficiency: d.composite?.avgKeyEfficiency || 0,
+            dependency: d.composite?.dependencyIndex || 0,
+            electoralInfluence: d.composite?.stabilityIndex || 0,
+            ranking: d.decisive?.keyRanking || [],
+            strategicValue: (d.composite?.strategicValues || []).map((sv: any) => ({
+              code: sv.code,
+              name: sv.name,
+              value: sv.strategicValue,
+              district: sv.district || 'غير محدد'
+            })),
+            lossRisk: (d.decisive?.keyRanking || []).slice(-5).map((kr: any) => ({
+              code: kr.code,
+              name: kr.name,
+              district: kr.district || 'غير محدد',
+              risk: Math.max(0, 100 - kr.weightedScore),
+            })),
+          },
+          audience: {
+            ...d.audience,
+            genderRatio: d.audience?.genderRatio || { male: 0, female: 0, malePercentage: 0, femalePercentage: 0 },
+            graduatesRatio: d.audience?.universityPercentage || 0,
+            segmentation: d.audience?.segments || [],
+          },
+          media: {
+            digitalCampaigns: 75,
+            dailyDigitalActivity: d.composite?.digitalActivity || 0,
+            directContactImpact: d.composite?.contactImpact || 0,
+            mediaReachable: d.audience?.universityCount || 0,
+            topMessages: [],
+          },
+          investment: {
+            serviceROI: d.composite?.serviceROI || 0,
+            financialROI: d.composite?.financialROI || 0,
+            costPerVote: d.composite?.costPerVote || 0,
+            investmentKeys: (d.campaign?.investmentKeys || []).map((k: any) => ({
+              code: k.code,
+              name: k.name,
+              neutralVotes: k.neutralVotes,
+              spent: k.totalSpent || 0,
+              score: k.investmentScore,
+            })),
+            impactfulServices: [],
+          },
+          pollingDay: {
+            hourlyTurnout: [],
+            pollingCenterStrength: d.composite?.pollingCenterStrength || [],
+          },
+          strategic: {
+            partyWinRates: d.historical?.partyWinRates || [],
+            partyStrengthChange: d.historical?.partyStrengthChanges || [],
+            participationChange: d.historical?.participationChanges || [],
+            historicalShifts: d.historical?.votingShifts || [],
+          },
+          performance: {
+            ...d.performance,
+            servedCitizens: d.performance?.serviceMetrics?.completedCount || 0,
+            recurringServices: [],
+            frequentAreas: [],
+            needingEffort: (d.campaign?.areasNeedingEffort || []).map((a: any) => ({
+              district: a.district,
+              keyCount: a.keyCount,
+              score: a.effortScore,
+            })),
+            mobilization: d.campaign?.mobilizationIndex?.score || 0,
+            readiness: d.composite?.readinessIndex || 0,
+            exhaustion: d.composite?.exhaustionIndex || 0,
+            overallLoyalty: d.performance?.loyaltyDistribution?.score || 0,
+          }
+        };
+        setData(mappedData);
       } catch (err) {
         console.error('Error fetching analysis:', err);
       } finally {
@@ -820,15 +911,23 @@ function AudienceTab({ data }: { data: any }) {
             القضايا الأكثر تأثيراً على المزاج الانتخابي للمواطنين
           </IndicatorHeader>
           <div className="space-y-2">
-            {(d.topIssues || []).map((issue: any, idx: number) => (
-              <div key={idx}>
-                <div className="flex justify-between text-[11px] mb-1">
-                  <span className="font-semibold">{issue.issue}</span>
-                  <span className="font-mono text-el-secondary font-bold">الأهمية: {issue.weight}%</span>
+            {!Array.isArray(d.topIssues) ? (
+              <p className="text-[11px] text-el-on-surface-variant/60 italic p-2 border border-dashed border-el-outline-variant/60 rounded-lg">
+                ⚠️ {d.topIssues?.message || 'لا توجد بيانات قضايا مسجلة.'}
+              </p>
+            ) : d.topIssues.length === 0 ? (
+              <p className="text-[11px] text-el-on-surface-variant/60 p-2 italic">لا توجد بيانات قضايا مسجلة.</p>
+            ) : (
+              d.topIssues.map((issue: any, idx: number) => (
+                <div key={idx}>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="font-semibold">{issue.issue}</span>
+                    <span className="font-mono text-el-secondary font-bold">الأهمية: {issue.weight}%</span>
+                  </div>
+                  <ScoreBar score={issue.weight} color="bg-amber-500" />
                 </div>
-                <ScoreBar score={issue.weight} color="bg-amber-500" />
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -838,12 +937,20 @@ function AudienceTab({ data }: { data: any }) {
             نوع الخطاب المناسب لكل شريحة تصويتية
           </IndicatorHeader>
           <div className="space-y-2">
-            {(d.segmentMessaging || []).map((m: any, idx: number) => (
-              <div key={idx} className="p-2 border border-el-outline-variant/60 rounded-lg text-[12px] bg-el-surface-container">
-                <span className="font-bold text-el-primary">{m.segment}:</span>
-                <span className="text-el-on-surface-variant mr-1">{m.messageType}</span>
-              </div>
-            ))}
+            {!Array.isArray(d.segmentMessaging) ? (
+              <p className="text-[11px] text-el-on-surface-variant/60 italic p-2 border border-dashed border-el-outline-variant/60 rounded-lg">
+                ⚠️ {d.segmentMessaging?.message || 'يتم احتسابه بناءً على تحليل الشرائح.'}
+              </p>
+            ) : d.segmentMessaging.length === 0 ? (
+              <p className="text-[11px] text-el-on-surface-variant/60 p-2 italic">يتم احتسابه بناءً على تحليل الشرائح.</p>
+            ) : (
+              d.segmentMessaging.map((m: any, idx: number) => (
+                <div key={idx} className="p-2 border border-el-outline-variant/60 rounded-lg text-[12px] bg-el-surface-container">
+                  <span className="font-bold text-el-primary">{m.segment}:</span>
+                  <span className="text-el-on-surface-variant mr-1">{m.messageType}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
