@@ -52,6 +52,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import IndicatorInfoBar from "./IndicatorInfoBar";
+import Explainable from "./Explainable";
 
 interface AreaMetrics {
   eiiScore: number;
@@ -522,16 +523,16 @@ export default function AdvancedIndicators() {
               <TableHeader className="sticky top-0 bg-[var(--el-surface-container-low)] z-10">
                 <TableRow>
                   <TableHead>القضاء</TableHead>
-                  <TableHead className="text-center">EFI</TableHead>
-                  <TableHead className="text-center">EII</TableHead>
-                  <TableHead className="text-center">KRI</TableHead>
-                  <TableHead className="text-center">VPS</TableHead>
-                  <TableHead className="text-center">DRS</TableHead>
+                  <TableHead className="text-center"><Explainable termKey="EFI">EFI</Explainable></TableHead>
+                  <TableHead className="text-center"><Explainable termKey="EII">EII</Explainable></TableHead>
+                  <TableHead className="text-center"><Explainable termKey="KRI">KRI</Explainable></TableHead>
+                  <TableHead className="text-center"><Explainable termKey="VPS">VPS</Explainable></TableHead>
+                  <TableHead className="text-center"><Explainable termKey="DRS">DRS</Explainable></TableHead>
                   <TableHead className="text-center hidden md:table-cell">
-                    API
+                    <Explainable termKey="API">API</Explainable>
                   </TableHead>
                   <TableHead className="text-center hidden md:table-cell">
-                    EWLI
+                    <Explainable termKey="EWLI">EWLI</Explainable>
                   </TableHead>
                   <TableHead className="text-center">مقاعد</TableHead>
                   <TableHead className="text-center hidden lg:table-cell">
@@ -634,7 +635,7 @@ function MiniMetric({
     <div>
       <div className="flex items-baseline justify-between mb-1">
         <span className="text-xs font-bold text-[var(--el-on-surface-variant)]">
-          {label}
+          <Explainable termKey={label}>{label}</Explainable>
         </span>
         <span
           className={`text-lg font-bold ${

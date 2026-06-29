@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Shield, ArrowLeft, Zap } from 'lucide-react';
+import Explainable from './Explainable';
 
 const LOYALTY_LABELS = ['متذبذب — لا ولاء ثابت', 'ضعيف — ولاء محدود لعدة أطراف', 'متوسط — يميل للطرف المؤثر', 'عالٍ — يفضل جهة بعينها', 'قوي جداً — ولاء راسخ لا يتزحزح'];
 const INFLUENCE_LABELS = ['تأثير محدود — على نفسه فقط', 'دائرة صغيرة — الأسرة المباشرة', 'متوسط — 10-30 فرداً', 'واسع — 30-100 فرداً', 'شخصية قيادية — أكثر من 100'];
@@ -205,20 +206,28 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               {/* خلاصة التقييم الحسابية */}
               <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
-                <h4 className="text-[12px] font-bold text-slate-300 border-b border-slate-700 pb-1.5 mb-2.5">معادلة الكفاءة الموزونة</h4>
+                <h4 className="text-[12px] font-bold text-slate-300 border-b border-slate-700 pb-1.5 mb-2.5">
+                  <Explainable termKey="WEIGHTED_SCORE">معادلة الكفاءة الموزونة</Explainable>
+                </h4>
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
-                    <div className="text-[11px] text-slate-400">معامل الكفاءة</div>
+                    <div className="text-[11px] text-slate-400">
+                      <Explainable termKey="WEIGHTED_SCORE">معامل الكفاءة</Explainable>
+                    </div>
                     <div className="text-3xl font-extrabold text-blue-400 font-mono">{efficiency}%</div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-slate-400">التصنيف</div>
+                    <div className="text-[11px] text-slate-400">
+                      <Explainable termKey="VOTER_CLASSIFICATION">التصنيف</Explainable>
+                    </div>
                     <div className={`text-lg font-bold ${efficiency >= 100 ? 'text-green-400' : efficiency >= 50 ? 'text-blue-400' : efficiency >= 20 ? 'text-yellow-400' : 'text-red-400'}`}>
                       {classification}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-slate-400">الأصوات المضمونة</div>
+                    <div className="text-[11px] text-slate-400">
+                      <Explainable termKey="GUARANTEED_VOTES">الأصوات المضمونة</Explainable>
+                    </div>
                     <div className="text-3xl font-extrabold text-green-400 font-mono">{guaranteed}</div>
                   </div>
                   <div>
