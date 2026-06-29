@@ -360,6 +360,10 @@ export default function DataAnalysis() {
             partyStrengthChange: d.historical?.partyStrengthChanges || [],
             participationChange: d.historical?.participationChanges || [],
             historicalShifts: d.historical?.votingShifts || [],
+            nextElectionForecast: {
+              trend: d.historical?.electionTrend?.trend || 'بيانات تاريخية محدودة — ستتحسن مع إضافة نتائج انتخابية سابقة',
+              predictedTurnout: d.historical?.electionTrend?.avgParticipation || 55,
+            }
           },
           performance: {
             ...d.performance,
