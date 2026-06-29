@@ -237,74 +237,16 @@ export default function ElectionResultsManagement() {
 
   // Form State
   const [year, setYear] = useState(new Date().getFullYear());
-  const [scope, setScope] = useState('محافظة');
   const [district, setDistrict] = useState('');
-  const [electionType, setElectionType] = useState('برلمانية');
+  const [electionType, setElectionType] = useState('مجالس محافظات');
   const [totalRegistered, setTotalRegistered] = useState('');
   const [totalVotes, setTotalVotes] = useState('');
-  const [invalidVotes, setInvalidVotes] = useState('');
-  const [totalSeats, setTotalSeats] = useState('19');
-  const [status, setStatus] = useState('مصادق');
   const [notes, setNotes] = useState('');
-  const [candidates, setCandidates] = useState<CandidateInput[]>([]);
+  const [commissionRecords, setCommissionRecords] = useState<any[]>([]);
 
-  // Candidate/Party Add Row State
+  // Party entry form fields
   const [cPartyName, setCPartyName] = useState('');
-  const [cName, setCName] = useState('');
-  const [cOrder, setCOrder] = useState('');
-  const [cWinPct, setCWinPct] = useState('');
   const [cVotes, setCVotes] = useState('');
-  const [cIsOur, setCIsOur] = useState(false);
-  const [cGender, setCGender] = useState('ذكر');
-
-  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json<any>(ws);
-
-        const importedCandidates: CandidateInput[] = data.map((row: any) => {
-          const candidateName = row["المرشح"] || row["اسم المرشح"] || row["Name"] || row["candidateName"] || "";
-          const partyName = row["القائمة"] || row["الحزب"] || row["اسم القائمة"] || row["Party"] || row["partyName"] || "";
-          const votes = Number(row["الأصوات"] || row["عدد الأصوات"] || row["Votes"] || row["votes"] || 0);
-          const genderRaw = String(row["الجنس"] || row["Gender"] || row["gender"] || "ذكر").trim();
-          const gender = (genderRaw === "أنثى" || genderRaw.toLowerCase() === "female" || genderRaw.toLowerCase() === "f") ? "أنثى" : "ذكر";
-          const isOurRaw = String(row["مرشحنا"] || row["هو مرشحنا؟"] || row["IsOur"] || row["isOurCandidate"] || "لا").trim();
-          const isOurCandidate = (isOurRaw === "نعم" || isOurRaw.toLowerCase() === "yes" || isOurRaw === "true" || isOurRaw === "1" || isOurRaw === "Y");
-          const notes = row["ملاحظات"] || row["الترتيب"] || row["Notes"] || row["notes"] || "";
-
-          return {
-            candidateName,
-            partyName,
-            votes,
-            votePercentage: 0,
-            notes,
-            isOurCandidate,
-            gender,
-          };
-        }).filter(c => c.candidateName && c.votes > 0);
-
-        if (importedCandidates.length === 0) {
-          alert("لم يتم العثور على بيانات مرشحين صالحة في ملف Excel.");
-          return;
-        }
-
-        setCandidates(prev => [...prev, ...importedCandidates]);
-      } catch (err) {
-        console.error("Error parsing Excel:", err);
-        alert("حدث خطأ أثناء قراءة ملف Excel. يرجى التأكد من هيكلية الملف.");
-      }
-    };
-    reader.readAsBinaryString(file);
-    e.target.value = '';
-  };
 
   const fetchResults = useCallback(async () => {
     try {
@@ -320,83 +262,92 @@ export default function ElectionResultsManagement() {
     }
   }, []);
 
+  const fetchCommissionRecords = useCallback(async () => {
+    try {
+      const res = await fetch('/api/commission');
+      const data = await res.json();
+      if (data.list && Array.isArray(data.list)) {
+        setCommissionRecords(data.list);
+      }
+    } catch (err) {
+      console.error('Error fetching commission records:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchResults();
-  }, [fetchResults]);
+    fetchCommissionRecords();
+  }, [fetchResults, fetchCommissionRecords]);
 
-  const handleAddCandidate = () => {
-    if (!cPartyName || !cName || !cVotes) {
-      alert('يرجى ملء اسم القائمة، اسم المرشح، وعدد الأصوات.');
-      return;
+  const handleDistrictChange = (selectedDist: string) => {
+    setDistrict(selectedDist);
+    const match = commissionRecords.find(r => r.district === selectedDist);
+    if (match) {
+      // Auto-fill total votes with actualVoters from commissionData
+      setTotalVotes(match.actualVoters.toString());
+      setTotalRegistered(match.registeredVoters.toString());
+    } else {
+      setTotalVotes('');
+      setTotalRegistered('');
     }
-    setCandidates([
-      ...candidates,
-      {
-        candidateName: cName,
-        partyName: cPartyName,
-        votes: Number(cVotes) || 0,
-        votePercentage: Number(cWinPct) || 0,
-        notes: cOrder ? `الترتيب: ${cOrder}` : '',
-        isOurCandidate: cIsOur,
-        gender: cGender,
-      },
-    ]);
-    // تصفير الخانات مع الإبقاء على اسم القائمة لتسهيل الإدخال المتكرر لنفس الحزب
-    setCName('');
-    setCOrder('');
-    setCWinPct('');
-    setCVotes('');
-    setCIsOur(false);
-    setCGender('ذكر');
-  };
-
-  const handleRemoveCandidate = (index: number) => {
-    setCandidates(candidates.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
-    if (!year || !scope || !electionType || candidates.length === 0) {
-      alert('يرجى ملء جميع الحقول المطلوبة وإضافة مرشح/قائمة واحدة على الأقل.');
+    if (!year || !district || !cPartyName || !totalVotes || !cVotes) {
+      alert('يرجى ملء جميع الحقول المطلوبة (السنة، القضاء، اسم الحزب، الأصوات الكلية للقضاء، وأصوات الحزب).');
       return;
     }
-    if (scope === 'قضاء' && !district) {
-      alert('يرجى تحديد القضاء.');
+
+    const partyVotesNum = Number(cVotes) || 0;
+    const totalVotesNum = Number(totalVotes) || 0;
+
+    if (partyVotesNum > totalVotesNum) {
+      alert('خطأ: عدد أصوات الحزب لا يمكن أن يكون أكبر من إجمالي أصوات القضاء.');
       return;
     }
+
+    const calculatedPct = totalVotesNum > 0 ? (partyVotesNum / totalVotesNum) * 100 : 0;
+
+    const payload = {
+      year: Number(year),
+      district,
+      scope: 'قضاء',
+      electionType,
+      totalRegistered: Number(totalRegistered) || totalVotesNum,
+      totalVotes: totalVotesNum,
+      invalidVotes: 0,
+      totalSeats: 1,
+      status: 'مصادق',
+      notes: notes || `نتائج القائمة في قضاء ${district}`,
+      candidates: [
+        {
+          candidateName: cPartyName,
+          partyName: cPartyName,
+          votes: partyVotesNum,
+          votePercentage: Math.round(calculatedPct * 100) / 100,
+          isOurCandidate: cPartyName.includes("الاعمار والتنمية"),
+          gender: 'ذكر',
+          notes: 'مرشح الدائرة'
+        }
+      ],
+    };
 
     try {
       const res = await fetch('/api/election-results/historical', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          year,
-          district: scope === 'قضاء' ? district : null,
-          scope,
-          electionType,
-          totalRegistered: Number(totalRegistered) || 0,
-          totalVotes: Number(totalVotes) || 0,
-          invalidVotes: Number(invalidVotes) || 0,
-          totalSeats: Number(totalSeats) || 0,
-          status,
-          notes,
-          candidates,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
         setShowDialog(false);
         // Reset form
-        setYear(new Date().getFullYear());
-        setScope('محافظة');
         setDistrict('');
-        setElectionType('برلمانية');
-        setTotalRegistered('');
+        setCPartyName('');
+        setCVotes('');
         setTotalVotes('');
-        setInvalidVotes('');
-        setTotalSeats('19');
-        setStatus('مصادق');
+        setTotalRegistered('');
         setNotes('');
-        setCandidates([]);
         fetchResults();
       } else {
         const errData = await res.json();
@@ -955,315 +906,104 @@ export default function ElectionResultsManagement() {
       {/* Dialog for Adding New Result with exact requested fields */}
       {showDialog && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-xl max-w-lg w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="p-4 border-b border-el-outline-variant flex justify-between items-center">
-              <h2 className="text-[18px] font-bold text-el-primary flex items-center gap-2">
+              <h2 className="text-[16px] font-bold text-el-primary flex items-center gap-2">
                 <Landmark className="w-5 h-5" /> إضافة قضاء ونتائج جديدة
               </h2>
-              <button onClick={() => setShowDialog(false)} className="text-el-on-surface-variant hover:text-el-on-surface p-1 rounded-lg">
+              <button onClick={() => setShowDialog(false)} className="text-el-on-surface-variant hover:text-el-on-surface p-1 rounded-lg cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Form Content */}
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="p-6 space-y-4 text-right" dir="rtl">
+              <div className="space-y-3.5">
+                {/* الحقل الأول: حقل القضاء */}
                 <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">السنة</label>
-                  <input
-                    type="number"
-                    value={year}
-                    onChange={(e) => setYear(Number(e.target.value))}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">نوع الانتخابات</label>
+                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">
+                    القضاء <span className="text-red-500">*</span>
+                  </label>
                   <select
-                    value={electionType}
-                    onChange={(e) => setElectionType(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
+                    value={district}
+                    onChange={(e) => handleDistrictChange(e.target.value)}
+                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary cursor-pointer text-right"
                   >
-                    <option value="برلمانية">برلمانية</option>
-                    <option value="مجالس محافظات">مجالس محافظات</option>
-                    <option value="بلدية">بلدية</option>
+                    <option value="">اختر القضاء...</option>
+                    {DISTRICTS_21.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
                   </select>
                 </div>
 
+                {/* الحقل الثاني: اسم الحزب */}
                 <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">النطاق الجغرافي</label>
-                  <select
-                    value={scope}
-                    onChange={(e) => setScope(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  >
-                    <option value="قضاء">قضاء محدد</option>
-                    <option value="محافظة">محافظة كاملة</option>
-                  </select>
-                </div>
-
-                {scope === 'قضاء' && (
-                  <div>
-                    <label className="block text-[12px] font-bold text-el-on-surface mb-1">القضاء</label>
-                    <select
-                      value={district}
-                      onChange={(e) => setDistrict(e.target.value)}
-                      className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                    >
-                      <option value="">اختر القضاء...</option>
-                      {DISTRICTS_21.map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">إجمالي الناخبين المسجلين</label>
+                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">
+                    اسم الحزب / القائمة <span className="text-red-500">*</span>
+                  </label>
                   <input
-                    type="number"
-                    placeholder="مثال: 1099438"
-                    value={totalRegistered}
-                    onChange={(e) => setTotalRegistered(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
+                    type="text"
+                    placeholder="مثال: ائتلاف الاعمار والتنمية"
+                    value={cPartyName}
+                    onChange={(e) => setCPartyName(e.target.value)}
+                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary text-right"
                   />
                 </div>
 
+                {/* الحقل الثالث: عدد الأصوات الكلية للقضاء */}
                 <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">إجمالي المصوتين</label>
+                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">
+                    عدد الأصوات الكلية للقضاء <span className="text-[10px] text-el-on-surface-variant/70 font-normal mr-1">(يُسحب تلقائياً من بيانات المفوضية)</span>
+                  </label>
                   <input
                     type="number"
                     placeholder="مثال: 538390"
                     value={totalVotes}
                     onChange={(e) => setTotalVotes(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
+                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary font-mono text-right"
                   />
                 </div>
 
+                {/* الحقل الرابع: عدد أصوات الحزب في القضاء */}
                 <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">الأصوات الباطلة</label>
-                  <input
-                    type="number"
-                    placeholder="مثال: 25000"
-                    value={invalidVotes}
-                    onChange={(e) => setInvalidVotes(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">عدد المقاعد المتاحة</label>
-                  <input
-                    type="number"
-                    placeholder="مثال: 19"
-                    value={totalSeats}
-                    onChange={(e) => setTotalSeats(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">حالة النتائج</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                  >
-                    <option value="مصادق">مصادق عليها</option>
-                    <option value="أولية">أولية</option>
-                    <option value="نهائية">نهائية</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-bold text-el-on-surface mb-1">ملاحظات</label>
-                <input
-                  type="text"
-                  placeholder="ملاحظات إضافية..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary"
-                />
-              </div>
-
-              {/* Candidates Add Form Container */}
-              <div className="bg-el-surface-container-high rounded-xl p-4 border border-el-outline-variant space-y-3">
-                <div className="flex justify-between items-center border-b border-el-outline-variant/30 pb-2">
-                  <h3 className="text-[13px] font-bold text-el-primary flex items-center gap-1.5">
-                    <Users className="w-4 h-4" />
-                    إدخال أصوات وترتيب ونسب فوز المرشحين
-                  </h3>
-                  <div>
-                    <input
-                      type="file"
-                      accept=".xlsx, .xls"
-                      onChange={handleExcelImport}
-                      className="hidden"
-                      id="excel-import-input"
-                    />
-                    <label
-                      htmlFor="excel-import-input"
-                      className="bg-el-secondary text-el-on-secondary px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 hover:opacity-90 cursor-pointer shadow-sm"
-                    >
-                      <FileText className="w-3.5 h-3.5" /> استيراد من Excel
-                    </label>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-6 gap-2.5">
-                  <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">اسم القائمة</label>
-                    <input
-                      type="text"
-                      placeholder="اسم القائمة"
-                      value={cPartyName}
-                      onChange={(e) => setCPartyName(e.target.value)}
-                      className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[12px] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">اسم المرشح</label>
-                    <input
-                      type="text"
-                      placeholder="اسم المرشح الكامل"
-                      value={cName}
-                      onChange={(e) => setCName(e.target.value)}
-                      className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[12px] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">الجنس</label>
-                    <select
-                      value={cGender}
-                      onChange={(e) => setCGender(e.target.value)}
-                      className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[12px] focus:outline-none cursor-pointer"
-                    >
-                      <option value="ذكر">ذكر</option>
-                      <option value="أنثى">أنثى</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">الترتيب</label>
-                    <input
-                      type="number"
-                      placeholder="ترتيب"
-                      value={cOrder}
-                      onChange={(e) => setCOrder(e.target.value)}
-                      className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[12px] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">نسبة الفوز (%)</label>
-                    <input
-                      type="number"
-                      placeholder="نسبة"
-                      value={cWinPct}
-                      onChange={(e) => setCWinPct(e.target.value)}
-                      className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[12px] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-el-on-surface mb-0.5">عدد الأصوات</label>
-                    <input
-                      type="number"
-                      placeholder="الأصوات"
-                      value={cVotes}
-                      onChange={(e) => setCVotes(e.target.value)}
-                      className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2 text-[12px] focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer text-[12px] font-semibold text-el-on-surface">
-                    <input
-                      type="checkbox"
-                      checked={cIsOur}
-                      onChange={(e) => setCIsOur(e.target.checked)}
-                      className="w-4 h-4 accent-el-primary rounded"
-                    />
-                    هل هو مرشحنا؟
+                  <label className="block text-[12px] font-bold text-el-on-surface mb-1">
+                    عدد أصوات الحزب في القضاء <span className="text-red-500">*</span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleAddCandidate}
-                    className="bg-el-primary text-el-on-primary px-4 py-1.5 rounded-lg text-[12px] font-bold flex items-center gap-1 hover:opacity-90 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> إضافة مرشح للقائمة
-                  </button>
+                  <input
+                    type="number"
+                    placeholder="أدخل الأصوات التي حصل عليها الحزب"
+                    value={cVotes}
+                    onChange={(e) => setCVotes(e.target.value)}
+                    className="w-full bg-el-surface-container border border-el-outline-variant rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-el-primary font-mono text-right"
+                  />
                 </div>
 
-                {/* Added Candidates List */}
-                {candidates.length > 0 && (
-                  <div className="overflow-x-auto border border-el-outline-variant rounded-lg bg-el-surface-container-lowest max-h-48 overflow-y-auto">
-                    <table className="w-full text-right text-[11px]">
-                      <thead>
-                        <tr className="bg-el-surface-container-high border-b border-el-outline-variant">
-                          <th className="p-2 font-bold">اسم القائمة</th>
-                          <th className="p-2 font-bold">اسم المرشح</th>
-                          <th className="p-2 font-bold text-center">الجنس</th>
-                          <th className="p-2 font-bold text-center">الترتيب</th>
-                          <th className="p-2 font-bold text-center">نسبة الفوز</th>
-                          <th className="p-2 font-bold text-center">الأصوات</th>
-                          <th className="p-2 font-bold text-center">النوع</th>
-                          <th className="p-2 font-bold text-center">إجراء</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {candidates.map((c, idx) => (
-                          <tr key={idx} className="border-b border-el-outline-variant last:border-0">
-                            <td className="p-2 font-bold">{c.partyName}</td>
-                            <td className="p-2">{c.candidateName}</td>
-                            <td className="p-2 text-center font-bold">{c.gender}</td>
-                            <td className="p-2 text-center font-mono">{c.notes.replace('الترتيب: ', '') || '—'}</td>
-                            <td className="p-2 text-center font-mono">{c.votePercentage}%</td>
-                            <td className="p-2 text-center font-mono font-bold">{c.votes.toLocaleString()}</td>
-                            <td className="p-2 text-center">
-                              {c.isOurCandidate ? (
-                                <span className="bg-blue-100 text-blue-800 text-[9px] px-1.5 py-0.5 rounded-full font-bold">مرشحنا</span>
-                              ) : (
-                                <span className="text-el-on-surface-variant opacity-50">منافس</span>
-                              )}
-                            </td>
-                            <td className="p-2 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveCandidate(idx)}
-                                className="text-red-500 hover:text-red-700 p-1"
-                              >
-                                <Trash2 className="w-4 h-4 mx-auto" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {/* الحقل الخامس والنسبة المحسوبة */}
+                <div className="bg-el-primary/5 border border-el-primary/10 rounded-lg p-3 flex justify-between items-center text-[13px] font-bold text-el-primary">
+                  <span>النسبة المئوية المحسوبة للحزب:</span>
+                  <span className="font-mono text-[16px] text-amber-600 dark:text-amber-400">
+                    {(Number(totalVotes) > 0 && Number(cVotes) > 0)
+                      ? ((Number(cVotes) / Number(totalVotes)) * 100).toFixed(2)
+                      : '0'}%
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="p-4 border-t border-el-outline-variant bg-el-surface-container-high flex justify-end gap-3">
+            <div className="p-4 border-t border-el-outline-variant bg-el-surface-container-high flex justify-end gap-3 rounded-b-xl">
               <button
                 onClick={() => setShowDialog(false)}
-                className="bg-el-surface-container-lowest border border-el-outline-variant hover:bg-el-surface-container text-el-on-surface px-5 py-2.5 rounded-lg text-[14px] font-bold cursor-pointer"
+                className="bg-el-surface-container-lowest border border-el-outline-variant hover:bg-el-surface-container text-el-on-surface px-5 py-2.5 rounded-lg text-[13px] font-bold cursor-pointer"
               >
                 إلغاء
               </button>
               <button
                 onClick={handleSave}
-                className="bg-el-primary text-el-on-primary px-5 py-2.5 rounded-lg text-[14px] font-bold hover:opacity-90 cursor-pointer"
+                className="bg-el-primary text-el-on-primary px-5 py-2.5 rounded-lg text-[13px] font-bold hover:opacity-90 cursor-pointer"
               >
-                حفظ النتائج وتوزيع المقاعد
+                حفظ النتائج
               </button>
             </div>
           </div>
