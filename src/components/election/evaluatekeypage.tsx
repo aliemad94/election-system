@@ -81,6 +81,8 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
   const classification = efficiency >= 100 ? 'قوي جداً' : efficiency >= 50 ? 'جيد' : efficiency >= 20 ? 'مقبول' : 'ضعيف';
   const guaranteed = Math.round((selectedKey?.netVotes || 0) * (efficiency / 100));
 
+  const [actionLoading, setActionLoading] = useState(false);
+
   const save = async () => {
     if (!selectedKey) return;
     setLoading(true);
@@ -102,6 +104,90 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
       toast({ title: '❌ خطأ في الاتصال', description: 'تأكد من اتصال الشبكة', variant: 'destructive' });
     }
     setLoading(false);
+  };
+
+  const handleSmsAction = async () => {
+    if (!selectedKey) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/sms-campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `حملة معالجة مخاطر المفتاح ${selectedKey.firstName}`,
+          message: `السلام عليكم {voter_name}، نود إعلامكم بأننا مستمرون في دعمكم والتنسيق معكم لخدمة منطقتنا الغالية. دمتم بخير.`,
+          filterType: 'CLASSIFICATION',
+          filterValue: selectedKey.classification,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: '💬 تم إنشاء حملة SMS', description: 'تم حفظ مسودة الحملة الموجهة بنجاح.', variant: 'default' });
+      } else {
+        toast({ title: '❌ فشل إطلاق الحملة', description: 'حدث خطأ أثناء الاتصال بالخادم', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: '❌ خطأ في الاتصال', description: 'تأكد من الاتصال بالشبكة', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleTaskAction = async () => {
+    if (!selectedKey) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `تدخل ميداني عاجل للمفتاح: ${selectedKey.firstName}`,
+          description: `مطلوب التنسيق الفوري وحل المشكلة الميدانية. التشخيص: ${efficiency < 40 ? 'كفاءة منخفضة جداً' : 'مخاطر تسرب نشطة'}.`,
+          priority: 'HIGH',
+          status: 'PENDING',
+          taskType: 'FIELD',
+          district: selectedKey.district,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: '📋 تم إنشاء مهمة ميدانية', description: 'تمت إضافة المهمة لجدول المتابعة بنجاح.', variant: 'default' });
+      } else {
+        toast({ title: '❌ فشل إنشاء المهمة', description: 'حدث خطأ أثناء الاتصال بالخادم', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: '❌ خطأ في الاتصال', description: 'تأكد من الاتصال بالشبكة', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleWarningAction = async () => {
+    if (!selectedKey) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/early-warnings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          areaType: 'قضاء',
+          areaName: selectedKey.district || 'قضاء ذي قار',
+          warningType: efficiency < 40 ? 'مهددة_خسارة' : 'متأرجحة',
+          severity: efficiency < 30 ? 'حرج' : 'متوسط',
+          description: `الاسم: ${selectedKey.firstName} ${selectedKey.fatherName} - كفاءة التقييم: ${efficiency}%`,
+          estimatedVotesAtRisk: Math.max(0, (selectedKey.netVotes || 0) - guaranteed),
+          recommendedAction: 'متابعة وتعديل مسار ميداني عاجل',
+          electoralKeyId: selectedKey.id,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: '🚨 تم تسجيل إنذار مبكر', description: 'تم إدراج الإنذار بنجاح وسيظهر في لوحة الإشراف.', variant: 'default' });
+      } else {
+        toast({ title: '❌ فشل تسجيل الإنذار', description: 'حدث خطأ أثناء الاتصال بالخادم', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: '❌ خطأ في الاتصال', description: 'تأكد من الاتصال بالشبكة', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const RatingBar = ({ field, label, weight }: { field: string; label: string; weight: number }) => {
@@ -270,6 +356,37 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
                     {((scores.loyaltyScore ?? 3) > 2 && (scores.needsLevel ?? 3) > 2 && (scores.voteProtection ?? 3) > 2 && (parseInt(accuracy) || 3) > 2 && training === 'مكتمل') && (
                       <p className="text-green-400 flex gap-1.5 items-start">✅ <span>الوضع مستقر ولا توجد مؤشرات خطر نشطة.</span></p>
                     )}
+                  </div>
+
+                  {/* AI Action Hub */}
+                  <div className="mt-4 pt-3 border-t border-slate-700 space-y-2">
+                    <span className="text-[10px] font-bold text-blue-300 block mb-1">⚡ إجراءات الذكاء الاصطناعي التنفيذية المقترحة:</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSmsAction}
+                        disabled={actionLoading}
+                        className="bg-blue-600/20 hover:bg-blue-600/45 text-blue-300 border border-blue-500/20 rounded py-1.5 px-2 text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition disabled:opacity-50"
+                      >
+                        <span>💬 حملة SMS موجهة</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleTaskAction}
+                        disabled={actionLoading}
+                        className="bg-amber-600/20 hover:bg-amber-600/45 text-amber-300 border border-amber-500/20 rounded py-1.5 px-2 text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition disabled:opacity-50"
+                      >
+                        <span>📋 إنشاء مهمة ميدانية</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleWarningAction}
+                        disabled={actionLoading}
+                        className="bg-red-600/20 hover:bg-red-600/45 text-red-300 border border-red-500/20 rounded py-1.5 px-2 text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition disabled:opacity-50"
+                      >
+                        <span>🚨 تسجيل إنذار مبكر</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

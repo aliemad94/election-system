@@ -1,135 +1,229 @@
 // ====================================================================
-// /api/early-warnings — نظام الإنذار المبكر
+// /api/early-warnings — إدارة نظام الإنذار المبكر (GET + POST)
 // ====================================================================
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/security";
 import { getCachedIndicators } from "@/lib/indicators-cache";
 import { prisma } from "@/lib/prisma";
 
-interface Warning {
+interface WarningData {
   id: string;
-  level: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
-  category: string;
-  title: string;
-  description: string;
-  district?: string | null;
-  metric?: number;
-  threshold?: number;
+  areaType: string;
+  areaName: string;
+  warningType: string;
+  severity: string;
+  description: string | null;
+  estimatedVotesAtRisk: number;
+  recommendedAction: string | null;
+  isActive: boolean;
+  createdAt: string;
 }
 
-async function getHandler() {
+async function getHandler(request: NextRequest) {
   try {
-    const warnings: Warning[] = [];
-    const indicators = await getCachedIndicators();
+    const { searchParams } = new URL(request.url);
+    const filterType = searchParams.get("warningType");
+    const filterSeverity = searchParams.get("severity");
 
-    // 1. تحذيرات من مؤشرات الأقضية
-    indicators.districts.forEach((d) => {
-      if (d.drsScore > 60) {
-        warnings.push({
-          id: `drs-${d.id}`,
-          level: "CRITICAL",
-          category: "خطر الانشقاق",
-          title: `خطر انشقاق عالٍ في ${d.name}`,
-          description: `مؤشر DRS = ${d.drsScore} — مطلوب تدخّل فوري لمنع فقدان الأصوات`,
-          district: d.name,
-          metric: d.drsScore,
-          threshold: 60,
-        });
-      }
-      if (d.ewliScore > 55) {
-        warnings.push({
-          id: `ewli-${d.id}`,
-          level: "HIGH",
-          category: "إنذار فقدان",
-          title: `إنذار فقدان أصوات في ${d.name}`,
-          description: `مؤشر EWLI = ${d.ewliScore} — تراجع محتمل في الدعم`,
-          district: d.name,
-          metric: d.ewliScore,
-          threshold: 55,
-        });
-      }
-      if (d.efiScore < 40) {
-        warnings.push({
-          id: `efi-${d.id}`,
-          level: "CRITICAL",
-          category: "تنبؤ ضعيف",
-          title: `تنبؤ انتخابي ضعيف في ${d.name}`,
-          description: `مؤشر EFI = ${d.efiScore} — المنطقة تحتاج تعزيز عاجل`,
-          district: d.name,
-          metric: d.efiScore,
-          threshold: 40,
-        });
-      }
-      if (d.kriScore < 50) {
-        warnings.push({
-          id: `kri-${d.id}`,
-          level: "MEDIUM",
-          category: "موثوقية منخفضة",
-          title: `موثوقية مفاتيح منخفضة في ${d.name}`,
-          description: `مؤشر KRI = ${d.kriScore} — المفاتيح بحاجة متابعة`,
-          district: d.name,
-          metric: d.kriScore,
-          threshold: 50,
-        });
-      }
+    const warnings: WarningData[] = [];
+
+    // 1. جلب التحذيرات المخزنة في قاعدة البيانات
+    const dbWarnings = await prisma.earlyWarning.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
     });
 
-    // 2. خدمات معلّقة لأكثر من 7 أيام
+    dbWarnings.forEach((w) => {
+      warnings.push({
+        id: w.id,
+        areaType: w.areaType || "قضاء",
+        areaName: w.areaName || "ذي قار",
+        warningType: w.warningType,
+        severity: w.severity,
+        description: w.description,
+        estimatedVotesAtRisk: w.estimatedVotesAtRisk,
+        recommendedAction: w.recommendedAction,
+        isActive: w.status === "ACTIVE",
+        createdAt: w.createdAt.toISOString(),
+      });
+    });
+
+    // 2. حساب المؤشرات اللحظية لدمجها (On-the-fly)
+    const indicators = await getCachedIndicators().catch(() => null);
+
+    if (indicators && indicators.districts) {
+      indicators.districts.forEach((d) => {
+        // أ. خطر انشقاق مرتفع
+        if (d.drsScore > 60) {
+          warnings.push({
+            id: `drs-${d.id}`,
+            areaType: "قضاء",
+            areaName: d.name,
+            warningType: "مهددة_خسارة",
+            severity: "حرج",
+            description: `مؤشر خطر انشقاق مرتفع DRS = ${d.drsScore} — مطلوب تدخّل فوري`,
+            estimatedVotesAtRisk: Math.round(d.totalSupportedVotes * (d.drsScore / 100)) || 50,
+            recommendedAction: "زيارة ميدانية وتفعيل خطة حماية الأصوات",
+            isActive: true,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        // ب. تراجع الدعم والموثوقية
+        if (d.ewliScore > 55) {
+          warnings.push({
+            id: `ewli-${d.id}`,
+            areaType: "قضاء",
+            areaName: d.name,
+            warningType: "متأرجحة",
+            severity: "مرتفع",
+            description: `تراجع مؤشر خسارة الأصوات الميدانية EWLI = ${d.ewliScore}`,
+            estimatedVotesAtRisk: Math.round(d.totalSupportedVotes * 0.3) || 30,
+            recommendedAction: "تفعيل قنوات التواصل والتنسيق المباشر",
+            isActive: true,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        // ج. مشاركة انتخابية متوقعة ضعيفة
+        if (d.efiScore < 40) {
+          warnings.push({
+            id: `efi-${d.id}`,
+            areaType: "قضاء",
+            areaName: d.name,
+            warningType: "مشاركة_منخفضة",
+            severity: "حرج",
+            description: `توقعات مشاركة انتخابية ضعيفة - مؤشر EFI = ${d.efiScore}`,
+            estimatedVotesAtRisk: Math.round(d.totalVotersInArea * 0.1) || 150,
+            recommendedAction: "تكثيف التعبئة والتأكيد على المترددين",
+            isActive: true,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        // د. موثوقية الكوادر منخفضة
+        if (d.kriScore < 50) {
+          warnings.push({
+            id: `kri-${d.id}`,
+            areaType: "قضاء",
+            areaName: d.name,
+            warningType: "قابلة_لاختراق",
+            severity: "متوسط",
+            description: `انخفاض موثوقية المفاتيح والتقارير الميدانية - مؤشر KRI = ${d.kriScore}`,
+            estimatedVotesAtRisk: Math.round(d.totalSupportedVotes * 0.15) || 20,
+            recommendedAction: "إعادة تقييم ومتابعة المندوبين",
+            isActive: true,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      });
+    }
+
+    // 3. خدمات معلقة لأكثر من 7 أيام
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const staleServices = await prisma.service.findMany({
       where: { status: "PENDING", createdAt: { lt: weekAgo } },
       take: 5,
       orderBy: { createdAt: "asc" },
+      include: { voter: true, electionKey: true }
     });
+
     staleServices.forEach((s) => {
+      const area = s.voter?.district || s.electionKey?.district || "غير محدد";
       warnings.push({
         id: `svc-${s.id}`,
-        level: "MEDIUM",
-        category: "خدمة معلّقة",
-        title: `خدمة معلّقة: ${s.title}`,
-        description: `بانتظار منذ ${new Date(s.createdAt).toLocaleDateString("en-US")}`,
-        metric: Math.floor((Date.now() - s.createdAt.getTime()) / (24 * 60 * 60 * 1000)),
-        threshold: 7,
+        areaType: "ناحية",
+        areaName: area,
+        warningType: "متأرجحة",
+        severity: s.priority === "URGENT" || s.priority === "HIGH" ? "مرتفع" : "متوسط",
+        description: `طلب خدمي معلّق: (${s.title}) منذ أكثر من أسبوع للناخب`,
+        estimatedVotesAtRisk: s.estimatedVotesImpact || 1,
+        recommendedAction: "معالجة الطلب الخدمي بالتنسيق مع الجهات التنفيذية",
+        isActive: true,
+        createdAt: s.createdAt.toISOString(),
       });
     });
 
-    // 3. مفاتيح ذات خطر عالٍ
+    // 4. مفاتيح ذات خطر عالٍ
     const highRiskKeys = await prisma.electionKey.findMany({
       where: { riskLevel: 5 },
       take: 5,
       include: { _count: { select: { voters: true } } },
     });
+
     highRiskKeys.forEach((k) => {
       warnings.push({
         id: `key-${k.id}`,
-        level: "HIGH",
-        category: "مفتاح高风险",
-        title: `مفتاح高风险: ${k.firstName} ${k.fatherName}`,
-        description: `مستوى الخطر 5 — ${k._count.voters} ناخب متأثر`,
-        district: k.district,
-        metric: k.riskLevel,
-        threshold: 4,
+        areaType: "مركز اقتراع",
+        areaName: k.pollingCenter || k.district,
+        warningType: "مهددة_خسارة",
+        severity: "مرتفع",
+        description: `المفتاح: ${k.firstName} ${k.fatherName} - مستوى خطر 5 ومتابعة منخفضة`,
+        estimatedVotesAtRisk: k.netVotes || 10,
+        recommendedAction: "تواصل مباشر مع الكادر وعلاج تسرب الأصوات الميدانية",
+        isActive: true,
+        createdAt: k.createdAt.toISOString(),
       });
     });
 
-    // ترتيب حسب الخطورة
-    const order = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
-    warnings.sort((a, b) => order[a.level] - order[b.level]);
+    // تطبيق الفلاتر المطلوبة من شاشة المراقبة
+    let filteredWarnings = warnings;
+    if (filterType) {
+      filteredWarnings = filteredWarnings.filter((w) => w.warningType === filterType);
+    }
+    if (filterSeverity) {
+      filteredWarnings = filteredWarnings.filter((w) => w.severity === filterSeverity);
+    }
 
-    return NextResponse.json({
-      warnings,
-      summary: {
-        total: warnings.length,
-        critical: warnings.filter((w) => w.level === "CRITICAL").length,
-        high: warnings.filter((w) => w.level === "HIGH").length,
-        medium: warnings.filter((w) => w.level === "MEDIUM").length,
-      },
-      generatedAt: new Date().toISOString(),
+    // ترتيب حسب الخطورة: حرج -> مرتفع -> متوسط -> منخفض
+    const severityOrder: Record<string, number> = { "حرج": 0, "مرتفع": 1, "متوسط": 2, "منخفض": 3 };
+    filteredWarnings.sort((a, b) => {
+      const orderA = severityOrder[a.severity] ?? 99;
+      const orderB = severityOrder[b.severity] ?? 99;
+      return orderA - orderB;
     });
+
+    // إرجاع مصفوفة التحذيرات مباشرة لتلائم الواجهة الرسومية
+    return NextResponse.json(filteredWarnings);
   } catch (error) {
     return handleApiError(error, "early-warnings-get");
+  }
+}
+
+async function postHandler(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const {
+      areaType,
+      areaName,
+      warningType,
+      severity,
+      description,
+      estimatedVotesAtRisk,
+      recommendedAction,
+      electoralKeyId,
+    } = body;
+
+    if (!areaName) {
+      return NextResponse.json({ error: "اسم المنطقة مطلوب" }, { status: 400 });
+    }
+
+    const warning = await prisma.earlyWarning.create({
+      data: {
+        warningType: warningType || "متأرجحة",
+        severity: severity || "متوسط",
+        description: description || "",
+        status: "ACTIVE",
+        areaType: areaType || "قضاء",
+        areaName,
+        estimatedVotesAtRisk: Number(estimatedVotesAtRisk) || 0,
+        recommendedAction: recommendedAction || "",
+        electoralKeyId: electoralKeyId || null,
+      },
+    });
+
+    return NextResponse.json(warning, { status: 201 });
+  } catch (error) {
+    return handleApiError(error, "early-warnings-post");
   }
 }
 
@@ -137,3 +231,6 @@ export const GET = withAuth(getHandler, {
   GET: ["ADMIN", "KEY_USER", "OBSERVER"],
 });
 
+export const POST = withAuth(postHandler, {
+  POST: ["ADMIN", "KEY_USER"],
+});
