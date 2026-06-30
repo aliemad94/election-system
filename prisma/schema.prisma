@@ -545,6 +545,13 @@ model EarlyWarning {
   status          String       @default("ACTIVE") // ACTIVE | IN_PROGRESS | RESOLVED
   detectedAt      DateTime     @default(now())
   resolvedAt      DateTime?
+  
+  // حقول متوافقة مع شاشة المراقبة الرسومية للإنذار المبكر
+  areaType        String?      // محافظة | قضاء | ناحية | مركز اقتراع
+  areaName        String?
+  estimatedVotesAtRisk Int     @default(0)
+  recommendedAction String?
+
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
