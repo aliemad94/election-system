@@ -498,7 +498,7 @@ export default function ElectionResultsManagement() {
           </div>
 
           {/* General Statistics Cards (Official) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
             {/* Stat 1: Participation Rate */}
             <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[110px]">
               <div>
@@ -529,48 +529,6 @@ export default function ElectionResultsManagement() {
                 </div>
               </div>
               <span className="text-[10px] text-sky-700/80 dark:text-sky-400/80">من يحق لهم التصويت في ذي قار</span>
-            </div>
-
-            {/* Stat 3: Valid Votes */}
-            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl p-4 shadow-sm flex flex-col justify-between min-h-[110px]">
-              <div>
-                <div className="flex justify-between items-center text-blue-800 dark:text-blue-300">
-                  <span className="text-[12px] font-bold">الأصوات الصحيحة</span>
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div className="text-[24px] font-black text-blue-600 dark:text-blue-400 mt-2 font-mono">
-                  {OFFICIAL_2025_DATA.validVotes.toLocaleString()}
-                </div>
-              </div>
-              <span className="text-[10px] text-blue-700/80 dark:text-blue-400/80">المعتمدة في توزيع المقاعد</span>
-            </div>
-
-            {/* Stat 4: Invalid Votes */}
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-xl p-4 shadow-sm flex flex-col justify-between min-h-[110px]">
-              <div>
-                <div className="flex justify-between items-center text-amber-800 dark:text-amber-300">
-                  <span className="text-[12px] font-bold">الأصوات الباطلة</span>
-                  <X className="w-4 h-4" />
-                </div>
-                <div className="text-[24px] font-black text-amber-600 dark:text-amber-400 mt-2 font-mono">
-                  {OFFICIAL_2025_DATA.invalidVotes.toLocaleString()}
-                </div>
-              </div>
-              <span className="text-[10px] text-amber-700/80 dark:text-amber-400/80">تساوي {((OFFICIAL_2025_DATA.invalidVotes / OFFICIAL_2025_DATA.totalVotes) * 100).toFixed(2)}% من الحضور</span>
-            </div>
-
-            {/* Stat 5: Total Seats */}
-            <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900 rounded-xl p-4 shadow-sm flex flex-col justify-between min-h-[110px]">
-              <div>
-                <div className="flex justify-between items-center text-purple-800 dark:text-purple-300">
-                  <span className="text-[12px] font-bold">المقاعد النيابية الكلية</span>
-                  <Trophy className="w-4 h-4" />
-                </div>
-                <div className="text-[24px] font-black text-purple-600 dark:text-purple-400 mt-2 font-mono">
-                  {OFFICIAL_2025_DATA.totalSeats} مقعداً
-                </div>
-              </div>
-              <span className="text-[10px] text-purple-700/80 dark:text-purple-400/80">منها {OFFICIAL_2025_DATA.femaleSeats} مقاعد مخصصة لـ كوتا النساء</span>
             </div>
           </div>
 
@@ -763,13 +721,9 @@ export default function ElectionResultsManagement() {
                       <StatRow label="نسبة التصويت الكلية" value="48.97%" isHighlight />
                       <StatRow label="عدد المصوتين الذكور" value="322,970" />
                       <StatRow label="عدد المصوتين الإناث" value="215,420" />
-                      <StatRow label="عدد الأصوات الصحيحة" value="513,087" />
-                      <StatRow label="عدد الأصوات الباطلة" value="25,303" />
-                      <StatRow label="عدد المقاعد الكلي" value="19" />
                       <StatRow label="عدد المقاعد العامة" value="19" />
                       <StatRow label="عدد مقاعد الكوتا" value="0" />
                       <StatRow label="عدد مقاعد النساء" value="5" />
-                      <StatRow label="مجموع المقاعد الموزّعة" value="19" isHighlight />
                     </>
                   ) : (
                     <>
@@ -777,10 +731,6 @@ export default function ElectionResultsManagement() {
                       <StatRow label="عدد الناخبين الكلي" value={result2025.totalRegistered.toLocaleString()} />
                       <StatRow label="عدد المصوتين الكلي" value={result2025.totalVotes.toLocaleString()} />
                       <StatRow label="نسبة التصويت الكلية" value={`${result2025.participationRate}%`} isHighlight />
-                      <StatRow label="عدد الأصوات الصحيحة" value={result2025.validVotes.toLocaleString()} />
-                      <StatRow label="عدد الأصوات الباطلة" value={result2025.invalidVotes.toLocaleString()} />
-                      <StatRow label="عدد المقاعد الكلي" value={result2025.totalSeats.toString()} />
-                      <StatRow label="مجموع المقاعد الموزّعة" value={result2025.totalSeats.toString()} isHighlight />
                     </>
                   )}
                 </div>
