@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Shield, Power, Copy, Eye, EyeOff, LogOut, Check, Loader2, Link as LinkIcon, Key } from 'lucide-react';
+import { X, Shield, Power, Copy, Eye, EyeOff, LogOut, Check, Loader2, Link as LinkIcon, Key, Database, Download, Upload, AlertTriangle } from 'lucide-react';
 
 interface OwnerPanelProps {
   isOpen: boolean;
@@ -31,11 +31,96 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
     }
   };
 
+  // Backup State
+  const [backups, setBackups] = useState<any[]>([]);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreConfirm, setRestoreConfirm] = useState(false);
+  const [selectedFileForRestore, setSelectedFileForRestore] = useState<File | null>(null);
+
+  const fetchBackups = async () => {
+    try {
+      const res = await fetch('/api/cron/backup?action=list');
+      const data = await res.json();
+      if (data.backups) {
+        setBackups(data.backups);
+      }
+    } catch {
+      // fail silently
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchAccessStatus();
+      fetchBackups();
     }
   }, [isOpen]);
+
+  const handleCreateBackup = async () => {
+    setBackupLoading(true);
+    try {
+      const res = await fetch('/api/cron/backup');
+      const data = await res.json();
+      if (data.success) {
+        showMessage('success', 'تم إنشاء النسخة الاحتياطية بنجاح');
+        fetchBackups();
+      } else {
+        showMessage('error', data.error || 'فشل إنشاء النسخة الاحتياطية');
+      }
+    } catch {
+      showMessage('error', 'تعذر الاتصال بالخادم');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleDownloadBackup = (fileName: string) => {
+    window.open(`/api/cron/backup?action=download&file=${fileName}`, '_blank');
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFileForRestore(e.target.files[0]);
+    }
+  };
+
+  const handleRestoreBackup = async () => {
+    if (!selectedFileForRestore) {
+      showMessage('error', 'يرجى اختيار ملف نسخة احتياطية أولاً');
+      return;
+    }
+    setBackupLoading(true);
+    try {
+      const fileText = await selectedFileForRestore.text();
+      const jsonData = JSON.parse(fileText);
+
+      // التحقق من صحة الملف بشكل أساسي
+      if (!jsonData.voters || !jsonData.keys) {
+        showMessage('error', 'ملف النسخة الاحتياطية غير صالح أو ناقص البيانات');
+        setBackupLoading(false);
+        return;
+      }
+
+      const res = await fetch('/api/cron/backup?action=restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: fileText,
+      });
+      const data = await res.json();
+      if (data.success) {
+        showMessage('success', 'تم استعادة قاعدة البيانات بنجاح!');
+        setRestoreConfirm(false);
+        setSelectedFileForRestore(null);
+      } else {
+        showMessage('error', data.error || 'فشلت عملية الاستعادة');
+      }
+    } catch (err) {
+      console.error(err);
+      showMessage('error', 'الملف المرفوع ليس ملف JSON صالح');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
 
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
@@ -246,6 +331,117 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
               تغيير كلمة المرور
             </button>
+          </div>
+
+          {/* مركز النسخ الاحتياطي واستعادة البيانات */}
+          <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-4">
+            <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+              <Database className="w-4 h-4 text-primary" />
+              مركز الحماية والنسخ الاحتياطي
+            </h3>
+            <p className="text-xs text-muted-foreground">حفظ نسخة احتياطية من البيانات محلياً وتنزيلها لضمان عدم الفقدان أو التلف.</p>
+
+            {/* زر إنشاء نسخة احتياطية */}
+            <button
+              onClick={handleCreateBackup}
+              disabled={backupLoading}
+              className="w-full py-2.5 px-4 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-semibold text-xs transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            >
+              {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+              إنشاء نسخة احتياطية فورية
+            </button>
+
+            {/* قائمة الملفات */}
+            {backups.length > 0 && (
+              <div className="space-y-2 border-t border-border/40 pt-3">
+                <span className="text-[10px] font-bold text-muted-foreground block">النسخ الاحتياطية المتاحة على السيرفر (آخر 7 نسخ):</span>
+                <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                  {backups.map((b) => (
+                    <div key={b.fileName} className="flex justify-between items-center bg-background border border-border/40 p-2 rounded-lg text-xs">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-mono text-[10px] text-foreground truncate" dir="ltr">{b.fileName}</span>
+                        <span className="text-[9px] text-muted-foreground">
+                          الحجم: {(b.size / 1024).toFixed(1)} KB • {new Date(b.createdAt).toLocaleDateString('ar-IQ')}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDownloadBackup(b.fileName)}
+                        className="p-1 hover:bg-muted text-primary rounded transition-colors cursor-pointer"
+                        title="تنزيل الملف"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* استعادة البيانات */}
+            <div className="space-y-2 border-t border-border/40 pt-3">
+              <span className="text-[10px] font-bold text-muted-foreground block">استعادة قاعدة البيانات من ملف خارجي:</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="backup-restore-file"
+                />
+                <label
+                  htmlFor="backup-restore-file"
+                  className="flex-1 border border-dashed border-border hover:border-primary/50 bg-background text-muted-foreground px-3 py-2 rounded-lg text-xs truncate flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {selectedFileForRestore ? selectedFileForRestore.name : 'اختر ملف نسخة احتياطية (.json)'}
+                </label>
+                {selectedFileForRestore && (
+                  <button
+                    onClick={() => {
+                      setSelectedFileForRestore(null);
+                      setRestoreConfirm(false);
+                    }}
+                    className="p-2 text-destructive border border-destructive/20 bg-destructive/5 rounded-lg hover:bg-destructive/10 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {selectedFileForRestore && !restoreConfirm && (
+                <button
+                  onClick={() => setRestoreConfirm(true)}
+                  className="w-full py-2 px-3 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20 font-bold text-xs transition-colors cursor-pointer active:scale-95"
+                >
+                  استعادة البيانات من الملف المحدد
+                </button>
+              )}
+
+              {restoreConfirm && (
+                <div className="bg-red-500/5 border border-red-500/20 p-3 rounded-lg space-y-2">
+                  <div className="flex gap-1.5 items-start text-[11px] text-red-500 font-semibold leading-relaxed">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+                    <span>تحذير: سيتم حذف كافة البيانات الحالية بالكامل واستبدالها ببيانات الملف المرفوع! هل أنت متأكد؟</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleRestoreBackup}
+                      disabled={backupLoading}
+                      className="flex-1 py-1.5 px-2 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer transition disabled:opacity-50"
+                    >
+                      {backupLoading ? 'جاري الاستعادة...' : 'نعم، استعد البيانات'}
+                    </button>
+                    <button
+                      onClick={() => setRestoreConfirm(false)}
+                      disabled={backupLoading}
+                      className="flex-1 py-1.5 px-2 bg-muted hover:bg-border border border-border text-foreground rounded text-[10px] font-bold cursor-pointer transition"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Share Link Section */}
