@@ -244,6 +244,9 @@ export default function ElectionResultsManagement() {
   const [totalVotes, setTotalVotes] = useState('');
   const [notes, setNotes] = useState('');
   const [commissionRecords, setCommissionRecords] = useState<any[]>([]);
+  // بيانات محافظة ذي قار المرجعية (527 مركز، 1,099,438 ناخب...) تُجلب من /api/commission
+  // لعرضها ديناميكياً بدل تكرارها كأرقام ثابتة في الواجهة (قاعدة "ربط الواجهة بمحرك الحسابات").
+  const [provinceRef, setProvinceRef] = useState<any>(null);
 
   // Party entry form fields
   const [cPartyName, setCPartyName] = useState('');
@@ -269,6 +272,10 @@ export default function ElectionResultsManagement() {
       const data = await res.json();
       if (data.list && Array.isArray(data.list)) {
         setCommissionRecords(data.list);
+      }
+      // حفظ البيانات المرجعية للمحافظة (527 مركز، 1,099,438 ناخب...) لعرضها ديناميكياً
+      if (data.reference) {
+        setProvinceRef(data.reference);
       }
     } catch (err) {
       console.error('Error fetching commission records:', err);
@@ -714,16 +721,16 @@ export default function ElectionResultsManagement() {
                 <div className="space-y-3">
                   {result2025.year === 2025 ? (
                     <>
-                      <StatRow label="عدد مراكز الاقتراع الكلية" value="527" />
-                      <StatRow label="عدد محطات الاقتراع الكلية" value="2,212" />
-                      <StatRow label="عدد الناخبين الكلي" value="1,099,438" />
-                      <StatRow label="عدد المصوتين الكلي" value="538,390" />
-                      <StatRow label="نسبة التصويت الكلية" value="48.97%" isHighlight />
-                      <StatRow label="عدد المصوتين الذكور" value="322,970" />
-                      <StatRow label="عدد المصوتين الإناث" value="215,420" />
-                      <StatRow label="عدد المقاعد العامة" value="19" />
-                      <StatRow label="عدد مقاعد الكوتا" value="0" />
-                      <StatRow label="عدد مقاعد النساء" value="5" />
+                      <StatRow label="عدد مراكز الاقتراع الكلية" value={(provinceRef?.pollingCentersCount ?? 0).toLocaleString()} />
+                      <StatRow label="عدد محطات الاقتراع الكلية" value={(provinceRef?.ballotStationsCount ?? 0).toLocaleString()} />
+                      <StatRow label="عدد الناخبين الكلي" value={(provinceRef?.totalRegisteredVoters ?? 0).toLocaleString()} />
+                      <StatRow label="عدد المصوتين الكلي" value={(provinceRef?.totalActualVoters ?? 0).toLocaleString()} />
+                      <StatRow label="نسبة التصويت الكلية" value={`${provinceRef?.generalTurnout ?? 0}%`} isHighlight />
+                      <StatRow label="عدد المصوتين الذكور" value={(provinceRef?.maleVoters ?? 0).toLocaleString()} />
+                      <StatRow label="عدد المصوتين الإناث" value={(provinceRef?.femaleVoters ?? 0).toLocaleString()} />
+                      <StatRow label="عدد المقاعد العامة" value={String(result2025.totalSeats || 19)} />
+                      <StatRow label="عدد مقاعد الكوتا" value={String(result2025.thresholdVotes || 0)} />
+                      <StatRow label="عدد مقاعد النساء" value={String(result2025.seatsWon || 0)} />
                     </>
                   ) : (
                     <>

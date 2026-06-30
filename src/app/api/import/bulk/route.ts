@@ -9,6 +9,18 @@ import * as XLSX from "xlsx";
 
 export const config = { api: { bodyParser: false } };
 
+// سقف لعدد الصفوف لمنع إرهاق قاعدة البيانات وهجمات الفيضان.
+const MAX_IMPORT_ROWS = 5000;
+// حدود طول الحقول النصية (تتطابق مع قيود Zod في validators.ts).
+const FIELD_LIMITS = { name: 100, phone: 50, district: 100, code: 50 } as const;
+// قيم status المسموح بها فقط (تتطابق مع z.enum في createVoterSchema).
+const ALLOWED_STATUS = new Set(["SUPPORTED", "NEUTRAL", "WEAK"]);
+
+function clamp(str: unknown, max: number): string {
+  const s = String(str ?? "").trim();
+  return s.length > max ? s.slice(0, max) : s;
+}
+
 async function postHandler(req: NextRequest, { user }: any) {
   try {
     const formData = await req.formData();
@@ -27,6 +39,12 @@ async function postHandler(req: NextRequest, { user }: any) {
     if (rows.length === 0) {
       return NextResponse.json({ error: "الملف فارغ" }, { status: 400 });
     }
+    if (rows.length > MAX_IMPORT_ROWS) {
+      return NextResponse.json(
+        { error: `تجاوز عدد الصفوف الحد المسموح (${MAX_IMPORT_ROWS}). يحتوي الملف على ${rows.length} صف.` },
+        { status: 400 }
+      );
+    }
 
     let created = 0;
     let skipped = 0;
@@ -36,35 +54,50 @@ async function postHandler(req: NextRequest, { user }: any) {
       case "voters": {
         for (const row of rows) {
           try {
-            const phone = String(row["الهاتف"] || row["phone"] || "").trim();
+            const phone = clamp(row["الهاتف"] || row["phone"], FIELD_LIMITS.phone);
             if (!phone) { skipped++; continue; }
 
             // البحث عن المفتاح بالكود أو الاسم
-            const keyCode = String(row["كود المفتاح"] || row["المفتاح"] || row["keyCode"] || "").trim();
+            const keyCode = clamp(row["كود المفتاح"] || row["المفتاح"] || row["keyCode"], FIELD_LIMITS.code);
             let electionKey = null;
             if (keyCode) {
               electionKey = await prisma.electionKey.findUnique({ where: { keyCode } });
+            }
+            // إن أُعطي كود مفتاح لكنه غير موجود، نتجاهل الصف بدل إسناده لمفتاح وهمي
+            // (cmock...) يُيتم الناخب تحت مفتاح مزيف — يخالف سلامة البيانات.
+            const rawKeyCode = String(row["كود المفتاح"] || row["المفتاح"] || row["keyCode"] || "").trim();
+            if (rawKeyCode && !electionKey) {
+              errors.push(`صف ${created + skipped + 1}: كود المفتاح "${rawKeyCode}" غير موجود في النظام`);
+              skipped++;
+              continue;
             }
 
             const existing = await prisma.voter.findFirst({ where: { phone } });
             if (existing) { skipped++; continue; }
 
+            // قصر status على القيم المسموحة فقط (تتطابق مع z.enum).
+            const rawStatus = row["الحالة"] || row["status"];
+            const status =
+              rawStatus === "مؤيد" || rawStatus === "SUPPORTED" ? "SUPPORTED"
+              : rawStatus === "ضعيف" || rawStatus === "WEAK" ? "WEAK"
+              : "NEUTRAL";
+
             await prisma.voter.create({
               data: {
-                firstName: String(row["الاسم الأول"] || row["firstName"] || "").trim(),
-                fatherName: String(row["اسم الأب"] || row["fatherName"] || "").trim(),
-                grandfatherName: String(row["اسم الجد"] || row["grandfatherName"] || "").trim(),
-                fourthName: String(row["اللقب"] || row["fourthName"] || "").trim(),
+                firstName: clamp(row["الاسم الأول"] || row["firstName"], FIELD_LIMITS.name),
+                fatherName: clamp(row["اسم الأب"] || row["fatherName"], FIELD_LIMITS.name),
+                grandfatherName: clamp(row["اسم الجد"] || row["grandfatherName"], FIELD_LIMITS.name),
+                fourthName: clamp(row["اللقب"] || row["fourthName"], FIELD_LIMITS.name),
                 gender: row["الجنس"] === "أنثى" || row["gender"] === "female" ? "أنثى" : "ذكر",
                 phone,
                 birthDate: new Date("2000-01-01"),
-                district: String(row["القضاء"] || row["district"] || "الغراف").trim(),
-                subDistrict: String(row["الناحية"] || row["subDistrict"] || "").trim(),
-                pollingCenter: String(row["مركز الاقتراع"] || row["pollingCenter"] || "").trim(),
-                ballotStation: String(row["المحطة"] || row["ballotStation"] || "").trim(),
-                status: row["الحالة"] === "مؤيد" || row["status"] === "SUPPORTED" ? "SUPPORTED"
-                  : row["الحالة"] === "ضعيف" || row["status"] === "WEAK" ? "WEAK" : "NEUTRAL",
-                keyId: electionKey?.id || "cmock00000000000000000001",
+                district: clamp(row["القضاء"] || row["district"] || "الغراف", FIELD_LIMITS.district),
+                subDistrict: clamp(row["الناحية"] || row["subDistrict"], FIELD_LIMITS.district),
+                pollingCenter: clamp(row["مركز الاقتراع"] || row["pollingCenter"], FIELD_LIMITS.district),
+                ballotStation: clamp(row["المحطة"] || row["ballotStation"], FIELD_LIMITS.district),
+                status,
+                // keyId: مفتاح فعلي موجود، أو '' (ناخب غير مرتبط) — نتّبع نمط voters/route.ts، لا قيم وهمية cmock.
+                keyId: electionKey?.id ?? "",
               },
             });
             created++;
@@ -79,7 +112,7 @@ async function postHandler(req: NextRequest, { user }: any) {
       case "keys": {
         for (const row of rows) {
           try {
-            const phone = String(row["الهاتف"] || row["phone"] || "").trim();
+            const phone = clamp(row["الهاتف"] || row["phone"], FIELD_LIMITS.phone);
             if (!phone) { skipped++; continue; }
 
             const existing = await prisma.electionKey.findFirst({ where: { phone } });
@@ -92,16 +125,16 @@ async function postHandler(req: NextRequest, { user }: any) {
             await prisma.electionKey.create({
               data: {
                 keyCode: code,
-                firstName: String(row["الاسم الأول"] || row["firstName"] || "").trim(),
-                fatherName: String(row["اسم الأب"] || row["fatherName"] || "").trim(),
-                grandfatherName: String(row["اسم الجد"] || row["grandfatherName"] || "").trim(),
-                fourthName: String(row["اللقب"] || row["fourthName"] || "").trim(),
+                firstName: clamp(row["الاسم الأول"] || row["firstName"], FIELD_LIMITS.name),
+                fatherName: clamp(row["اسم الأب"] || row["fatherName"], FIELD_LIMITS.name),
+                grandfatherName: clamp(row["اسم الجد"] || row["grandfatherName"], FIELD_LIMITS.name),
+                fourthName: clamp(row["اللقب"] || row["fourthName"], FIELD_LIMITS.name),
                 phone,
                 gender: "ذكر",
                 birthDate: new Date("1980-01-01"),
                 education: "",
                 profession: "",
-                district: String(row["القضاء"] || row["district"] || "الغراف").trim(),
+                district: clamp(row["القضاء"] || row["district"] || "الغراف", FIELD_LIMITS.district),
                 subDistrict: "",
                 pollingCenter: "",
                 loyaltyScore: Number(row["مستوى الولاء"] || row["loyaltyLevel"] || 3),

@@ -68,6 +68,16 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
       prisma.commissionData.findMany(),
     ]);
 
+  // حساب متوسط قوة المنافسين من البيانات الفعلية (بدل القيمة الثابتة 30)
+  const avgCompetitorStrength =
+    competitors.length > 0
+      ? Math.round(
+          (competitors.reduce((sum, c) => sum + (c.strengthLevel || 3), 0) /
+            competitors.length) *
+            20
+        )
+      : 0; // 0 عند عدم وجود بيانات منافسين (بدل fallback مضلل)
+
   // 2. تجميع الناخبين حسب keyId — O(N) بدل O(N×M)
   const votersByKeyId = new Map<string, typeof voters>();
   for (const v of voters) {
@@ -142,9 +152,10 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
     const avgWeightedScore = Math.round(sumWeightedScore / sumVotes);
 
     // ===== API (Area Penetration Index) =====
+    // القيم الافتراضية 0 عند غياب البيانات (لا حشو بأرقام متفائلة 30/50/910).
     const neutralPercent =
-      totalVotes > 0 ? (neutralVotes / totalVotes) * 100 : 30;
-    const expansion = totalVotes > 0 ? (supportedVotes / totalVotes) * 100 : 50;
+      totalVotes > 0 ? (neutralVotes / totalVotes) * 100 : 0;
+    const expansion = totalVotes > 0 ? (supportedVotes / totalVotes) * 100 : 0;
     const apiScore = Math.round(
       neutralPercent * 0.3 +
         expansion * 0.25 +
@@ -154,10 +165,24 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
 
     // ===== EWLI (Early Warning Loss Index) =====
     const weakVotesRatio =
-      totalVotes > 0 ? (weakVotes / totalVotes) * 100 : 10;
+      totalVotes > 0 ? (weakVotes / totalVotes) * 100 : 0;
     const threats = avgDRS * 0.8;
     const supportDecline = 100 - avgKRI;
-    const competitorStrength = 30; // fallback
+    // قوة المنافسين: محسوبة من بيانات المنافسين الفعلية (بدل القيمة الثابتة 30)
+    const areaCompetitorsForEWLI = competitors.filter(
+      (c) => c.baseDistrict === areaName || areaName === "ذي قار"
+    );
+    const competitorStrength =
+      areaCompetitorsForEWLI.length > 0
+        ? Math.round(
+            (areaCompetitorsForEWLI.reduce(
+              (sum, c) => sum + (c.strengthLevel || 3),
+              0
+            ) /
+              areaCompetitorsForEWLI.length) *
+              20
+          )
+        : avgCompetitorStrength; // fallback للمتوسط العام
     const ewliScore = Math.round(
       weakVotesRatio * 0.3 +
         avgDRS * 0.25 +
@@ -184,10 +209,31 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
           ).length /
           distinctCentersInCommission.length) *
           100
-        : 80;
+        : 0;
 
-    const voteDist = 85; // توزيع الأصوات (fallback)
-    const balance = 80; // التوازن (fallback)
+    // توزيع الأصوات: محسوب من نسبة الأصوات المؤيدة للمجموع (بدل القيمة الثابتة 85)
+    const voteDist =
+      totalVotes > 0
+        ? Math.round((supportedVotes / totalVotes) * 100)
+        : 0;
+    // التوازن: يقيس مدى تساوي الأصوات عبر المفاتيح (بدل القيمة الثابتة 80)
+    const balance =
+      totalKeys > 1
+        ? (() => {
+            const avgVotesPerKey = totalVotes / totalKeys;
+            const variance =
+              areaKeys.reduce(
+                (sum, k) =>
+                  sum + Math.pow((k.totalVotes || 0) - avgVotesPerKey, 2),
+                0
+              ) / totalKeys;
+            const stdDev = Math.sqrt(variance);
+            // نسبة التوازن: 100 = متوازن تماماً، 0 = تفاوت شديد
+            return Math.round(
+              Math.max(0, 100 - (stdDev / Math.max(1, avgVotesPerKey)) * 100)
+            );
+          })()
+        : 0;
     const gsiScore = Math.round(
       coverage * 0.25 +
         voteDist * 0.25 +
@@ -196,24 +242,25 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
     );
 
     // ===== EDRI (Election Day Readiness Index) =====
+    // القيم الافتراضية 0 عند غياب البيانات (لا حشو بأرقام متفائلة 90/80/70/60).
     const trainedKeys =
       totalKeys > 0
         ? (areaKeys.filter((k) => k.keyAccuracyScore >= 0.8).length /
             totalKeys) *
           100
-        : 90;
+        : 0;
     const highProtection =
       totalKeys > 0
         ? (areaKeys.filter((k) => k.riskLevel <= 2).length / totalKeys) * 100
-        : 80;
+        : 0;
     const gpsVerifiedVoters = areaVoters.filter((v) => v.gpsVerified).length;
     const observers =
-      totalVoters > 0 ? (gpsVerifiedVoters / totalVoters) * 100 : 70;
+      totalVoters > 0 ? (gpsVerifiedVoters / totalVoters) * 100 : 0;
     const registryVerifiedVoters = areaVoters.filter(
       (v) => v.isRegistryVerified
     ).length;
     const verified =
-      totalVoters > 0 ? (registryVerifiedVoters / totalVoters) * 100 : 60;
+      totalVoters > 0 ? (registryVerifiedVoters / totalVoters) * 100 : 0;
     const loyalty = avgKRI;
 
     const edriScore = Math.round(
@@ -252,16 +299,17 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
       allocated.find((p) => p.partyName === "حملتنا الانتخابية")?.seats || 0;
 
     return {
-      eiiScore: Math.min(100, Math.max(0, avgEII || 70)),
-      kriScore: Math.min(100, Math.max(0, avgKRI || 70)),
-      vpsScore: Math.min(100, Math.max(0, avgVPS || 70)),
-      drsScore: Math.min(100, Math.max(0, avgDRS || 20)),
-      campaignROI: Math.min(100, Math.max(0, avgROI || 5)),
-      apiScore: Math.min(100, Math.max(0, apiScore || 70)),
-      ewliScore: Math.min(100, Math.max(0, ewliScore || 20)),
-      gsiScore: Math.min(100, Math.max(0, gsiScore || 70)),
-      edriScore: Math.min(100, Math.max(0, edriScore || 75)),
-      efiScore: Math.min(100, Math.max(0, efiScore || 70)),
+      // القيم الافتراضية 0 بدل أرقام تقديرية مضللة (70, 75, 20)
+      eiiScore: Math.min(100, Math.max(0, avgEII || 0)),
+      kriScore: Math.min(100, Math.max(0, avgKRI || 0)),
+      vpsScore: Math.min(100, Math.max(0, avgVPS || 0)),
+      drsScore: Math.min(100, Math.max(0, avgDRS || 0)),
+      campaignROI: Math.min(100, Math.max(0, avgROI || 0)),
+      apiScore: Math.min(100, Math.max(0, apiScore || 0)),
+      ewliScore: Math.min(100, Math.max(0, ewliScore || 0)),
+      gsiScore: Math.min(100, Math.max(0, gsiScore || 0)),
+      edriScore: Math.min(100, Math.max(0, edriScore || 0)),
+      efiScore: Math.min(100, Math.max(0, efiScore || 0)),
       totalKeysInArea: totalKeys,
       totalNetVotes: netVotes,
       totalSupportedVotes: supportedVotes,

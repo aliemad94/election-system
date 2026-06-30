@@ -37,5 +37,32 @@
 - [x] Task 2: Update OwnerPanel.tsx UI to integrate the Backup & Restore UI
 - [x] Task 3: Verify and compile the project (vitest + next build)
 
+## 🔐 2026-07-01 Security Hardening Sprint (بناء فوق الموجود بكل المهارات)
+- [x] Phase 1: Review & secure pending changes from 2026-06-30 (backup.ts, scheduler.ts, indicators-engine.ts, validators.ts, early-warnings, cron/backup)
+- [x] Phase 2: Fix seed.js — remove hardcoded fallback passwords (YOUR_ADMIN_PASSWORD), make ADMIN/USER_PASSWORD env-required with production guard
+- [x] Phase 3: Skill-driven fixes (security-architect + code-reviewer + premortem)
+  - [x] Fix H-1: Replace `new PrismaClient()` leak in auth/login with shared singleton
+  - [x] Fix H-2: Add double-confirmation + ADMIN-only + audit-log + remove GET-mutation for reset/simulate-turnout
+  - [x] Fix H-3: Add 5000-row cap, field clamping, ban placeholder cmock keyId on import/bulk
+  - [x] Fix 2.1 (Critical): Bind ElectionResultsManagement 2025 literals to ProvinceReference dynamically
+  - [x] Fix 2.2 (Critical): Remove hardcoded `digitalCampaigns: 75` in DataAnalysis
+  - [x] Fix 2.3: Remove fake fallbacks (855000/58/80/50) in comprehensive-indicators-engine
+  - [x] Fix 2.4/2.5: Remove intermediate fallbacks (30/50/80/90) in indicators-engine + UI 58/55
+  - [x] Fix 3.1: Guard unguarded `data.districts.forEach` in AdvancedIndicators
+  - [x] Fix M-5: Add production runtime guard for BYPASS_AUTH in middleware
+  - [x] Fix M-6: Restore endpoint no longer leaks Prisma internals (handleApiError)
+  - [x] Fix L-9: health route hides error.message in production
+  - [x] Fix premortem E: Add production guard for ALLOW_INSECURE_SEED_DEFAULTS in seed.js
+- [x] Phase 4: Final verification (vitest 60/60 ✅ + npm run build ✅)
+- [x] Documentation: Update walkthrough.md with full session record
+
+### 🔜 Deferred (fast-follow, lower priority per premortem/code-review)
+- [ ] Migrate remaining write routes to Zod: tasks, commission, volunteers, competitors (PUT), sms-campaigns
+- [ ] Replace `user: any` with AuthenticatedUser type across 14 route handlers + runtime type-guard
+- [ ] Align cookie maxAge (7d) with JWT expiry (8h)
+- [ ] Load test indicators dashboard route under concurrency before election day
+- [ ] Documented + dry-run recovery runbook (no ALLOW_INSECURE_SEED_DEFAULTS)
+
+
 
 

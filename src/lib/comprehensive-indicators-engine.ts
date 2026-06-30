@@ -153,9 +153,9 @@ function calcDecisiveIndicators(
   keys: KeyData[], voters: VoterData[], ihec: IHECRecord[],
   districtKeys: Record<string, KeyData[]>
 ) {
-  const totalRegistered = ihec.reduce((s, r) => s + r.registeredVoters, 0) || 855000;
+  const totalRegistered = ihec.reduce((s, r) => s + r.registeredVoters, 0) || 0;
   const avgParticipation = ihec.length > 0
-    ? ihec.reduce((s, r) => s + r.participationRate, 0) / ihec.length : 58;
+    ? ihec.reduce((s, r) => s + r.participationRate, 0) / ihec.length : 0;
 
   // 1. عدد الأصوات المتوقعة يوم الاقتراع
   const totalNetVotes = keys.reduce((s, k) => s + k.netVotes, 0);
@@ -639,8 +639,8 @@ function calcPerformanceIndicators(keys: KeyData[], _voters: VoterData[], servic
   // 44. كفاءة الكوادر والمتطوعين الميدانية
   const activeVolunteers = volunteers.filter((v: any) => v.status !== 'INACTIVE');
   const avgVolunteerEfficiency = volunteers.length > 0
-    ? round1(volunteers.reduce((sum: number, v: any) => sum + (v.efficiencyScore || 80), 0) / volunteers.length)
-    : 80;
+    ? round1(volunteers.reduce((sum: number, v: any) => sum + (v.efficiencyScore || 0), 0) / volunteers.length)
+    : 0;
 
   const campaignEfficiency = {
     available: true,
@@ -772,11 +772,11 @@ function calcCompositeAnalyticalIndicators(
   }).sort((a, b) => b.priorityScore - a.priorityScore);
 
   // 63. مؤشر المنافسة الانتخابية
-  const competitionIndex = { available: true, score: round1(100 - (avgKeyEfficiency || 50)), level: avgKeyEfficiency > 60 ? 'منخفضة' : avgKeyEfficiency > 40 ? 'متوسطة' : 'عالية' };
+  const competitionIndex = { available: true, score: round1(100 - (avgKeyEfficiency || 0)), level: avgKeyEfficiency > 60 ? 'منخفضة' : avgKeyEfficiency > 40 ? 'متوسطة' : 'عالية' };
 
   // 64. مؤشر احتمالية الفوز
-  const totalRegistered = ihec.reduce((s, r) => s + r.registeredVoters, 0) || 855000;
-  const avgPart = ihec.length > 0 ? ihec.reduce((s, r) => s + r.participationRate, 0) / ihec.length : 58;
+  const totalRegistered = ihec.reduce((s, r) => s + r.registeredVoters, 0) || 0;
+  const avgPart = ihec.length > 0 ? ihec.reduce((s, r) => s + r.participationRate, 0) / ihec.length : 0;
   const expectedTotal = totalRegistered * (avgPart / 100);
   const voteShare = expectedTotal > 0 ? (totalNetVotes / expectedTotal) : 0;
   const winProbability = round1(clamp(voteShare * 100));

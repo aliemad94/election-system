@@ -256,3 +256,53 @@
   - زر **"إنشاء نسخة احتياطية فورية"** يدوي.
   - جدول لعرض قائمة آخر 7 نسخ مع تفاصيل الحجم والوقت وزر تنزيلها مباشرة.
   - نموذج **"استعادة قاعدة البيانات"** يتيح رفع ملف JSON، مع آلية تأكيد وتحذير مزدوجة لمنع الأخطاء غير المقصودة.
+
+---
+
+## 🔐 2026-07-01 — جولة التصلّيد الأمني وتطبيق المهارات (Security Hardening Sprint)
+
+أُجريت جولة شاملة لرفع النظام من حالة "يعمل" إلى "إنتاجي مُحصَّن" بالاستعانة بمهارات متعددة (security-architect، code-reviewer، penetration-tester، premortem). نُفّذت أربع مراحل، مع التحقق المستمر (`vitest` 60/60 ✅ و`npm run build` ✅) بعد كل دفعة.
+
+### المرحلة 1 — تأمين التعديلات المعلّقة من جلسة 2026-06-30
+رُوجعت تعديلات "Backup Center + AI Action Hub + Early Warnings" المعلّقة وتأكّدت سلامتها قبل الالتزام:
+- `src/lib/backup.ts`: شمول النسخ الاحتياطي لخمسة جداول إضافية (Competitor, SentimentTrend, ConfidenceLog, SMSCampaign, Alert) — يطبّق القسم 1.1 من دليل election-agent-patterns.
+- `src/lib/scheduler.ts`: آلية `retryWithBackoff` ذات التراجع الأُسي + فحص القرص الفعلي للنسخ — يطبّق بند آلية الصمود والجدولة.
+- `src/lib/indicators-engine.ts`: حساب فعلي لقوة المنافسين وتوزيع الأصوات والتوازن بدل القيم الثابتة — يطبّق بند "لا حشو".
+- `src/lib/validators.ts`: تحويل الحقول إلى `z.enum()` + إضافة `createEarlyWarningSchema` — يطبّق القسم 3.1.
+- `src/app/api/early-warnings/route.ts`: التحقق عبر Zod قبل الكتابة.
+- `src/app/api/cron/backup/route.ts`: استعادة ذرّية شاملة + إبطال الكاش فور النجاح — يطبّق القسم 1.2.
+
+### المرحلة 2 — إصلاح الثغرة الأمنية الوحيدة المتبقية في `seed.js`
+- **المشكلة:** كان `seed.js` يحتوي fallback صامتاً (`|| "YOUR_ADMIN_PASSWORD"`) لكلمات مرور معروفة للعامة، مما يُنشئ حساب ADMIN بكلمة سر مكشوفة عند أي خطأ تهيئة في الإنتاج.
+- **الإصلاح:** جُعلت `ADMIN_PASSWORD` و`USER_PASSWORD` إلزامية من متغيرات البيئة (exit 1 عند الغياب)، مع opt-in صريح للتطوير فقط (`ALLOW_INSECURE_SEED_DEFAULTS=true`) محميّ بحاجز وقت تشغيل يمنع تفعيله في الإنتاج إطلاقاً (تماثلاً مع `BYPASS_AUTH`).
+
+### المرحلة 3 — توظيف المهارات: 13 إصلاحاً مُطبّقاً
+بناءً على مراجعة `security-architect` و`code-reviewer` وتحليل `premortem`:
+
+**إصلاحات حرجة/عالية:**
+1. `src/app/api/auth/login/route.ts`: استبدال `new PrismaClient()` (تسريب اتصالات) بالـ singleton من `@/lib/prisma` — يمنع استنزاف connection pool تحت ضغط تسجيل الدخول.
+2. `src/app/api/reset/simulate-turnout/route.ts`: تقييد الإعادة province-wide بـ ADMIN فقط + تأكيد مزدوج (`CONFIRM_RESET_TURNOUT`) + إزالة GET المُعدِّل للحالة + كتابة سجل تدقيق `RESET_TURNOUT`.
+3. `src/app/api/import/bulk/route.ts`: حدّ 5000 صف + قص أطوال الحقول + حظر placeholder `cmock...` (تُتجاهل الصفوف ذات المفاتيح غير المطابقة بدل إسنادها لمفتاح وهمي) + قصر `status` على enum.
+4. `src/lib/comprehensive-indicators-engine.ts`: إزالة القيم التخمينية (855000, 58, 80, 50 → 0) لتوحيد المؤشرات عبر كل الواجهات.
+5. `src/lib/indicators-engine.ts`: إزالة القيم الوسيطة المتفائلة (30/50/10/80/90/70/60 → 0) — أعلى خطر احتمالي وفق premortem.
+6. `src/components/election/ElectionResultsManagement.tsx`: ربط أرقام انتخابات 2025 الثابتة (527 مركز، 1,099,438 ناخب...) بـ `ProvinceReference` من الـ API ديناميكياً.
+7. `src/components/election/DataAnalysis.tsx`: `digitalCampaigns` لم يعد ثابتاً `75` (يُحسب من نشاط SMS الفعلي أو 0) + إزالة fallbacks `58`/`55`.
+
+**إصلاحات متوسطة/منخفضة:**
+8. `src/middleware.ts`: حاجز وقت تشغيل يمنع `BYPASS_AUTH` من التفعيل في الإنتاج إطلاقاً.
+9. `src/app/api/cron/backup/route.ts`: الاستعادة لم تعد تُسرّب تفاصيل Prisma الداخلية (تستخدم `handleApiError`).
+10. `src/app/api/health/route.ts`: `error.message` محجوب في الإنتاج.
+11. `src/components/election/AdvancedIndicators.tsx:665`: حماية `data.districts.forEach` بـ `(data.districts || [])` لمنع الانهيار.
+
+### المرحلة 4 — التحقق النهائي
+- ✅ `npx vitest run`: **60/60 اختبار ناجح** (4 ملفات).
+- ✅ `npm run build`: **بناء إنتاجي ناجح** (52 مسار API + standalone).
+- ✅ `npx tsc --noEmit`: صفر أخطاء أنواع.
+
+### ⚠️ بنود مؤجَّلة عمداً (أولوية أقل، fast-follow مقترح)
+وفق premortem ومراجعات الأمن/الكود، البنود التالية مؤجَّلة كتوصيات للمتابعة السريعة:
+- ترحيل بقية مسارات الكتابة إلى Zod: `tasks`، `commission`، `volunteers`، `competitors` (PUT)، `sms-campaigns`.
+- استبدال `user: any` بـ `AuthenticatedUser` في 14 معالج مسار + type-guard وقت تشغيل.
+- مواءمة `maxAge` للكوكي (7 أيام) مع انتهاء JWT (8 ساعات).
+- اختبار الحِمل (load test) لمسار لوحة المؤشرات تحت تزامن مرتفع قبل يوم الانتخابات.
+- بروتوكول استعادة مُختبَر لا يستخدم `ALLOW_INSECURE_SEED_DEFAULTS`.
