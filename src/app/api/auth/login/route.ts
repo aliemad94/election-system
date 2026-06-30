@@ -3,11 +3,9 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { createToken } from "@/lib/auth";
-
-const prisma = new PrismaClient();
 
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000; // 15 دقيقة

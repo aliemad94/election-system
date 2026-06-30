@@ -189,35 +189,32 @@ async function getHandler(request: NextRequest) {
   }
 }
 
+import { createEarlyWarningSchema, formatZodError } from "@/lib/validators";
+
 async function postHandler(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const {
-      areaType,
-      areaName,
-      warningType,
-      severity,
-      description,
-      estimatedVotesAtRisk,
-      recommendedAction,
-      electoralKeyId,
-    } = body;
-
-    if (!areaName) {
-      return NextResponse.json({ error: "اسم المنطقة مطلوب" }, { status: 400 });
+    const parsed = createEarlyWarningSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: formatZodError(parsed.error) },
+        { status: 400 }
+      );
     }
+
+    const d = parsed.data;
 
     const warning = await prisma.earlyWarning.create({
       data: {
-        warningType: warningType || "متأرجحة",
-        severity: severity || "متوسط",
-        description: description || "",
-        status: "ACTIVE",
-        areaType: areaType || "قضاء",
-        areaName,
-        estimatedVotesAtRisk: Number(estimatedVotesAtRisk) || 0,
-        recommendedAction: recommendedAction || "",
-        electoralKeyId: electoralKeyId || null,
+        warningType: d.warningType,
+        severity: d.severity,
+        description: d.description,
+        status: d.status || "ACTIVE",
+        areaType: d.areaType || "قضاء",
+        areaName: d.areaName,
+        estimatedVotesAtRisk: d.estimatedVotesAtRisk,
+        recommendedAction: d.recommendedAction || "",
+        electoralKeyId: d.electoralKeyId || null,
       },
     });
 

@@ -36,7 +36,12 @@ export async function runBackup(): Promise<BackupResult> {
       indicators,
       compositeIndicators,
       configs,
-      access
+      access,
+      competitors,
+      sentimentTrends,
+      confidenceLogs,
+      smsCampaigns,
+      alerts
     ] = await Promise.all([
       prisma.tribe.findMany(),
       prisma.subTribe.findMany(),
@@ -53,6 +58,11 @@ export async function runBackup(): Promise<BackupResult> {
       prisma.compositeIndicator.findMany(),
       prisma.systemConfig.findMany(),
       prisma.accessControl.findMany(),
+      prisma.competitor.findMany(),
+      prisma.sentimentTrend.findMany(),
+      prisma.confidenceLog.findMany(),
+      prisma.sMSCampaign.findMany(),
+      prisma.alert.findMany(),
     ]);
 
     const backupData = {
@@ -71,7 +81,12 @@ export async function runBackup(): Promise<BackupResult> {
       indicators,
       compositeIndicators,
       configs,
-      access
+      access,
+      competitors,
+      sentimentTrends,
+      confidenceLogs,
+      smsCampaigns,
+      alerts
     };
 
     // إعداد مسار حفظ ملفات النسخ الاحتياطي

@@ -15,11 +15,13 @@ export async function GET() {
       version: "0.1.0-foundation",
     });
   } catch (error) {
+    // لا نُرجع رسالة الخطأ الداخلية في الإنتاج (تجنّب تسريب تفاصيل المخطط/الاتصال).
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
         database: "disconnected",
-        error: error instanceof Error ? error.message : String(error),
+        error: isProd ? undefined : error instanceof Error ? error.message : String(error),
         timestamp: new Date().toISOString(),
       },
       { status: 500 }

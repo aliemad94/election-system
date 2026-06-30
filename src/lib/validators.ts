@@ -29,7 +29,7 @@ export const createElectionKeySchema = z.object({
   fatherName: z.string().max(100).optional().default(""),
   grandfatherName: z.string().max(100).optional().default(""),
   fourthName: z.string().max(100).optional().default(""),
-  gender: z.string().default("ذكر"),
+  gender: z.enum(["ذكر", "أنثى"]).default("ذكر"),
   dateOfBirth: z.string().optional(),
   phone: z.string().optional().default(""),
   education: z.string().max(100).optional().default(""),
@@ -106,7 +106,7 @@ export const createVoterSchema = z.object({
   fatherName: z.string().max(100).optional().default(""),
   grandfatherName: z.string().max(100).optional().default(""),
   fourthName: z.string().max(100).optional().default(""),
-  gender: z.string().default("ذكر"),
+  gender: z.enum(["ذكر", "أنثى"]).default("ذكر"),
   dateOfBirth: z.string().optional(),
   phone: z.string().optional().nullable(),
   nationalId: z.string().max(50).optional().nullable(),
@@ -118,7 +118,7 @@ export const createVoterSchema = z.object({
   keyId: z.string().optional().nullable(),
   tribeId: z.string().optional().nullable(),
   subTribeId: z.string().optional().nullable(),
-  status: z.string().default("NEUTRAL"),
+  status: z.enum(["SUPPORTED", "NEUTRAL", "WEAK"]).default("NEUTRAL"),
   supportDegree: z.number().int().min(1).max(5).default(3),
   supportReason: z.string().max(500).optional().nullable(),
   profession: z.string().max(100).optional().nullable(),
@@ -148,8 +148,8 @@ export const createServiceSchema = z.object({
   title: z.string().max(300).default(""),
   description: z.string().default(""),
   category: z.string().default("أخرى"),
-  priority: z.string().default("NORMAL"),
-  status: z.string().default("PENDING"),
+  priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
+  status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).default("PENDING"),
   cost: z.number().default(0),
   estimatedVotesImpact: z.number().default(0),
   assignedTo: z.string().optional().nullable(),
@@ -159,18 +159,34 @@ export const createServiceSchema = z.object({
 
 export const updateServiceSchema = z.object({
   id: z.string().default(""),
-  status: z.string().optional(),
-  priority: z.string().optional(),
+  status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
+  priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).optional(),
   assignedTo: z.string().optional().nullable(),
   cost: z.number().optional(),
   estimatedVotesImpact: z.number().optional(),
 });
+
+// ===== الإنذار المبكر =====
+export const createEarlyWarningSchema = z.object({
+  electoralKeyId: z.string().optional().nullable(),
+  warningType: z.enum(["CONFIDENCE_DROP", "LOYALTY_CHANGE", "DEFECTION_RISK", "FIELD_ISSUE", "مهددة_خسارة", "متأرجحة", "مشاركة_منخفض", "مشاركة_منخفضة", "قابلة_لاختراق"]).default("FIELD_ISSUE"),
+  severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL", "حرج", "مرتفع", "متوسط", "منخفض"]).default("MEDIUM"),
+  description: z.string().min(1, "الوصف مطلوب"),
+  status: z.enum(["ACTIVE", "IN_PROGRESS", "RESOLVED"]).default("ACTIVE"),
+  areaType: z.string().optional().nullable(),
+  areaName: z.string().min(1, "اسم المنطقة مطلوب"),
+  estimatedVotesAtRisk: z.number().int().default(0),
+  recommendedAction: z.string().optional().nullable(),
+});
+
+export const updateEarlyWarningSchema = createEarlyWarningSchema.partial();
 
 // ===== أدوات مساعدة =====
 export type CreateTribeInput = z.infer<typeof createTribeSchema>;
 export type CreateElectionKeyInput = z.infer<typeof createElectionKeySchema>;
 export type CreateVoterInput = z.infer<typeof createVoterSchema>;
 export type CreateServiceInput = z.infer<typeof createServiceSchema>;
+export type CreateEarlyWarningInput = z.infer<typeof createEarlyWarningSchema>;
 
 /**
  * تنسيق خطأ Zod لرسالة عربية موحّدة

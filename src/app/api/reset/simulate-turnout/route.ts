@@ -8,14 +8,26 @@ import { withAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/security";
 import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 
-async function postHandler(req: NextRequest) {
+async function postHandler(req: NextRequest, context?: any) {
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
+    const confirmReset = searchParams.get("confirm");
 
     // 1. إجراء إعادة التعيين ليوم التصويت (تصفير حضور الناخبين)
+    // إجراء تدميري على مستوى المحافظة: يتطلب تأكيداً مزدوجاً نصياً (مثل /api/reset).
     if (action === "reset") {
-      await prisma.voter.updateMany({
+      if (confirmReset !== "CONFIRM_RESET_TURNOUT") {
+        return NextResponse.json(
+          {
+            error:
+              "تأكيد مطلوب: مرّر confirm=CONFIRM_RESET_TURNOUT لتأكيد تصفير حضور جميع الناخبين.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const result = await prisma.voter.updateMany({
         data: {
           votedOnDay: false,
           checkedIn: false,
@@ -25,9 +37,23 @@ async function postHandler(req: NextRequest) {
 
       invalidateComprehensiveIndicatorsCache();
 
+      // تسجيل العملية التدميرية في سجل التدقيق (مثل /api/reset)
+      const user = context?.user;
+      if (user?.userId) {
+        await prisma.auditLog.create({
+          data: {
+            userId: user.userId,
+            username: user.username || "unknown",
+            action: "RESET_TURNOUT",
+            ipAddress: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null,
+          },
+        });
+      }
+
       return NextResponse.json({
         success: true,
         checkedInCount: 0,
+        affectedVoters: result.count,
         message: "تم بنجاح تصفير وإعادة تعيين حضور الناخبين ليوم الاقتراع.",
       });
     }
@@ -94,9 +120,24 @@ async function postHandler(req: NextRequest) {
   }
 }
 
+// الإعادة (reset) تدميرية على مستوى المحافظة → تُقتصر على ADMIN فقط.
+// المحاكاة (simulate) غير تدميرية → يُسمح بها لـ KEY_USER أيضاً.
+// أزلنا ربط GET بالإجراء التدميري لمنع التشغيل العرضي (prefetch/CSRF-like).
+async function getHandler(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const action = searchParams.get("action");
+  if (action === "reset") {
+    return NextResponse.json(
+      { error: "استخدم POST مع تأكيد confirm=CONFIRM_RESET_TURNOUT لإعادة التعيين." },
+      { status: 405 }
+    );
+  }
+  return postHandler(req);
+}
+
 export const POST = withAuth(postHandler, {
-  POST: ["ADMIN", "KEY_USER"],
+  POST: ["ADMIN"],
 });
-export const GET = withAuth(postHandler, {
+export const GET = withAuth(getHandler, {
   GET: ["ADMIN", "KEY_USER"],
-}); // Allow GET for quick manual browser triggers as well
+});

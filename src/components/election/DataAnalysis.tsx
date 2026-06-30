@@ -332,7 +332,9 @@ export default function DataAnalysis() {
             segmentation: d.audience?.segments || [],
           },
           media: {
-            digitalCampaigns: 75,
+            // كفاءة الحملات الرقمية: تُحسب من نشاط SMS/digital الفعلي بدل القيمة الثابتة 75.
+            // عند غياب البيانات الصريحة تظهر 0 (لا حشو) لتلتزم قاعدة "ربط الواجهة بمحرك الحسابات".
+            digitalCampaigns: d.composite?.digitalActivity ?? d.composite?.contactImpact ?? 0,
             dailyDigitalActivity: d.composite?.digitalActivity || 0,
             directContactImpact: d.composite?.contactImpact || 0,
             mediaReachable: d.audience?.universityCount || 0,
@@ -362,7 +364,8 @@ export default function DataAnalysis() {
             historicalShifts: d.historical?.votingShifts || [],
             nextElectionForecast: {
               trend: d.historical?.electionTrend?.trend || 'بيانات تاريخية محدودة — ستتحسن مع إضافة نتائج انتخابية سابقة',
-              predictedTurnout: d.historical?.electionTrend?.avgParticipation || 55,
+              // لا حشو: 0 عند غياب البيانات التاريخية بدل قيمة تخمينية 55%.
+              predictedTurnout: d.historical?.electionTrend?.avgParticipation || 0,
             }
           },
           performance: {
@@ -484,7 +487,7 @@ function DecisiveTab({ data }: { data: any }) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <IndicatorCard number={5} title="نسبة المشاركة المتوقعة" value={`${safe(d.expectedTurnout) || safe(d.expectedParticipation) || 58}%`} subtitle="معدل مشاركة الناخبين" icon={Activity} activationGuide="يتم قراءته من بيانات سجلات المفوضية الموثقة في جدول IHECData للأقضية." />
+        <IndicatorCard number={5} title="نسبة المشاركة المتوقعة" value={`${safe(d.expectedTurnout, 0) || safe(d.expectedParticipation, 0)}%`} subtitle="معدل مشاركة الناخبين" icon={Activity} activationGuide="يتم قراءته من بيانات سجلات المفوضية الموثقة في جدول IHECData للأقضية." />
         <IndicatorCard number={6} title="المخاطر الانتخابية الشامل" value={safe(d.overallRisk, 0)} subtitle="مستوى الخطر الكلي" icon={ShieldAlert} color="text-red-500" bgColor="bg-red-50" activationGuide="مؤشر يدمج متوسط خطرDefection للمفاتيح والتهديدات النشطة غير المعالجة." />
         <IndicatorCard number={7} title="مؤشر الاستقرار الانتخابي" value={safe(d.stability, 0)} subtitle="استقرار أصوات المفاتيح" icon={Shield} color="text-green-600" bgColor="bg-green-100" activationGuide="يقيس مدى التزام واستقرار ولاء المفاتيح ومعدلات الزيارات الدورية لهم." />
         <IndicatorCard number={8} title="مؤشر الإنذار المبكر" value={safe(d.earlyWarning, 0)} subtitle="التهديدات النشطة" icon={AlertTriangle} color="text-yellow-600" bgColor="bg-yellow-100" activationGuide="يتنبأ بالمشاكل السياسية والميدانية التي تسجلها الفرق الميدانية في قائمة التنبيهات." />

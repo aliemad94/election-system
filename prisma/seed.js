@@ -43,9 +43,40 @@ const REFERENCE_TRIBES = [
 async function main() {
   console.log('🌱 بدء تهيئة قاعدة البيانات الشاملة (JS)...');
 
-  // 1. قراءة وإعداد كلمات المرور الافتراضية
-  const adminPassword = process.env.ADMIN_PASSWORD || "DhiQarOwner2026!";
-  const userPassword = process.env.USER_PASSWORD || "DhiQarUser2026!";
+  // 1. قراءة كلمات المرور من متغيرات البيئة إلزامياً (بدل fallback صامت لقيم معروفة للعامة).
+  // يتطابق هذا مع آلية start.sh في Docker التي تخرج بـ FATAL عند غياب المتغيرات،
+  // ويُغلق الثغرة التي كانت تُنشئ حساب ADMIN بكلمة سر عامة عند أي خطأ تهيئة في الإنتاج.
+  // الاستثناء الوحيد: التطوير المحلي عبر opt-in صريح (ALLOW_INSECURE_SEED_DEFAULTS=true).
+  const allowInsecureDefaults = process.env.ALLOW_INSECURE_SEED_DEFAULTS === 'true';
+
+  // حاجز أمان وقت التشغيل: لا يُسمح بكلمات المرور الافتراضية في الإنتاج إطلاقاً.
+  // حتى لو تسرّب ALLOW_INSECURE_SEED_DEFAULTS=true إلى بيئة الإنتاج، يُحجَز هنا
+  // (تماثلاً مع حماية BYPASS_AUTH في middleware.ts —Failure E من premortem).
+  if (allowInsecureDefaults && process.env.NODE_ENV === 'production') {
+    console.error('❌ FATAL: ALLOW_INSECURE_SEED_DEFAULTS=true غير مسموح به في الإنتاج.');
+    console.error('   اضبط ADMIN_PASSWORD و USER_PASSWORD صراحةً في متغيرات البيئة.');
+    process.exit(1);
+  }
+
+  if (!process.env.ADMIN_PASSWORD && !allowInsecureDefaults) {
+    console.error('❌ FATAL: متغير البيئة ADMIN_PASSWORD مطلوب لتشغيل البذور.');
+    console.error('   اضبطه في .env (للتطوير المحلي يمكن استخدام ALLOW_INSECURE_SEED_DEFAULTS=true).');
+    process.exit(1);
+  }
+  if (!process.env.USER_PASSWORD && !allowInsecureDefaults) {
+    console.error('❌ FATAL: متغير البيئة USER_PASSWORD مطلوب لتشغيل البذور.');
+    console.error('   اضبطه في .env (للتطوير المحلي يمكن استخدام ALLOW_INSECURE_SEED_DEFAULTS=true).');
+    process.exit(1);
+  }
+
+  // قيم هروب للتطوير المحلي فقط — لا تُستخدم أبداً عند allowInsecureDefaults=false
+  const adminPassword = process.env.ADMIN_PASSWORD || (allowInsecureDefaults ? 'dev-admin-change-me' : undefined);
+  const userPassword = process.env.USER_PASSWORD || (allowInsecureDefaults ? 'dev-user-change-me' : undefined);
+
+  if (allowInsecureDefaults) {
+    console.warn('⚠️  تحذير: يتم استخدام كلمات مرور افتراضية للتطوير المحلي (ALLOW_INSECURE_SEED_DEFAULTS=true).');
+    console.warn('   لا تستخدم هذا الوضع في الإنتاج إطلاقاً.');
+  }
 
   console.log('👤 تهيئة المستخدمين...');
   // إنشاء/تحديث مستخدم المدير (admin)

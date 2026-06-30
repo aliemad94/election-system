@@ -10,6 +10,12 @@ import { verifyToken } from "@/lib/auth";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // حاجز أمان وقت التشغيل: لا يُسمح بتجاوز المصادقة في الإنتاج إطلاقاً.
+  // حتى لو تسرّب BYPASS_AUTH=true إلى بيئة الإنتاج عن طريق خطأ، يُحجَز هنا.
+  const isProduction = process.env.NODE_ENV === "production";
+  const bypassRequested =
+    process.env.BYPASS_AUTH === "true" && process.env.NODE_ENV === "development";
+
   // حماية كل /api/ ما عدا نقاط الدخول العامة
   const isProtectedApi =
     pathname.startsWith("/api") &&
@@ -20,12 +26,9 @@ export async function middleware(request: NextRequest) {
   if (isProtectedApi) {
     const tokenCookie = request.cookies.get("election_auth");
 
-    // وضع التطوير: تجاوز المصادقة إذا طُلب صراحةً
+    // وضع التطوير فقط: تجاوز المصادقة إذا طُلب صراحةً (مفعّل حصرياً خارج الإنتاج).
     if (!tokenCookie) {
-      if (
-        process.env.NODE_ENV === "development" &&
-        process.env.BYPASS_AUTH === "true"
-      ) {
+      if (bypassRequested && !isProduction) {
         const requestHeaders = new Headers(request.headers);
         requestHeaders.set("x-user-id", "dummy-admin-id");
         requestHeaders.set("x-user-role", "ADMIN");

@@ -10,6 +10,9 @@ import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
 import path from "path";
 
+import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
+import { invalidateIndicatorsCache } from "@/lib/indicators-cache";
+
 /**
  * دالة مساعدة لتحويل السلاسل النصية التي تطابق صيغة التواريخ ISO إلى كائنات Date تلقائياً.
  */
@@ -137,6 +140,11 @@ async function postHandler(request: NextRequest, { user }: any) {
       compositeIndicators,
       configs,
       access,
+      competitors,
+      sentimentTrends,
+      confidenceLogs,
+      smsCampaigns,
+      alerts,
     } = body;
 
     console.log("=== [Restore Engine] Initiating Database Restore Transaction ===");
@@ -146,16 +154,24 @@ async function postHandler(request: NextRequest, { user }: any) {
       // 1. مسح البيانات القديمة بالترتيب الصحيح لتفادي مشاكل المفاتيح الخارجية
       await tx.candidateResult.deleteMany();
       await tx.electionResult.deleteMany();
+      await tx.confidenceLog.deleteMany();
       await tx.task.deleteMany();
       await tx.earlyWarning.deleteMany();
+      await tx.sMSCampaign.deleteMany();
+      await tx.alert.deleteMany();
       await tx.service.deleteMany();
       await tx.voter.deleteMany();
+      await tx.sentimentTrend.deleteMany();
       await tx.electionKey.deleteMany();
       await tx.subTribe.deleteMany();
       await tx.tribe.deleteMany();
       await tx.volunteer.deleteMany();
+      await tx.competitor.deleteMany();
+      await tx.commissionData.deleteMany();
       await tx.dynamicIndicator.deleteMany();
       await tx.compositeIndicator.deleteMany();
+      await tx.systemConfig.deleteMany();
+      await tx.accessControl.deleteMany();
 
       // 2. إعادة إدراج البيانات بالترتيب الهرمي الصحيح
       if (volunteers?.length) await tx.volunteer.createMany({ data: volunteers });
@@ -170,9 +186,23 @@ async function postHandler(request: NextRequest, { user }: any) {
       if (compositeIndicators?.length) await tx.compositeIndicator.createMany({ data: compositeIndicators });
       if (results?.length) await tx.electionResult.createMany({ data: results });
       if (candidates?.length) await tx.candidateResult.createMany({ data: candidates });
+      if (competitors?.length) await tx.competitor.createMany({ data: competitors });
+      if (sentimentTrends?.length) await tx.sentimentTrend.createMany({ data: sentimentTrends });
+      if (confidenceLogs?.length) await tx.confidenceLog.createMany({ data: confidenceLogs });
+      if (smsCampaigns?.length) await tx.sMSCampaign.createMany({ data: smsCampaigns });
+      if (alerts?.length) await tx.alert.createMany({ data: alerts });
+      if (commission?.length) await tx.commissionData.createMany({ data: commission });
+      if (configs?.length) await tx.systemConfig.createMany({ data: configs });
+      if (access?.length) await tx.accessControl.createMany({ data: access });
     });
 
     console.log("=== [Restore Engine] Database Restore Completed Successfully ===");
+
+    // إبطال كافة الكاشات لضمان تحديث المؤشرات فوراً بعد الاستعادة
+    try {
+      invalidateComprehensiveIndicatorsCache();
+      invalidateIndicatorsCache();
+    } catch { /* silent - cache invalidation should never break restore */ }
 
     // تسجيل العملية في سجل التدقيق
     await auditLog({
@@ -190,10 +220,8 @@ async function postHandler(request: NextRequest, { user }: any) {
     });
   } catch (error) {
     console.error("Database restore transaction failed:", error);
-    return NextResponse.json(
-      { error: `فشلت استعادة البيانات: ${String(error)}` },
-      { status: 500 }
-    );
+    // استخدام handleApiError الموحّد لتجنّب تسريب تفاصيل داخلية (أسماء أعمدة/قيود Prisma).
+    return handleApiError(error, "restore");
   }
 }
 

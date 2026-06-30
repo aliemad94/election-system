@@ -662,7 +662,7 @@ function MiniMetric({
 function EarlyWarnings({ data }: { data: IndicatorsData }) {
   const warnings: { district: string; type: string; severity: string; value: number }[] = [];
 
-  data.districts.forEach((d) => {
+  (data.districts || []).forEach((d) => {
     if (d.drsScore > 55) {
       warnings.push({
         district: d.name,
