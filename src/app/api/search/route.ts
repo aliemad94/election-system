@@ -21,8 +21,11 @@ async function searchHandler(req: NextRequest) {
   }
 
   try {
-    const results: any[] = [];
     const perEntity = entity === "all" ? Math.floor(limit / 3) : limit;
+
+    let votersList: any[] = [];
+    let tribesList: any[] = [];
+    let keysList: any[] = [];
 
     if (entity === "voters" || entity === "all") {
       const voters = await prisma.voter.findMany({
@@ -49,14 +52,11 @@ async function searchHandler(req: NextRequest) {
           tribe: { select: { name: true } },
         },
       });
-      results.push(
-        ...voters.map((v) => ({
-          entity: "voters",
-          id: v.id,
-          label: `${v.firstName} ${v.fatherName} ${v.grandfatherName}`.trim(),
-          sublabel: `${v.district} — ${v.tribe?.name ?? ""}${v.votedOnDay ? " ✓" : ""}`,
-        }))
-      );
+      votersList = voters.map((v) => ({
+        id: v.id,
+        fullName: `${v.firstName} ${v.fatherName} ${v.grandfatherName}`.trim(),
+        subtitle: `${v.district} — ${v.tribe?.name ?? ""}${v.votedOnDay ? " ✓" : ""}`,
+      }));
     }
 
     if (entity === "tribes" || entity === "all") {
@@ -65,14 +65,11 @@ async function searchHandler(req: NextRequest) {
         take: perEntity,
         select: { id: true, name: true, _count: { select: { voters: true } } },
       });
-      results.push(
-        ...tribes.map((t) => ({
-          entity: "tribes",
-          id: t.id,
-          label: t.name,
-          sublabel: `${t._count.voters} ناخب`,
-        }))
-      );
+      tribesList = tribes.map((t) => ({
+        id: t.id,
+        fullName: t.name,
+        subtitle: `${t._count.voters} ناخب`,
+      }));
     }
 
     if (entity === "keys" || entity === "all") {
@@ -95,17 +92,27 @@ async function searchHandler(req: NextRequest) {
           tribe: { select: { name: true } },
         },
       });
-      results.push(
-        ...keys.map((k) => ({
-          entity: "keys",
-          id: k.id,
-          label: `${k.keyCode} — ${k.firstName} ${k.fatherName}`,
-          sublabel: `${k.district} — ${k.tribe?.name ?? ""}`,
-        }))
-      );
+      keysList = keys.map((k) => ({
+        id: k.id,
+        fullName: `${k.keyCode} — ${k.firstName} ${k.fatherName}`,
+        subtitle: `${k.district} — ${k.tribe?.name ?? ""}`,
+      }));
     }
 
-    return NextResponse.json({ results, total: results.length, query });
+    const flatResults = [
+      ...votersList.map(v => ({ id: v.id, entity: "voters", label: v.fullName, sublabel: v.subtitle })),
+      ...tribesList.map(t => ({ id: t.id, entity: "tribes", label: t.fullName, sublabel: t.subtitle })),
+      ...keysList.map(k => ({ id: k.id, entity: "keys", label: k.fullName, sublabel: k.subtitle }))
+    ];
+
+    return NextResponse.json({
+      voters: votersList,
+      tribes: tribesList,
+      electionKeys: keysList,
+      results: flatResults,
+      total: flatResults.length,
+      query
+    });
   } catch (error) {
     return handleApiError(error, "search");
   }
