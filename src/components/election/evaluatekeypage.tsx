@@ -21,6 +21,38 @@ interface Props {
   onClose?: () => void;
 }
 
+interface RatingBarProps {
+  field: string;
+  label: string;
+  weight: number;
+  scores: Record<string, number>;
+  setScores: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+}
+
+const RatingBar = ({ field, label, weight, scores, setScores }: RatingBarProps) => {
+  const labels = (() => {
+    switch (field) { case 'loyaltyScore': return LOYALTY_LABELS; case 'influenceLevel': return INFLUENCE_LABELS; case 'mobilizationCap': return MOBILIZATION_LABELS; case 'voteProtection': return VOTE_PROTECTION_LABELS; case 'supportReason': return SUPPORT_REASON_LABELS; case 'needsLevel': return NEEDS_LABELS; case 'politicalNote': return POLITICAL_NOTE_LABELS; case 'organizationalNote': return ORGANIZATIONAL_NOTE_LABELS; case 'generalNote': return GENERAL_NOTE_LABELS; default: return ['', '', '', '', '']; }
+  })();
+  const v = scores[field] ?? 3;
+  return (
+    <div className="space-y-1.5 bg-slate-900 border border-slate-700 rounded-lg p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] font-bold text-slate-100">{label}</span>
+        <span className="text-[10px] bg-blue-900/50 text-blue-300 px-1.5 py-0.5 rounded font-bold">الوزن: {weight}%</span>
+      </div>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button key={n} type="button" onClick={() => setScores(s => ({ ...s, [field]: n }))}
+            className={`flex-1 py-1.5 text-[11px] rounded border transition-all ${v >= n ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-blue-500/50'}`}>
+            {n}
+          </button>
+        ))}
+      </div>
+      <div className="text-[10px] text-slate-400">{labels[v - 1]}</div>
+    </div>
+  );
+};
+
 export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onClose }: Props) {
   const { toast } = useToast();
   const [keys, setKeys] = useState<any[]>([]);
@@ -190,30 +222,6 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
     }
   };
 
-  const RatingBar = ({ field, label, weight }: { field: string; label: string; weight: number }) => {
-    const labels = (() => {
-      switch (field) { case 'loyaltyScore': return LOYALTY_LABELS; case 'influenceLevel': return INFLUENCE_LABELS; case 'mobilizationCap': return MOBILIZATION_LABELS; case 'voteProtection': return VOTE_PROTECTION_LABELS; case 'supportReason': return SUPPORT_REASON_LABELS; case 'needsLevel': return NEEDS_LABELS; case 'politicalNote': return POLITICAL_NOTE_LABELS; case 'organizationalNote': return ORGANIZATIONAL_NOTE_LABELS; case 'generalNote': return GENERAL_NOTE_LABELS; default: return ['', '', '', '', '']; }
-    })();
-    const v = scores[field] ?? 3;
-    return (
-      <div className="space-y-1.5 bg-slate-900 border border-slate-700 rounded-lg p-3">
-        <div className="flex items-center justify-between">
-          <span className="text-[12px] font-bold text-slate-100">{label}</span>
-          <span className="text-[10px] bg-blue-900/50 text-blue-300 px-1.5 py-0.5 rounded font-bold">الوزن: {weight}%</span>
-        </div>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4, 5].map(n => (
-            <button key={n} type="button" onClick={() => setScores(s => ({ ...s, [field]: n }))}
-              className={`flex-1 py-1.5 text-[11px] rounded border transition-all ${v >= n ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-blue-500/50'}`}>
-              {n}
-            </button>
-          ))}
-        </div>
-        <div className="text-[10px] text-slate-400">{labels[v - 1]}</div>
-      </div>
-    );
-  };
-
   return (
     <div className="text-slate-100" dir="rtl">
       <div className="max-w-3xl mx-auto">
@@ -255,15 +263,15 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
             </div>
 
             <div className="space-y-3 mb-6">
-              <RatingBar field="loyaltyScore" label="مستوى الولاء" weight={20} />
-              <RatingBar field="influenceLevel" label="مستوى التأثير" weight={20} />
-              <RatingBar field="mobilizationCap" label="القدرة على التحشيد" weight={15} />
-              <RatingBar field="voteProtection" label="حماية الأصوات" weight={15} />
-              <RatingBar field="supportReason" label="أسباب الدعم" weight={10} />
-              <RatingBar field="needsLevel" label="الاحتياجات والمطالب" weight={5} />
-              <RatingBar field="politicalNote" label="الملاحظات السياسية" weight={5} />
-              <RatingBar field="organizationalNote" label="الملاحظات التنظيمية" weight={5} />
-              <RatingBar field="generalNote" label="الملاحظات العامة" weight={5} />
+              <RatingBar field="loyaltyScore" label="مستوى الولاء" weight={20} scores={scores} setScores={setScores} />
+              <RatingBar field="influenceLevel" label="مستوى التأثير" weight={20} scores={scores} setScores={setScores} />
+              <RatingBar field="mobilizationCap" label="القدرة على التحشيد" weight={15} scores={scores} setScores={setScores} />
+              <RatingBar field="voteProtection" label="حماية الأصوات" weight={15} scores={scores} setScores={setScores} />
+              <RatingBar field="supportReason" label="أسباب الدعم" weight={10} scores={scores} setScores={setScores} />
+              <RatingBar field="needsLevel" label="الاحتياجات والمطالب" weight={5} scores={scores} setScores={setScores} />
+              <RatingBar field="politicalNote" label="الملاحظات السياسية" weight={5} scores={scores} setScores={setScores} />
+              <RatingBar field="organizationalNote" label="الملاحظات التنظيمية" weight={5} scores={scores} setScores={setScores} />
+              <RatingBar field="generalNote" label="الملاحظات العامة" weight={5} scores={scores} setScores={setScores} />
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-6">

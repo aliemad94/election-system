@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-06-30T22:43:22.815Z",
+  "tribes": [],
+  "subTribes": [],
+  "keys": [],
+  "voters": [],
+  "services": [],
+  "commission": [],
+  "results": [],
+  "candidates": [],
+  "volunteers": [],
+  "tasks": [],
+  "warnings": [],
+  "indicators": [],
+  "compositeIndicators": [],
+  "configs": [
+    {
+      "id": "system",
+      "enabled": true,
+      "updatedAt": "2026-06-30T22:41:57.964Z"
+    }
+  ],
+  "access": [
+    {
+      "id": "cmr18elz10003v2oszfp5zura",
+      "label": "زائر",
+      "password": "$2b$12$WYazZkA5Bo71mlDmWgzBoe8R7kJ3fK4UZLRLPkCIley49vM99HGSm",
+      "isActive": true,
+      "lastChanged": "2026-06-30T22:41:57.949Z",
+      "createdAt": "2026-06-30T22:41:57.949Z",
+      "updatedAt": "2026-06-30T22:41:57.949Z"
+    },
+    {
+      "id": "cmr18elz80004v2os9q6dc3r1",
+      "label": "مالك",
+      "password": "$2b$12$pxmTwGoVthuX/9wtNHOO9expB8hmpJ7dDb7VZkxVPrfEcf07lZEOC",
+      "isActive": true,
+      "lastChanged": "2026-06-30T22:41:57.957Z",
+      "createdAt": "2026-06-30T22:41:57.957Z",
+      "updatedAt": "2026-06-30T22:41:57.957Z"
+    }
+  ],
+  "competitors": [],
+  "sentimentTrends": [],
+  "confidenceLogs": [],
+  "smsCampaigns": [],
+  "alerts": []
+}
