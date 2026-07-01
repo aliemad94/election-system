@@ -32,6 +32,14 @@ const DHI_QAR_DISTRICTS = {
     { type: "Feature", properties: { name: "الفهود" }, geometry: { type: "Polygon", coordinates: [[[46.3, 30.8], [46.5, 30.8], [46.5, 31.0], [46.3, 31.0], [46.3, 30.8]]] } },
     { type: "Feature", properties: { name: "النصر" }, geometry: { type: "Polygon", coordinates: [[[46.2, 31.3], [46.4, 31.3], [46.4, 31.4], [46.2, 31.4], [46.2, 31.3]]] } },
     { type: "Feature", properties: { name: "سيد دخيل" }, geometry: { type: "Polygon", coordinates: [[[46.0, 31.0], [46.1, 31.0], [46.1, 31.2], [46.0, 31.2], [46.0, 31.0]]] } },
+    { type: "Feature", properties: { name: "الفجر" }, geometry: { type: "Polygon", coordinates: [[[45.8, 31.85], [46.0, 31.85], [46.0, 32.0], [45.8, 32.0], [45.8, 31.85]]] } },
+    { type: "Feature", properties: { name: "الفضلية" }, geometry: { type: "Polygon", coordinates: [[[46.42, 30.9], [46.52, 30.9], [46.52, 30.98], [46.42, 30.98], [46.42, 30.9]]] } },
+    { type: "Feature", properties: { name: "العكيكة" }, geometry: { type: "Polygon", coordinates: [[[46.53, 30.7], [46.63, 30.7], [46.63, 30.78], [46.53, 30.78], [46.53, 30.7]]] } },
+    { type: "Feature", properties: { name: "الطار" }, geometry: { type: "Polygon", coordinates: [[[46.64, 30.6], [46.74, 30.6], [46.74, 30.68], [46.64, 30.68], [46.64, 30.6]]] } },
+    { type: "Feature", properties: { name: "كرمة بني سعيد" }, geometry: { type: "Polygon", coordinates: [[[46.64, 30.7], [46.74, 30.7], [46.74, 30.78], [46.64, 30.78], [46.64, 30.7]]] } },
+    { type: "Feature", properties: { name: "أور" }, geometry: { type: "Polygon", coordinates: [[[46.12, 30.9], [46.22, 30.9], [46.22, 30.98], [46.12, 30.98], [46.12, 30.9]]] } },
+    { type: "Feature", properties: { name: "المنار" }, geometry: { type: "Polygon", coordinates: [[[46.81, 31.02], [46.91, 31.02], [46.91, 31.1], [46.81, 31.1], [46.81, 31.02]]] } },
+    { type: "Feature", properties: { name: "الحمار" }, geometry: { type: "Polygon", coordinates: [[[46.92, 30.92], [47.02, 30.92], [47.02, 31.0], [46.92, 31.0], [46.92, 30.92]]] } },
   ],
 };
 

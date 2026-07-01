@@ -208,6 +208,17 @@ export default function ElectoralKeyManagement() {
 
   useEffect(() => { fetchKeys(); fetchTribes(); }, [fetchKeys, fetchTribes]);
 
+  useEffect(() => {
+    const handleGlobalSelect = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.type === 'key') {
+        setSearchQuery(customEvent.detail.fullName);
+      }
+    };
+    window.addEventListener('global-search-select', handleGlobalSelect);
+    return () => window.removeEventListener('global-search-select', handleGlobalSelect);
+  }, []);
+
   const handleSaveKey = async () => {
     try {
       const socialMediaString = JSON.stringify({
