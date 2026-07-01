@@ -30,6 +30,7 @@ export default function Layout({ activePage, onPageChange, children, isOwner, on
         isOwner={isOwner}
         onOwnerPanelOpen={onOwnerPanelOpen}
         onLogout={onLogout}
+        onPageChange={onPageChange}
       />
       <main className="flex-1 mt-12 md:mr-64 p-4 bg-el-background w-full">
         {excelToolbar && (

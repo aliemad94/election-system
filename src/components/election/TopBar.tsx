@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Settings, Map, Menu, LogOut, Shield, Sun, Moon } from 'lucide-react';
+import { Search, Bell, Settings, Map, Menu, LogOut, Shield, Sun, Moon, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 interface TopBarProps {
@@ -9,9 +9,10 @@ interface TopBarProps {
   isOwner?: boolean;
   onOwnerPanelOpen?: () => void;
   onLogout?: () => void;
+  onPageChange?: (page: any) => void;
 }
 
-export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogout }: TopBarProps) {
+export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogout, onPageChange }: TopBarProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -23,6 +24,7 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
   }>({ voters: [], tribes: [], electionKeys: [] });
   const [showResults, setShowResults] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -52,18 +54,28 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
-  const handleVoterClick = (voter: any) => {
+  const handleSearchSelect = (type: 'voter' | 'key' | 'tribe', item: any) => {
     window.dispatchEvent(
       new CustomEvent('global-search-select', {
         detail: {
-          type: 'voter',
-          fullName: voter.fullName,
-          id: voter.id,
+          type,
+          fullName: item.fullName,
+          id: item.id,
         },
       })
     );
+    setIsModalOpen(false);
     setShowResults(false);
     setSearchQuery('');
+    
+    // Navigate to page
+    if (type === 'voter') {
+      onPageChange?.('voters');
+    } else if (type === 'key') {
+      onPageChange?.('electoral-keys');
+    } else if (type === 'tribe') {
+      onPageChange?.('tribes');
+    }
   };
 
   return (
@@ -107,103 +119,21 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
 
           {/* Search */}
           <div className="hidden md:flex relative">
-            <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-el-outline w-4 h-4" />
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-el-outline hover:text-el-primary transition-colors cursor-pointer"
+            >
+              <Search className="w-4 h-4" />
+            </button>
             <input
-              className="pl-3 pr-8 py-1 rounded bg-el-surface-container-low border border-el-outline-variant text-[12px] leading-[16px] h-8 w-64 focus:ring-el-primary focus:border-el-primary text-right"
+              className="pl-3 pr-8 py-1 rounded bg-el-surface-container-low border border-el-outline-variant text-[12px] leading-[16px] h-8 w-64 focus:ring-el-primary focus:border-el-primary text-right cursor-pointer"
               placeholder="البحث السريع..."
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setShowResults(true)}
-              onBlur={() => setShowResults(false)}
+              readOnly
+              onClick={() => setIsModalOpen(true)}
+              onFocus={() => setIsModalOpen(true)}
             />
-            {showResults && searchQuery.trim() !== '' && (
-              <div className="absolute top-full right-0 w-80 bg-el-surface border border-el-outline-variant shadow-lg rounded-sm mt-1 max-h-96 overflow-y-auto z-50 text-right">
-                {searching && (
-                  <div className="p-3 text-center text-el-on-surface-variant text-[12px]">
-                    جاري البحث...
-                  </div>
-                )}
-                {!searching &&
-                  searchResults.voters.length === 0 &&
-                  searchResults.electionKeys.length === 0 &&
-                  searchResults.tribes.length === 0 && (
-                    <div className="p-3 text-center text-el-on-surface-variant text-[12px]">
-                      لا توجد نتائج مطابقة
-                    </div>
-                  )}
-
-                {!searching && searchResults.voters.length > 0 && (
-                  <div>
-                    <div className="bg-el-surface-container border-b border-el-outline-variant px-3 py-1.5 text-[11px] font-bold text-el-primary">
-                      الناخبون ({searchResults.voters.length})
-                    </div>
-                    <div className="divide-y divide-el-outline-variant/30">
-                      {searchResults.voters.map((v) => (
-                        <button
-                          key={v.id}
-                          onMouseDown={() => handleVoterClick(v)}
-                          className="w-full text-right px-3 py-2 hover:bg-el-surface-container-high transition-colors flex flex-col gap-0.5 cursor-pointer"
-                        >
-                          <span className="text-[12px] font-medium text-el-on-surface">
-                            {v.fullName}
-                          </span>
-                          <span className="text-[10px] text-el-on-surface-variant">
-                            {v.subtitle}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {!searching && searchResults.electionKeys.length > 0 && (
-                  <div>
-                    <div className="bg-el-surface-container border-b border-el-outline-variant px-3 py-1.5 text-[11px] font-bold text-el-primary">
-                      المفاتيح الانتخابية ({searchResults.electionKeys.length})
-                    </div>
-                    <div className="divide-y divide-el-outline-variant/30">
-                      {searchResults.electionKeys.map((k) => (
-                        <div
-                          key={k.id}
-                          className="px-3 py-2 hover:bg-el-surface-container-high transition-colors flex flex-col gap-0.5"
-                        >
-                          <span className="text-[12px] font-medium text-el-on-surface">
-                            {k.fullName}
-                          </span>
-                          <span className="text-[10px] text-el-on-surface-variant">
-                            {k.subtitle}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {!searching && searchResults.tribes.length > 0 && (
-                  <div>
-                    <div className="bg-el-surface-container border-b border-el-outline-variant px-3 py-1.5 text-[11px] font-bold text-el-primary">
-                      العشائر ({searchResults.tribes.length})
-                    </div>
-                    <div className="divide-y divide-el-outline-variant/30">
-                      {searchResults.tribes.map((t) => (
-                        <div
-                          key={t.id}
-                          className="px-3 py-2 hover:bg-el-surface-container-high transition-colors flex flex-col gap-0.5"
-                        >
-                          <span className="text-[12px] font-medium text-el-on-surface">
-                            {t.fullName}
-                          </span>
-                          <span className="text-[10px] text-el-on-surface-variant">
-                            {t.subtitle}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Theme Toggle */}
@@ -259,6 +189,133 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
           </div>
         </div>
       </div>
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4" dir="rtl">
+          <div className="bg-el-surface border border-el-outline-variant rounded-lg p-6 max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col gap-4 shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center border-b border-el-outline-variant pb-3">
+              <div className="flex items-center gap-2">
+                <Search className="w-5 h-5 text-el-primary" />
+                <h3 className="text-md font-bold text-el-on-surface">نتائج البحث التفصيلية</h3>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setSearchQuery('');
+                }}
+                className="text-el-on-surface-variant hover:bg-el-surface-container-high p-1 rounded-full cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Search Input */}
+            <div className="relative w-full">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-el-outline w-5 h-5" />
+              <input
+                className="w-full pl-4 pr-10 py-2.5 rounded-md bg-el-surface-container-low border border-el-outline-variant text-sm focus:ring-el-primary focus:border-el-primary text-right"
+                placeholder="اكتب اسم الناخب، المفتاح الانتخابي، أو العشيرة للبحث..."
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            {/* Results Grid */}
+            <div className="flex-grow overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-4 py-2">
+              {/* Voters Column */}
+              <div className="border border-el-outline-variant/60 rounded-md p-3 flex flex-col gap-2 bg-el-surface-container-lowest">
+                <div className="font-bold text-xs text-el-primary border-b border-el-outline-variant pb-1.5 flex justify-between items-center">
+                  <span>الناخبون</span>
+                  <span className="bg-el-primary-container text-el-on-primary-container px-2 py-0.5 rounded text-[10px]">
+                    {searching ? '...' : searchResults.voters.length}
+                  </span>
+                </div>
+                <div className="flex-grow overflow-y-auto max-h-[45vh] space-y-1.5 divide-y divide-el-outline-variant/30">
+                  {searching ? (
+                    <div className="text-center text-xs text-el-on-surface-variant p-4">جاري البحث...</div>
+                  ) : searchResults.voters.length === 0 ? (
+                    <div className="text-center text-xs text-el-on-surface-variant p-4">لا توجد نتائج</div>
+                  ) : (
+                    searchResults.voters.map((v) => (
+                      <button
+                        key={v.id}
+                        onClick={() => handleSearchSelect('voter', v)}
+                        className="w-full text-right px-2.5 py-2 hover:bg-el-surface-container-high rounded transition-colors flex flex-col gap-0.5 cursor-pointer"
+                      >
+                        <span className="text-xs font-semibold text-el-on-surface">{v.fullName}</span>
+                        <span className="text-[10px] text-el-on-surface-variant">{v.subtitle}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Electoral Keys Column */}
+              <div className="border border-el-outline-variant/60 rounded-md p-3 flex flex-col gap-2 bg-el-surface-container-lowest">
+                <div className="font-bold text-xs text-el-primary border-b border-el-outline-variant pb-1.5 flex justify-between items-center">
+                  <span>المفاتيح الانتخابية</span>
+                  <span className="bg-el-primary-container text-el-on-primary-container px-2 py-0.5 rounded text-[10px]">
+                    {searching ? '...' : searchResults.electionKeys.length}
+                  </span>
+                </div>
+                <div className="flex-grow overflow-y-auto max-h-[45vh] space-y-1.5 divide-y divide-el-outline-variant/30">
+                  {searching ? (
+                    <div className="text-center text-xs text-el-on-surface-variant p-4">جاري البحث...</div>
+                  ) : searchResults.electionKeys.length === 0 ? (
+                    <div className="text-center text-xs text-el-on-surface-variant p-4">لا توجد نتائج</div>
+                  ) : (
+                    searchResults.electionKeys.map((k) => (
+                      <button
+                        key={k.id}
+                        onClick={() => handleSearchSelect('key', k)}
+                        className="w-full text-right px-2.5 py-2 hover:bg-el-surface-container-high rounded transition-colors flex flex-col gap-0.5 cursor-pointer"
+                      >
+                        <span className="text-xs font-semibold text-el-on-surface">{k.fullName}</span>
+                        <span className="text-[10px] text-el-on-surface-variant">{k.subtitle}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Tribes Column */}
+              <div className="border border-el-outline-variant/60 rounded-md p-3 flex flex-col gap-2 bg-el-surface-container-lowest">
+                <div className="font-bold text-xs text-el-primary border-b border-el-outline-variant pb-1.5 flex justify-between items-center">
+                  <span>العشائر</span>
+                  <span className="bg-el-primary-container text-el-on-primary-container px-2 py-0.5 rounded text-[10px]">
+                    {searching ? '...' : searchResults.tribes.length}
+                  </span>
+                </div>
+                <div className="flex-grow overflow-y-auto max-h-[45vh] space-y-1.5 divide-y divide-el-outline-variant/30">
+                  {searching ? (
+                    <div className="text-center text-xs text-el-on-surface-variant p-4">جاري البحث...</div>
+                  ) : searchResults.tribes.length === 0 ? (
+                    <div className="text-center text-xs text-el-on-surface-variant p-4">لا توجد نتائج</div>
+                  ) : (
+                    searchResults.tribes.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => handleSearchSelect('tribe', t)}
+                        className="w-full text-right px-2.5 py-2 hover:bg-el-surface-container-high rounded transition-colors flex flex-col gap-0.5 cursor-pointer"
+                      >
+                        <span className="text-xs font-semibold text-el-on-surface">{t.fullName}</span>
+                        <span className="text-[10px] text-el-on-surface-variant">{t.subtitle}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="border-t border-el-outline-variant pt-3 text-[11px] text-el-on-surface-variant text-left">
+              انقر على أي نتيجة لفتح الصفحة الخاصة بها وعرض التفاصيل مباشرة.
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

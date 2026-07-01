@@ -145,6 +145,17 @@ export default function TribalManagement() {
     fetchAllTribes();
   }, [fetchAllTribes]);
 
+  useEffect(() => {
+    const handleGlobalSelect = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.type === 'tribe') {
+        setSearchQuery(customEvent.detail.fullName);
+      }
+    };
+    window.addEventListener('global-search-select', handleGlobalSelect);
+    return () => window.removeEventListener('global-search-select', handleGlobalSelect);
+  }, []);
+
   const handleAddTribe = async () => {
     try {
       const res = await fetch('/api/tribes', {

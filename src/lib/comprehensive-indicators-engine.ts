@@ -13,6 +13,7 @@
 
 import { prisma } from "./prisma";
 import { enrichElectoralKey, type EnrichedKey } from "./indicators-helper";
+import { DHIQAR_DISTRICTS } from "@/lib/types";
 
 // ═══ الأنواع ═══
 
@@ -165,7 +166,8 @@ function calcDecisiveIndicators(
   const expectedParticipation = round1(avgParticipation);
 
   // 3 & 4. مناطق القوة والضعف
-  const districtScores = Object.entries(districtKeys).map(([dist, dKeys]) => {
+  const districtScores = DHIQAR_DISTRICTS.map((dist) => {
+    const dKeys = districtKeys[dist] || [];
     const net = dKeys.reduce((s, k) => s + k.netVotes, 0);
     const total = dKeys.reduce((s, k) => s + k.totalVotes, 0);
     const avgWeighted = dKeys.length > 0 ? dKeys.reduce((s, k) => s + k.weightedScore, 0) / dKeys.length : 0;

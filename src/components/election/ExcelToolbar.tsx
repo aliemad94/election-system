@@ -176,6 +176,77 @@ export default function ExcelToolbar() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      const wb = XLSX.utils.book_new();
+      
+      let rows: any[] = [];
+      let filename = '';
+      let sheetName = '';
+      
+      if (importEntity === 'voters') {
+        rows = [
+          {
+            "الاسم الأول": "أحمد",
+            "اسم الأب": "محمد",
+            "اسم الجد": "علي",
+            "اللقب": "الخفاجي",
+            "الجنس": "ذكر",
+            "الهاتف": "07701234567",
+            "القضاء": "الناصرية",
+            "الناحية": "أور",
+            "مركز الاقتراع": "مدرسة الفرات",
+            "المحطة": "1",
+            "الحالة": "مؤيد",
+            "كود المفتاح": ""
+          },
+          {
+            "الاسم الأول": "فاطمة",
+            "اسم الأب": "جاسم",
+            "اسم الجد": "حسن",
+            "اللقب": "الركابي",
+            "الجنس": "أنثى",
+            "الهاتف": "07809876543",
+            "القضاء": "الغراف",
+            "الناحية": "الغراف",
+            "مركز الاقتراع": "مدرسة الرافدين",
+            "المحطة": "2",
+            "الحالة": "ضعيف",
+            "كود المفتاح": ""
+          }
+        ];
+        filename = `نموذج_استيراد_الناخبين_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        sheetName = 'الناخبون';
+      } else {
+        rows = [
+          {
+            "الاسم الأول": "سعد",
+            "اسم الأب": "عبد الله",
+            "اسم الجد": "خلف",
+            "اللقب": "الغزي",
+            "الهاتف": "07712345678",
+            "القضاء": "الرفاعي",
+            "مستوى الولاء": "4",
+            "مستوى التأثير": "3",
+            "القدرة على التحشيد": "5"
+          }
+        ];
+        filename = `نموذج_استيراد_المفاتيح_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        sheetName = 'المفاتيح';
+      }
+      
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = Object.keys(rows[0]).map(() => ({ wch: 18 }));
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      XLSX.writeFile(wb, filename);
+      toast.success('تم تحميل نموذج استيراد البيانات بنجاح!');
+    } catch (err) {
+      console.error(err);
+      toast.error('فشل تحميل النموذج');
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -233,6 +304,13 @@ export default function ExcelToolbar() {
         >
           {IMPORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+        <button
+          onClick={handleDownloadTemplate}
+          className="flex items-center gap-1.5 bg-[var(--el-surface-container-high)] border border-[var(--el-line)] text-el-secondary rounded px-3 py-1 text-[11px] font-bold cursor-pointer hover:bg-[var(--el-surface-container-highest)]"
+          title="تحميل ملف Excel نموذجي لملء البيانات"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> نموذج Excel
+        </button>
         <label className="flex items-center gap-1.5 bg-[var(--el-surface-container-high)] border border-[var(--el-line)] rounded px-3 py-1 text-[11px] font-bold cursor-pointer hover:bg-[var(--el-surface-container-highest)]">
           <Upload className="w-3.5 h-3.5" /> {importing ? 'جاري الرفع...' : 'استيراد Excel'}
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
@@ -241,10 +319,22 @@ export default function ExcelToolbar() {
 
       {/* نتيجة الاستيراد */}
       {importResult && (
-        <div className={`text-[10px] px-2.5 py-1 rounded font-bold ${importResult.error ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}>
-          {importResult.error
-            ? importResult.error
-            : `تم: ${importResult.created} | متخطى: ${importResult.skipped} | المجموع: ${importResult.total}`}
+        <div className="flex flex-col gap-1">
+          <div className={`text-[10px] px-2.5 py-1 rounded font-bold ${importResult.error ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}>
+            {importResult.error
+              ? importResult.error
+              : `تم: ${importResult.created} | متخطى: ${importResult.skipped} | المجموع: ${importResult.total}`}
+          </div>
+          {importResult.errors && importResult.errors.length > 0 && (
+            <div className="bg-red-500/5 border border-red-500/10 rounded p-2 text-[9px] text-red-500 max-h-24 overflow-y-auto w-full text-right" dir="rtl">
+              <div className="font-bold mb-1 text-[10px]">تفاصيل الأخطاء:</div>
+              <ul className="list-disc list-inside space-y-0.5">
+                {importResult.errors.map((err: string, idx: number) => (
+                  <li key={idx}>{err}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

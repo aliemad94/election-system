@@ -13,6 +13,7 @@
 import { prisma } from "./prisma";
 import { enrichElectoralKey } from "./indicators-helper";
 import { allocateSeatsLaguë } from "./seat-projection";
+import { DHIQAR_DISTRICTS } from "./types";
 
 export interface AreaMetrics {
   eiiScore: number;
@@ -328,10 +329,7 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
   );
 
   // 5. مقاييس كل قضاء
-  const districtNames = Array.from(
-    new Set(keys.map((k) => k.district || "الغراف"))
-  );
-  const districts = districtNames
+  const districts = DHIQAR_DISTRICTS
     .map((dName) => {
       const dKeys = enrichedKeys.filter((k) => k.district === dName);
       const dVoters = voters.filter((v) => v.district === dName);
@@ -343,8 +341,7 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
         ...metrics,
         calculatedAt: new Date().toISOString(),
       };
-    })
-    .filter((d) => d.totalKeysInArea > 0 || d.totalVotersInArea > 0);
+    });
 
   // 6. توزيع المقاعد للمحافظة (تفصيلي لكل حزب)
   const govCompetitors = competitors;
