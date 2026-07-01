@@ -21,7 +21,8 @@ import {
   ShieldAlert,
   FileText,
   Users2,
-  Landmark
+  Landmark,
+  Tv
 } from 'lucide-react';
 
 export type PageId =
@@ -42,7 +43,8 @@ export type PageId =
   | 'warroom'
   | 'commission'
   | 'election-results'
-  | 'sms';
+  | 'sms'
+  | 'marketing';
 
 interface SidebarProps {
   activePage: PageId;
@@ -72,6 +74,7 @@ const navItems: { id: PageId; label: string; description: string; icon: React.El
   { id: 'fieldagent', label: 'بوابة المندوب الميداني', description: 'تأكيد الحضور وتحديث الميدان', icon: Network, section: 'الاتصال السياسي' },
   { id: 'comms', label: 'محرك الاتصالات السياسية', description: 'إدارة حملات التواصل السياسي', icon: Megaphone, section: 'الاتصال السياسي' },
   { id: 'warroom', label: 'غرفة عمليات الاقتراع', description: 'متابعة مباشرة ليوم التصويت والفرز', icon: Activity, section: 'يوم الحسم' },
+  { id: 'marketing', label: 'المعرض والتسويق', description: 'سيناريو وعرض ترويجي تفاعلي', icon: Tv, section: 'التسويق والإعلام' },
 ];
 
 export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: SidebarProps) {

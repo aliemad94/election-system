@@ -26,6 +26,7 @@ const VolunteersManagement = dynamic(() => import('@/components/election/Volunte
 const PublicOpinion = dynamic(() => import('@/components/election/PublicOpinion'), { ssr: false });
 const CommissionManagement = dynamic(() => import('@/components/election/CommissionManagement'), { ssr: false });
 const ElectionResultsManagement = dynamic(() => import('@/components/election/ElectionResultsManagement'), { ssr: false });
+const MarketingHub = dynamic(() => import('@/components/election/MarketingHub'), { ssr: false });
 
 import type { PageId } from '@/components/election/Sidebar';
 
@@ -201,6 +202,8 @@ export default function Home() {
         return <ElectionResultsManagement />;
       case 'sms':
         return <SMSBroadcasting />;
+      case 'marketing':
+        return <MarketingHub />;
       default:
         return <ExecutiveDashboard />;
     }
