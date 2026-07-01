@@ -21,11 +21,12 @@ export function ModernDatePicker({
 }: ModernDatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState(value || "");
+  const [prevValue, setPrevValue] = React.useState(value);
 
-  // Update input value when prop changes
-  React.useEffect(() => {
+  if (value !== prevValue) {
     setInputValue(value || "");
-  }, [value]);
+    setPrevValue(value);
+  }
 
   // Try to parse the value to pass to react-day-picker
   const selectedDate = React.useMemo(() => {

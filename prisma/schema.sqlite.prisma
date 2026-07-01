@@ -1,9 +1,6 @@
 // ====================================================================
-// منظومة الماكينة الانتخابية المركزية — محافظة ذي قار
-// Central Electoral Machine Management System — Dhi Qar Governorate
-// ====================================================================
-// ملاحظة: نسخة SQLite للـ staging. الحقول Json مدعومة عبر Prisma
-// كنص JSON. عند الترحيل إلى PostgreSQL الإنتاجي يبقى المخطط متطابقاً.
+// نسخة SQLite للتطوير المحلي — مُولّدة من schema.prisma الافتراضي
+// 24 نموذجاً (متطابقة مع الإنتاج). للأنتاج استخدم schema.postgres.prisma
 // ====================================================================
 
 generator client {
@@ -15,10 +12,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ====================================================================
-// المستخدمون وسجل التدقيق
-// ====================================================================
-
 model User {
   id            String   @id @default(cuid())
   username      String   @unique
@@ -26,14 +19,12 @@ model User {
   role          String   // ADMIN | KEY_USER | OBSERVER
   mustChangePwd Boolean  @default(false) // إجبار تغيير كلمة المرور عند أول دخول
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  updatedAt     DateTime @default(now()) @updatedAt
 
   auditLogs AuditLog[]
 
   @@index([role])
 }
-
-// سجل التدقيق — يلتقط كل عملية تحويلية مع IP والمستخدم
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
@@ -52,24 +43,26 @@ model AuditLog {
   @@index([createdAt])
   @@index([entity, entityId])
 }
-
-// ====================================================================
-// الهيكلة العشائرية الهرمية
-// ====================================================================
-
-// العشيرة الرئيسية
 model Tribe {
-  id           String        @id @default(cuid())
-  name         String        @unique // الاسم الموحّد للعشيرة
-  description  String?
-  subTribes    SubTribe[]
-  voters       Voter[]
-  electionKeys ElectionKey[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-}
+  id              String        @id @default(cuid())
+  name            String        @unique // الاسم الموحّد للعشيرة
+  description     String?
+  leaderName      String?       // اسم شيخ العشيرة
+  leaderPhone     String?       // هاتف شيخ العشيرة
+  district        String?       // القضاء الذي تتواجد فيه
+  influenceRating Int           @default(3) // تصنيف التأثير (1-5)
+  population      Int?          // التعداد التقريبي
+  notes           String?
+  deletedAt      DateTime?     // سلة مهملات (soft delete)
+  subTribes       SubTribe[]
+  voters          Voter[]
+  electionKeys    ElectionKey[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now()) @updatedAt
 
-// الفخذ أو البيت داخل العشيرة
+  @@index([district])
+  @@index([influenceRating])
+}
 model SubTribe {
   id           String        @id @default(cuid())
   name         String
@@ -77,15 +70,11 @@ model SubTribe {
   tribe        Tribe         @relation(fields: [tribeId], references: [id])
   voters       Voter[]
   electionKeys ElectionKey[]
+  deletedAt    DateTime?   // سلة مهملات (soft delete)
 
   @@unique([name, tribeId])
   @@index([tribeId])
 }
-
-// ====================================================================
-// المفتاح الانتخابي (ElectionKey) — محور المنظومة
-// ====================================================================
-
 model ElectionKey {
   id              String      @id @default(cuid())
   keyCode         String      @unique // كود رقمي لكل مفتاح
@@ -108,32 +97,86 @@ model ElectionKey {
   mobilizationCap Int         @default(1) // (1-5)
   loyaltyScore    Int         @default(3) // (1-5)
   riskLevel       Int         @default(1) // (1-5)
+  deletedAt       DateTime?   // سلة مهملات (soft delete)
 
   // محرك المعايرة الذكية لنسب الانحياز (Dynamic Calibration Engine)
   keyAccuracyScore Float      @default(1.0) // معامل الدقة التاريخية (0.0 - 1.0)
   reliabilityLogs  String?    // JSON string — منحنى دقة تقارير المفتاح
+
+  // === حقول إضافية من النسخة القديمة للتوافق الشامل ===
+  nickname         String?
+  phone2           String?
+  email            String?
+  address          String?
+  neighborhood     String?
+  pollingStation   String?
+  age              Int?
+  specialization   String?
+  maritalStatus    String?
+  familySize       Int?
+  notes            String?
+  isActive         Boolean    @default(true)
+  firstContactDate DateTime?
+  lastContactDate  DateTime?
+  lastSpentDate    DateTime?
+  trainingStatus   String?
+  dataAccuracy     String?
+  createdBy        String?
+
+  // حقول القوة الانتخابية والتصويت التفصيلية
+  totalVotes       Int        @default(0)
+  supportedVotes   Int        @default(0)
+  neutralVotes     Int        @default(0)
+  weakVotes        Int        @default(0)
+  netVotes         Int        @default(0)
+
+  // تسعة أبعاد تقييمية (تقييم من 1-5)
+  voteProtection     Int      @default(3) // القدرة على حماية الأصوات
+  supportReason      Int      @default(3) // أسباب الدعم
+  needsLevel         Int      @default(3) // الاحتياجات
+  politicalNote      Int      @default(3) // الملاحظات السياسية
+  organizationalNote Int      @default(3) // الملاحظات التنظيمية
+  generalNote        Int      @default(3) // الملاحظات العامة
+
+  // النتيجة النهائية الموزونة والتصنيف
+  weightedScore      Float      @default(0.0)
+  classification     String     @default("مقبول") // ضعيف / مقبول / جيد / قوي
+
+  // المؤشرات المركبة المتقدمة
+  eiiScore           Float      @default(0.0)
+  kriScore           Float      @default(0.0)
+  vpsScore           Float      @default(0.0)
+  drsScore           Float      @default(0.0)
+  campaignROI        Float      @default(0.0)
+
+  // حقول مالية للمؤشرات
+  totalSpent         Float      @default(0.0)
+  monthlyBudget      Float      @default(0.0)
+  totalInvestment    Float      @default(0.0)
+  costPerVote        Float      @default(0.0)
 
   tribeId    String?
   tribe      Tribe?     @relation(fields: [tribeId], references: [id])
   subTribeId String?
   subTribe   SubTribe?  @relation(fields: [subTribeId], references: [id])
 
-  voters   Voter[]
-  services Service[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  voters        Voter[]
+  services      Service[]
+  earlyWarnings EarlyWarning[]
+  tasks         Task[]         @relation("ElectionKeyTasks")
+  lastEvaluationAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([tribeId])
   @@index([subTribeId])
   @@index([province])
   @@index([district])
   @@index([influenceLevel])
+  @@index([isActive])
+  @@index([classification])
+  @@index([weightedScore])
 }
-
-// ====================================================================
-// الناخب (Voter) — Micro-Targeting + Floating Voters Clustering
-// ====================================================================
-
 model Voter {
   id              String      @id @default(cuid())
   firstName       String
@@ -163,10 +206,22 @@ model Voter {
   voterCategory   String?
   conversionPath  String?
   votedOnDay      Boolean     @default(false) // حالة التصويت الفعلي يوم الاقتراع
+  checkedIn       Boolean     @default(false)
+  checkedInAt     DateTime?
+
+  // حقول الثقة والتقييم (من الوثيقة المرجعية)
+  confidenceScore Int         @default(50)  // درجة الثقة (0-100)
+  evaluationForm  String?     // JSON string — حقول نموذج التقييم
+  notes           String?     // ملاحظات عامة
 
   // نمذجة الكتلة الصامتة والمترددين (Floating Voters Profile Clustering)
   predictedClusterId String?  // رقم المجموعة الديمغرافية للتنبؤ
   imputationWeights  String?  // JSON string — أوزان احتمالية التصويت
+
+  // شجرة التجنيد الهرمية
+  recruitedById String?       // الناخب الذي جنّد هذا الناخب
+  recruitedBy   Voter?   @relation("VoterRecruitment", fields: [recruitedById], references: [id])
+  recruits      Voter[]  @relation("VoterRecruitment")
 
   keyId       String
   electionKey ElectionKey @relation(fields: [keyId], references: [id])
@@ -192,6 +247,8 @@ model Voter {
   registryVoterId     String?
   services            Service[]
   tasks               Task[]
+  confidenceLogs      ConfidenceLog[]
+  deletedAt           DateTime?   // سلة مهملات (soft delete)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -203,12 +260,9 @@ model Voter {
   @@index([district])
   @@index([status])
   @@index([votedOnDay])
+  @@index([confidenceScore])
+  @@index([recruitedById])
 }
-
-// ====================================================================
-// الخدمات (Service) — ربط بالناخب أو المفتاح
-// ====================================================================
-
 model Service {
   id                   String       @id @default(cuid())
   title                String
@@ -225,39 +279,30 @@ model Service {
   voter                Voter?       @relation(fields: [voterId], references: [id])
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
+  deletedAt            DateTime?    // سلة مهملات (soft delete)
 
   @@index([keyId])
   @@index([voterId])
   @@index([category])
   @@index([status])
 }
-
-// ====================================================================
-// بيانات المفوضية (CommissionData) — المطابقة الرسمية
-// ====================================================================
-
 model CommissionData {
-  id               String  @id @default(cuid())
-  province         String
-  district         String
-  subDistrict      String
-  pollingCenter    String
-  ballotStation    String  // المحطة التفصيلية لمطابقة الأرقام
-  registeredVoters Int
-  historicalTurnout Float
-  expectedTurnout  Float?
+  id               String   @id @default(cuid())
+  province         String   @default("ذي قار")
+  district         String   @unique // القضاء (21 قضاء)
+  registeredVoters Int      @default(0) // الحقل 1: عدد الناخبين الكلي
+  actualVoters     Int      @default(0) // الحقل 2: عدد المصوتين الكلي
+  maleVoters       Int      @default(0) // الحقل 3: عدد أصوات الذكور
+  femaleVoters     Int      @default(0) // الحقل 4: عدد أصوات الإناث
+  pollingCenters   Int      @default(0) // الحقل 5: عدد مراكز الاقتراع
+  ballotStations   Int      @default(0) // الحقل 6: عدد محطات الاقتراع
+  // الحقل 7: نسبة المشاركة - حساب تلقائي = (actualVoters ÷ registeredVoters) × 100
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  @@unique([pollingCenter, ballotStation])
   @@index([province])
   @@index([district])
 }
-
-// ====================================================================
-// المنافسون (Competitor) — تحليل القوى السياسية
-// ====================================================================
-
 model Competitor {
   id               String   @id @default(cuid())
   name             String
@@ -275,11 +320,6 @@ model Competitor {
 
   @@index([baseDistrict])
 }
-
-// ====================================================================
-// اتجاهات الرأي العام (SentimentTrend) — وسائل التواصل والاستطلاعات
-// ====================================================================
-
 model SentimentTrend {
   id        String   @id @default(cuid())
   source    String   // Facebook | Telegram | Local Survey
@@ -293,11 +333,6 @@ model SentimentTrend {
   @@index([region])
   @@index([createdAt])
 }
-
-// ====================================================================
-// المتطوعون (Volunteer) والمهام (Task)
-// ====================================================================
-
 model Volunteer {
   id                  String   @id @default(cuid())
   fullName            String
@@ -315,7 +350,6 @@ model Volunteer {
 
   tasks Task[]
 }
-
 model Task {
   id             String     @id @default(cuid())
   title          String
@@ -326,12 +360,16 @@ model Task {
   district       String?
   impactEstimate String?
   dueDate        DateTime?
+  completedAt    DateTime?
 
   targetVoterId String?
   targetVoter   Voter?     @relation(fields: [targetVoterId], references: [id])
 
   assignedToId String?
   assignedTo   Volunteer? @relation(fields: [assignedToId], references: [id])
+
+  electoralKeyId String?
+  electoralKey   ElectionKey? @relation("ElectionKeyTasks", fields: [electoralKeyId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -340,12 +378,8 @@ model Task {
   @@index([priority])
   @@index([district])
   @@index([assignedToId])
+  @@index([electoralKeyId])
 }
-
-// ====================================================================
-// تحديد المعدل (DB-backed — متعدد المثيلات ويصمد لإعادة التشغيل)
-// ====================================================================
-
 model RateLimit {
   key            String    @id
   count          Int       @default(0)
@@ -354,14 +388,186 @@ model RateLimit {
 
   @@index([lastAttemptAt])
 }
-
-// ====================================================================
-// إعدادات النظام (تفعيل/تعطيل وصول الزوار)
-// ====================================================================
-
 model SystemConfig {
   id        String   @id @default("system")
   enabled   Boolean  @default(true)
   updatedAt DateTime @updatedAt
+}
+model ConfidenceLog {
+  id        String   @id @default(cuid())
+  voterId   String
+  voter     Voter    @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  oldScore  Int      // الدرجة القديمة
+  newScore  Int      // الدرجة الجديدة
+  change    Int      // مقدار التغيير (يمكن أن يكون سالباً)
+  reason    String?  // سبب التغيير
+  changedBy String?  // من قام بالتغيير
+  createdAt DateTime @default(now())
+
+  @@index([voterId])
+  @@index([createdAt])
+}
+model SMSCampaign {
+  id             String    @id @default(cuid())
+  name           String
+  message        String    // نص الرسالة
+  filterType     String?   // DISTRICT | TRIBE | CLASSIFICATION | CONFIDENCE
+  filterValue    String?   // قيمة الفلتر
+  recipientCount Int       @default(0)
+  status         String    @default("DRAFT") // DRAFT | SCHEDULED | SENT | FAILED
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  provider       String    @default("TWILIO") // TWILIO | VONAGE
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+model Alert {
+  id        String   @id @default(cuid())
+  type      String   // INFO | WARNING | CRITICAL
+  title     String
+  message   String
+  source    String?  // مصدر التنبيه
+  isRead    Boolean  @default(false)
+  relatedId String?  // معرّف الكيان المرتبط
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+}
+model AccessControl {
+  id          String   @id @default(cuid())
+  label       String   @unique // تسمية كلمة المرور (زائر | مالك)
+  password    String   // كلمة المرور المشفّرة
+  isActive    Boolean  @default(true)
+  lastChanged DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+model EarlyWarning {
+  id              String       @id @default(cuid())
+  electoralKeyId  String?
+  electoralKey    ElectionKey? @relation(fields: [electoralKeyId], references: [id])
+  warningType     String       // CONFIDENCE_DROP | LOYALTY_CHANGE | DEFECTION_RISK | FIELD_ISSUE
+  severity        String       @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  description     String
+  status          String       @default("ACTIVE") // ACTIVE | IN_PROGRESS | RESOLVED
+  detectedAt      DateTime     @default(now())
+  resolvedAt      DateTime?
+  
+  // حقول متوافقة مع شاشة المراقبة الرسومية للإنذار المبكر
+  areaType        String?      // محافظة | قضاء | ناحية | مركز اقتراع
+  areaName        String?
+  estimatedVotesAtRisk Int     @default(0)
+  recommendedAction String?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([electoralKeyId])
+  @@index([severity])
+  @@index([status])
+  @@index([warningType])
+}
+model DynamicIndicator {
+  id            String   @id @default(cuid())
+  area          String   // المنطقة
+  indicatorType String   // MOOD | TREND | STABILITY | TENSION
+  value         Float    // القيمة الحالية
+  previousValue Float    @default(0) // القيمة السابقة
+  trend         String   @default("STABLE") // UP | STABLE | DOWN
+  recordedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([area])
+  @@index([indicatorType])
+  @@index([recordedAt])
+}
+model CompositeIndicator {
+  id           String   @id @default(cuid())
+  area         String   // المنطقة
+  eii          Float    @default(0) // مؤشر التأثير الانتخابي
+  kri          Float    @default(0) // مؤشر موثوقية المفتاح
+  vps          Float    @default(0) // درجة احتمالية التصويت
+  drs          Float    @default(0) // درجة خطر الانشقاق
+  campaignRoi  Float    @default(0) // عائد حملة الانتخاب
+  api          Float    @default(0) // مؤشر اختراق المنطقة
+  ewli         Float    @default(0) // مؤشر خسارة الإنذار المبكر
+  gsi          Float    @default(0) // مؤشر القوة الجغرافية
+  edri         Float    @default(0) // مؤشر جاهزية يوم الانتخاب
+  efi          Float    @default(0) // مؤشر التوقع الانتخابي
+  calculatedAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([area])
+  @@index([calculatedAt])
+}
+model ElectionResult {
+  id                String   @id @default(cuid())
+  year              Int
+  district          String?  // القضاء — اختياري: null يعني نتيجة على مستوى المحافظة
+  scope             String   @default("محافظة") // محافظة | قضاء
+  electionType      String   @default("برلمانية") // برلمانية | مجالس محافظات | بلدية
+  totalRegistered   Int      @default(0) // إجمالي الناخبين المسجلين
+  totalVotes        Int      @default(0)
+  validVotes        Int      @default(0)
+  invalidVotes      Int      @default(0)
+  participationRate Float    @default(0)
+  totalSeats        Int      @default(0) // عدد المقاعد المتاحة
+  seatsWon          Int      @default(0) // المقاعد التي فزنا بها
+  thresholdVotes    Int      @default(0) // العتبة الانتخابية
+  status            String   @default("أولية") // أولية | نهائية | مصادق
+  winnerName        String?
+  winnerVotes       Int      @default(0)
+  notes             String?
+
+  candidates CandidateResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([year])
+  @@index([district])
+  @@index([scope])
+  @@index([electionType])
+  @@index([status])
+}
+model CandidateResult {
+  id                       String         @id @default(cuid())
+  electionResultId         String
+  electionResult           ElectionResult @relation(fields: [electionResultId], references: [id], onDelete: Cascade)
+  candidateName            String // اسم المرشح أو القائمة
+  partyName                String? // اسم الحزب/التحالف
+  votes                    Int            @default(0)
+  votePercentage           Float          @default(0) // نسبة من الأصوات الصحيحة (أساس Saint-Laguë)
+  votePercentageOfTurnout  Float          @default(0) // نسبة من إجمالي المصوتين
+  seatsAllocated           Int            @default(0)
+  isOurCandidate           Boolean        @default(false)
+  gender                   String         @default("ذكر") // ذكر | أنثى
+  notes                    String?
+  createdAt                DateTime       @default(now())
+
+  @@index([electionResultId])
+  @@index([isOurCandidate])
+}
+model ProvinceReference {
+  id                  String   @id @default(cuid())
+  province            String   @unique @default("ذي قار")
+  totalRegisteredVoters Int    @default(1099438)
+  totalActualVoters   Int      @default(538390)
+  generalTurnout      Float    @default(48.97)
+  maleVoters          Int      @default(322970)
+  femaleVoters        Int      @default(215420)
+  pollingCentersCount Int      @default(527)
+  ballotStationsCount Int      @default(2212)
+  lastRegistryUpdate  DateTime?
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 

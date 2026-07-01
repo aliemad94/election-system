@@ -19,10 +19,6 @@ export default function PublicOpinion() {
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchIndicators();
-  }, []);
-
   const fetchIndicators = async () => {
     try {
       const res = await fetch('/api/dynamic-indicators');
@@ -34,6 +30,10 @@ export default function PublicOpinion() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchIndicators();
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

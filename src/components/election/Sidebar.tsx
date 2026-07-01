@@ -116,10 +116,8 @@ export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: S
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto px-2 space-y-1">
           {(() => {
-            let lastSection = '';
-            const itemsWithHeaders = navItems.map((item) => {
-              const showSection = item.section && item.section !== lastSection;
-              if (item.section) lastSection = item.section;
+            const itemsWithHeaders = navItems.map((item, idx) => {
+              const showSection = item.section && (idx === 0 || navItems[idx - 1].section !== item.section);
               return { ...item, showSection };
             });
 
