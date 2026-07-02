@@ -234,6 +234,7 @@ export default function ElectoralKeyManagement() {
 
       const payload = {
         ...form,
+        education: form.educationLevel,   // ربط حقل التعليم بالقاعدة
         loyaltyScore: form.loyaltyLevel,  // تعيين اسم الحقل للـ API
         mobilizationCap: form.mobilizationAbility,
         netVotes: netVotesVal,
