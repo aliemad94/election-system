@@ -32,13 +32,15 @@ export default function Layout({ activePage, onPageChange, children, isOwner, on
         onLogout={onLogout}
         onPageChange={onPageChange}
       />
-      <main className="flex-1 mt-12 md:mr-64 p-4 bg-el-background w-full">
+      <main className="flex-1 mt-12 md:mr-64 p-5 bg-el-background w-full overflow-x-hidden">
         {excelToolbar && (
-          <div className="mb-3 flex justify-end">
+          <div className="mb-4 flex justify-end">
             {excelToolbar}
           </div>
         )}
-        {children}
+        <div key={activePage} className="animate-fade-in duration-300">
+          {children}
+        </div>
       </main>
     </div>
   );
