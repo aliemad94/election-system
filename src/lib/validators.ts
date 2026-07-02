@@ -70,7 +70,7 @@ export const createElectionKeySchema = z.object({
   supportedVotes: z.number().int().default(0),
   neutralVotes: z.number().int().default(0),
   weakVotes: z.number().int().default(0),
-  netVotes: z.number().int().default(0),
+  netVotes: z.number().default(0),
 
   // التقييمات التسعة
   voteProtection: z.number().int().min(1).max(5).default(3),

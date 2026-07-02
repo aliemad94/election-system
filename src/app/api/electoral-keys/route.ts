@@ -86,6 +86,8 @@ async function getHandler(req: NextRequest, { user }: any) {
       district: k.district,
       subDistrict: k.subDistrict,
       pollingCenter: k.pollingCenter,
+      dateOfBirth: k.birthDate ? k.birthDate.toISOString().split("T")[0] : null,
+      educationLevel: k.education || "",
       expectedVotes: k.expectedVotes,
       influenceLevel: k.influenceLevel,
       mobilizationCap: k.mobilizationCap,
