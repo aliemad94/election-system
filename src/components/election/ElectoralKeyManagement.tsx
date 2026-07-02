@@ -617,43 +617,43 @@ export default function ElectoralKeyManagement() {
           <p>لا توجد مفاتيح انتخابية - أضف أول مفتاح</p>
         </div>
       ) : (
-        <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-sm overflow-hidden">
+        <div className="bg-el-surface-container-lowest border border-el-outline-variant/40 dark:border-el-outline-variant/20 rounded-xl overflow-hidden kowalski-shadow-md">
           <div className="overflow-x-auto">
-            <table className="w-full text-right text-[12px] leading-[16px]">
-              <thead className="bg-el-surface-container border-b border-el-outline-variant text-el-on-surface-variant text-[11px] font-bold tracking-wider uppercase">
+            <table className="w-full text-right text-[12.5px] border-collapse">
+              <thead className="bg-el-surface-container/30 border-b border-el-outline-variant/20 text-el-on-surface-variant text-[11px] font-bold tracking-wider uppercase">
                 <tr>
-                  <th className="px-2 py-2 font-normal w-8">
+                  <th className="px-4 py-3.5 w-10 text-center">
                     <input
                       type="checkbox"
-                      checked={selectedIds.size === keys.length && keys.length > 0}
+                      checked={selectedIds.size === (keys || []).length && (keys || []).length > 0}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedIds(new Set(keys.map(k => k.id)));
+                          setSelectedIds(new Set((keys || []).map(k => k.id)));
                         } else {
                           setSelectedIds(new Set());
                         }
                       }}
-                      className="w-4 h-4 cursor-pointer"
+                      className="w-4 h-4 cursor-pointer rounded border-el-outline-variant/40 text-el-primary focus:ring-el-primary"
                     />
                   </th>
-                  <th className="px-3 py-2 font-normal">الكود</th>
-                  <th className="px-3 py-2 font-normal">الاسم</th>
-                  <th className="px-3 py-2 font-normal">اللقب/العشيرة</th>
-                  <th className="px-3 py-2 font-normal">القضاء</th>
-                  <th className="px-3 py-2 font-normal text-center">الأصوات الكلية</th>
-                  <th className="px-3 py-2 font-normal text-center">المؤيد</th>
-                  <th className="px-3 py-2 font-normal text-center">المحايد</th>
-                  <th className="px-3 py-2 font-normal text-center">الضعيف</th>
-                  <th className="px-3 py-2 font-normal text-center">الصافي</th>
-                  <th className="px-3 py-2 font-normal text-center">التقييم</th>
-                  <th className="px-3 py-2 font-normal text-center">التصنيف</th>
-                  <th className="px-3 py-2 font-normal w-10">عرض</th>
+                  <th className="px-4 py-3.5">الكود</th>
+                  <th className="px-4 py-3.5">الاسم</th>
+                  <th className="px-4 py-3.5">اللقب/العشيرة</th>
+                  <th className="px-4 py-3.5">القضاء</th>
+                  <th className="px-4 py-3.5 text-center">الأصوات الكلية</th>
+                  <th className="px-4 py-3.5 text-center">المؤيد</th>
+                  <th className="px-4 py-3.5 text-center">المحايد</th>
+                  <th className="px-4 py-3.5 text-center">الضعيف</th>
+                  <th className="px-4 py-3.5 text-center font-bold">الصافي</th>
+                  <th className="px-4 py-3.5 text-center">التقييم</th>
+                  <th className="px-4 py-3.5 text-center">التصنيف</th>
+                  <th className="px-4 py-3.5 w-16 text-center">عرض</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-el-outline-variant/50">
-                {keys.map((key, idx) => (
-                  <tr key={key.id} className={`hover:bg-el-surface-container-lowest/50 transition-colors h-10 ${idx % 2 === 1 ? 'bg-el-surface-container-low/30' : ''}`}>
-                    <td className="px-2 py-1">
+              <tbody className="divide-y divide-el-outline-variant/15">
+                {(keys || []).map((key, idx) => (
+                  <tr key={key.id} className={`hover:bg-el-surface-container/30 transition-colors duration-200 h-12 ${idx % 2 === 1 ? 'bg-el-surface-container-low/20' : ''}`}>
+                    <td className="px-4 py-2 text-center">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(key.id)}
@@ -663,7 +663,7 @@ export default function ElectoralKeyManagement() {
                           else next.delete(key.id);
                           setSelectedIds(next);
                         }}
-                        className="w-4 h-4 cursor-pointer"
+                        className="w-4 h-4 cursor-pointer rounded border-el-outline-variant/40 text-el-primary focus:ring-el-primary"
                       />
                     </td>
                     <td className="px-3 py-1 font-mono text-el-primary font-semibold">{key.code}</td>

@@ -958,32 +958,32 @@ export default function VoterRegistration() {
           <p className="text-[11px] mt-1 text-el-on-surface-variant/70">قم بتسجيل ناخب جديد للبدء بالبناء الإحصائي.</p>
         </div>
       ) : (
-        <div className="bg-el-surface-container-lowest border border-el-outline-variant rounded-lg overflow-hidden shadow-sm">
+        <div className="bg-el-surface-container-lowest border border-el-outline-variant/40 dark:border-el-outline-variant/20 rounded-xl overflow-hidden kowalski-shadow-md">
           <div className="overflow-x-auto">
-            <table className="w-full text-right">
-              <thead className="bg-el-surface-container border-b border-el-outline-variant text-[11px] font-bold tracking-[0.05em] text-el-on-surface-variant">
+            <table className="w-full text-right border-collapse">
+              <thead className="bg-el-surface-container/30 border-b border-el-outline-variant/20 text-[11px] font-bold tracking-[0.05em] text-el-on-surface-variant">
                 <tr>
-                  <th className="px-4 py-3">الاسم الكامل</th>
-                  <th className="px-4 py-3">رقم الهاتف</th>
-                  <th className="px-4 py-3">القضاء والسكن</th>
-                  <th className="px-4 py-3 text-center">التحصيل والشهادة</th>
-                  <th className="px-4 py-3 text-center">درجة التأييد</th>
-                  <th className="px-4 py-3 text-center">المفتاح المسؤول</th>
-                  <th className="px-4 py-3 text-center">حالة التصويت يوم الاقتراع</th>
-                  <th className="px-4 py-3 text-center">إجراءات</th>
+                  <th className="px-4 py-3.5 font-bold">الاسم الكامل</th>
+                  <th className="px-4 py-3.5 font-bold">رقم الهاتف</th>
+                  <th className="px-4 py-3.5 font-bold">القضاء والسكن</th>
+                  <th className="px-4 py-3.5 text-center font-bold">التحصيل والشهادة</th>
+                  <th className="px-4 py-3.5 text-center font-bold">درجة التأييد</th>
+                  <th className="px-4 py-3.5 text-center font-bold">المفتاح المسؤول</th>
+                  <th className="px-4 py-3.5 text-center font-bold">حالة التصويت</th>
+                  <th className="px-4 py-3.5 text-center font-bold w-24">إجراءات</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-el-outline-variant/50 text-[12px] leading-[16px]">
-                {voters.map((voter) => (
-                  <tr key={voter.id} className="hover:bg-el-surface-container-lowest/50 transition-colors h-11">
-                    <td className="px-4 py-2 font-semibold text-el-on-surface">
+              <tbody className="divide-y divide-el-outline-variant/15 text-[12.5px] leading-[16px]">
+                {(voters || []).map((voter) => (
+                  <tr key={voter.id} className="hover:bg-el-surface-container/30 transition-colors duration-200 h-12">
+                    <td className="px-4 py-2 font-bold text-el-on-surface">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {voter.fullName}
-                        {voter.nickname && <span className="text-el-on-surface-variant text-[10px] mr-1">({voter.nickname})</span>}
-                        {voter.gpsVerified && <span className="bg-blue-100 text-blue-800 text-[8px] font-extrabold px-1 rounded" title="موقع جغرافي مؤكد">GPS</span>}
-                        {voter.isRegistryVerified && <span className="bg-purple-100 text-purple-800 text-[8px] font-extrabold px-1 rounded" title="سجل المفوضية مؤكد">رسمي</span>}
+                        {voter.nickname && <span className="text-el-on-surface-variant text-[11px] mr-1.5 font-normal opacity-85">({voter.nickname})</span>}
+                        {voter.gpsVerified && <span className="bg-blue-500/10 text-blue-700 dark:text-blue-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full" title="موقع جغرافي مؤكد">GPS</span>}
+                        {voter.isRegistryVerified && <span className="bg-purple-500/10 text-purple-700 dark:text-purple-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full" title="سجل المفوضية مؤكد">رسمي</span>}
                       </div>
-                      <div className="text-[10px] text-el-on-surface-variant/60 font-normal mt-0.5">
+                      <div className="text-[10px] text-el-on-surface-variant/70 font-medium mt-0.5">
                         {voter.gender} · {calculateAge(voter.birthDate || voter.dateOfBirth)}
                       </div>
                     </td>

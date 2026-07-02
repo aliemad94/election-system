@@ -135,19 +135,19 @@ export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: S
                     onClick={() => handleNavClick(item.id)}
                     title={item.description}
                     className={`
-                      flex items-center gap-3 px-3 py-2 rounded w-full text-right cursor-pointer
-                      active:scale-95 transition-all
+                      flex items-center gap-3 px-4 py-2.5 rounded-xl w-full text-right cursor-pointer
+                      active:scale-[0.98] transition-all duration-200 group
                       ${
                         isActive
-                           ? 'bg-el-secondary-container text-el-on-secondary-container font-semibold'
-                           : 'text-el-on-surface-variant hover:bg-el-surface-container-highest'
+                           ? 'bg-el-secondary-container/95 text-el-on-secondary-container font-extrabold kowalski-shadow-sm border border-el-secondary/20'
+                           : 'text-el-on-surface-variant hover:bg-el-surface-container-highest hover:text-el-on-surface border border-transparent hover:border-el-outline-variant/20'
                       }
                     `}
                   >
-                    <Icon className="w-5 h-5 shrink-0" />
+                    <Icon className={`w-5 h-5 shrink-0 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-el-secondary' : 'text-el-on-surface-variant/80'}`} />
                     <div className="flex flex-col text-right">
-                      <span className="text-[14px] leading-[20px]">{item.label}</span>
-                      <span className="text-[10px] leading-[14px] text-el-on-surface-variant opacity-70">{item.description}</span>
+                      <span className="text-[13.5px] leading-[18px] tracking-tight">{item.label}</span>
+                      <span className="text-[10px] leading-[14px] text-el-on-surface-variant/70 font-medium group-hover:opacity-100 transition-opacity mt-0.5">{item.description}</span>
                     </div>
                   </button>
                 </React.Fragment>
