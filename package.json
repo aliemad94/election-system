@@ -120,5 +120,10 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "overrides": {
+    "serialize-javascript": ">=6.0.2",
+    "postcss": ">=8.5.10",
+    "js-yaml": ">=4.1.2",
+    "prismjs": ">=1.30.0"
+  }
 }

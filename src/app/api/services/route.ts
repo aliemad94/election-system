@@ -3,6 +3,7 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
@@ -60,7 +61,7 @@ async function getHandler(req: NextRequest) {
 }
 
 // POST /api/services — إنشاء خدمة
-async function postHandler(req: NextRequest, { user }: any) {
+async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const body = await req.json();
     const parsed = createServiceSchema.safeParse(body);
@@ -103,7 +104,7 @@ async function postHandler(req: NextRequest, { user }: any) {
 }
 
 // PUT /api/services — تحديث حالة/أولوية خدمة
-async function putHandler(req: NextRequest, { user }: any) {
+async function putHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const body = await req.json();
     const parsed = updateServiceSchema.safeParse(body);

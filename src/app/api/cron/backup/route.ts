@@ -3,8 +3,9 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { withAuth } from "@/lib/auth-guard";
-import { runBackup } from "@/lib/backup";
+import { runBackup, decryptData } from "@/lib/backup";
 import { handleApiError, auditLog } from "@/lib/security";
 import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
@@ -52,13 +53,14 @@ async function getHandler(request: NextRequest) {
       const files = await fs.readdir(backupDir);
       const backups = await Promise.all(
         files
-          .filter((f) => f.startsWith("backup-") && f.endsWith(".json"))
+          .filter((f) => f.startsWith("backup-") && (f.endsWith(".json") || f.endsWith(".enc.json")))
           .map(async (f) => {
             const stat = await fs.stat(path.join(backupDir, f));
             return {
               fileName: f,
               size: stat.size,
               createdAt: stat.mtime.toISOString(),
+              encrypted: f.endsWith(".enc.json"),
             };
           })
       );
@@ -78,15 +80,18 @@ async function getHandler(request: NextRequest) {
 
       const filePath = path.join(backupDir, file);
       try {
-        const content = await fs.readFile(filePath, "utf-8");
+        const rawContent = await fs.readFile(filePath, "utf-8");
+        // فك تشفير الملفات المشفرة تلقائياً عند التنزيل
+        const content = file.endsWith(".enc.json") ? decryptData(rawContent) : rawContent;
+        const downloadName = file.replace(".enc.json", ".json");
         return new NextResponse(content, {
           headers: {
             "Content-Type": "application/json; charset=utf-8",
-            "Content-Disposition": `attachment; filename="${file}"`,
+            "Content-Disposition": `attachment; filename="${downloadName}"`,
           },
         });
       } catch {
-        return NextResponse.json({ error: "الملف غير موجود على السيرفر" }, { status: 404 });
+        return NextResponse.json({ error: "الملف غير موجود أو فشل فك التشفير" }, { status: 404 });
       }
     }
 
@@ -107,7 +112,7 @@ async function getHandler(request: NextRequest) {
   }
 }
 
-async function postHandler(request: NextRequest, { user }: any) {
+async function postHandler(request: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action");
