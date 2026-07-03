@@ -3,6 +3,7 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
@@ -70,7 +71,7 @@ async function getHandler(req: NextRequest) {
 }
 
 // POST /api/electoral-keys/deduplicate-nicknames — توحيد اللقب وتحديث السجلات
-async function postHandler(req: NextRequest, { user }: any) {
+async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const { primaryNickname, duplicateNicknames } = await req.json();
 

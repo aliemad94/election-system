@@ -91,6 +91,7 @@ export async function middleware(request: NextRequest) {
  * إضافة رؤوس أمان موحّدة لكل الردود
  */
 function applySecurityHeaders(response: NextResponse) {
+  // === الرؤوس الموجودة سابقاً ===
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-XSS-Protection", "1; mode=block");
@@ -100,6 +101,40 @@ function applySecurityHeaders(response: NextResponse) {
     "no-store, no-cache, must-revalidate"
   );
   response.headers.set("Pragma", "no-cache");
+
+  // === رؤوس أمان جديدة ===
+
+  // Content-Security-Policy: يمنع تحميل سكربتات/ستايلات من مصادر غير موثوقة
+  // 'self' = نفس النطاق فقط، 'unsafe-inline' = ضروري لـ Next.js inline styles
+  // 'unsafe-eval' مطلوب لـ Next.js dev mode فقط — في الإنتاج يمكن إزالته
+  const isProduction = process.env.NODE_ENV === "production";
+  const cspDirectives = [
+    "default-src 'self'",
+    `script-src 'self'${isProduction ? "" : " 'unsafe-eval'"} 'unsafe-inline'`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://*.tile.openstreetmap.org",
+    "connect-src 'self' https://*.supabase.com https://*.sentry.io",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join("; ");
+  response.headers.set("Content-Security-Policy", cspDirectives);
+
+  // Strict-Transport-Security: يفرض HTTPS لمدة سنة (في الإنتاج فقط)
+  if (isProduction) {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload"
+    );
+  }
+
+  // Permissions-Policy: يمنع الوصول للكاميرا والميكروفون والموقع الجغرافي
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+  );
 }
 
 export const config = {

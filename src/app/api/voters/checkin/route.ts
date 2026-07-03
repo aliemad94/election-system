@@ -12,6 +12,7 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
@@ -19,7 +20,7 @@ import { checkinSchema, formatZodError } from "@/lib/validators";
 import { invalidateIndicatorsCache } from "@/lib/indicators-cache";
 import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 
-async function checkinHandler(req: NextRequest, { user }: any) {
+async function checkinHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   let body: unknown;
   try {
     body = await req.json();

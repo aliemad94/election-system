@@ -3,6 +3,7 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
@@ -71,7 +72,7 @@ async function getHandler(req: NextRequest) {
 }
 
 // POST /api/tribes/deduplicate — تنفيذ عملية دمج العشائر المتشابهة
-async function postHandler(req: NextRequest, { user }: any) {
+async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const { primaryTribeId, duplicateTribeIds } = await req.json();
 

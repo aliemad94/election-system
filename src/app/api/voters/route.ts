@@ -3,13 +3,14 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
 import { createVoterSchema, formatZodError } from "@/lib/validators";
 
 // GET /api/voters — pagination + search + filters
-async function getHandler(req: NextRequest, { user }: any) {
+async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
@@ -114,7 +115,7 @@ async function getHandler(req: NextRequest, { user }: any) {
 }
 
 // POST /api/voters — إنشاء ناخب
-async function postHandler(req: NextRequest, { user }: any) {
+async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const body = await req.json();
     const parsed = createVoterSchema.safeParse(body);

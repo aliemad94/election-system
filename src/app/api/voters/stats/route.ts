@@ -3,11 +3,12 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/security";
 
-async function getHandler(req: NextRequest, { user }: any) {
+async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const where: Record<string, unknown> = {};
 

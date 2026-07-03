@@ -3,6 +3,7 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
@@ -10,7 +11,7 @@ import { createElectionKeySchema, formatZodError } from "@/lib/validators";
 import { calculateAll } from "@/lib/electoral-calculations";
 
 // GET /api/electoral-keys — قائمة المفاتيح مع فلترة وبحث
-async function getHandler(req: NextRequest, { user }: any) {
+async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const { searchParams } = new URL(req.url);
     const district = searchParams.get("district");
@@ -161,7 +162,7 @@ async function getHandler(req: NextRequest, { user }: any) {
 }
 
 // POST /api/electoral-keys — إنشاء مفتاح مع توليد كود تلقائي (retry لمنع التضارب)
-async function postHandler(req: NextRequest, { user }: any) {
+async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const body = await req.json();
     const parsed = createElectionKeySchema.safeParse(body);

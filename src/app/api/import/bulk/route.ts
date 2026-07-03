@@ -2,6 +2,7 @@
 // /api/import/bulk — استيراد بيانات من Excel
 // ====================================================================
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { auditLog } from "@/lib/security";
@@ -21,7 +22,7 @@ function clamp(str: unknown, max: number): string {
   return s.length > max ? s.slice(0, max) : s;
 }
 
-async function postHandler(req: NextRequest, { user }: any) {
+async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -29,6 +30,39 @@ async function postHandler(req: NextRequest, { user }: any) {
 
     if (!file) {
       return NextResponse.json({ error: "يرجى رفع ملف Excel" }, { status: 400 });
+    }
+
+    // === تحقق أمني من الملف المرفوع ===
+    // 1. فحص الامتداد
+    const fileName = file.name?.toLowerCase() ?? "";
+    if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls") && !fileName.endsWith(".csv")) {
+      return NextResponse.json(
+        { error: "نوع الملف غير مدعوم. يُقبل فقط .xlsx أو .xls أو .csv" },
+        { status: 400 }
+      );
+    }
+
+    // 2. فحص حجم الملف (حد أقصى 10 ميغابايت)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `حجم الملف (${(file.size / 1024 / 1024).toFixed(1)}MB) يتجاوز الحد المسموح (10MB)` },
+        { status: 400 }
+      );
+    }
+
+    // 3. فحص MIME type
+    const allowedMimes = new Set([
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+      "application/vnd.ms-excel", // .xls
+      "text/csv",
+      "application/octet-stream", // بعض المتصفحات ترسل هذا
+    ]);
+    if (file.type && !allowedMimes.has(file.type)) {
+      return NextResponse.json(
+        { error: `نوع الملف (${file.type}) غير مدعوم` },
+        { status: 400 }
+      );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

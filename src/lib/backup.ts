@@ -1,21 +1,77 @@
 // ====================================================================
 // backup.ts — نظام النسخ الاحتياطي التلقائي لقاعدة البيانات
+// مع تشفير AES-256-GCM لحماية البيانات الحساسة
 // ====================================================================
 
 import { prisma } from "./prisma";
 import fs from "fs/promises";
 import path from "path";
+import crypto from "crypto";
 
 export interface BackupResult {
   success: boolean;
   fileName?: string;
   filePath?: string;
   size?: number;
+  encrypted?: boolean;
   error?: string;
 }
 
 /**
- * يقوم بتصدير جداول النظام بالكامل بصيغة JSON ويحفظها كملف احتياطي.
+ * يشتق مفتاح تشفير 256-bit من JWT_SECRET باستخدام PBKDF2.
+ * يضمن أن المفتاح ثابت بين عمليات النسخ والاستعادة طالما JWT_SECRET لم يتغير.
+ */
+function deriveEncryptionKey(): Buffer {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET مطلوب لتشفير النسخ الاحتياطية");
+  }
+  // Salt ثابت مرتبط بالمشروع — لا يحتاج أن يكون سرياً
+  const salt = "electoral-machine-backup-v1";
+  return crypto.pbkdf2Sync(secret, salt, 100_000, 32, "sha256");
+}
+
+/**
+ * يشفّر نصاً بـ AES-256-GCM ويُرجع النتيجة كـ JSON (iv + authTag + ciphertext).
+ */
+export function encryptData(plaintext: string): string {
+  const key = deriveEncryptionKey();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+
+  let encrypted = cipher.update(plaintext, "utf8", "base64");
+  encrypted += cipher.final("base64");
+  const authTag = cipher.getAuthTag();
+
+  return JSON.stringify({
+    v: 1, // إصدار التشفير
+    iv: iv.toString("base64"),
+    tag: authTag.toString("base64"),
+    data: encrypted,
+  });
+}
+
+/**
+ * يفك تشفير بيانات مشفّرة بـ AES-256-GCM.
+ */
+export function decryptData(encryptedJson: string): string {
+  const key = deriveEncryptionKey();
+  const { iv, tag, data } = JSON.parse(encryptedJson);
+
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    key,
+    Buffer.from(iv, "base64")
+  );
+  decipher.setAuthTag(Buffer.from(tag, "base64"));
+
+  let decrypted = decipher.update(data, "base64", "utf8");
+  decrypted += decipher.final("utf8");
+  return decrypted;
+}
+
+/**
+ * يقوم بتصدير جداول النظام بالكامل بصيغة JSON مشفّرة ويحفظها كملف احتياطي.
  * يبقي فقط على آخر 7 نسخ ويقوم بحذف النسخ الأقدم تلقائياً.
  */
 export async function runBackup(): Promise<BackupResult> {
@@ -95,19 +151,22 @@ export async function runBackup(): Promise<BackupResult> {
 
     // اسم الملف الاحتياطي بالتوقيت الحالي
     const timestampStr = new Date().toISOString().replace(/[:.]/g, "-");
-    const fileName = `backup-${timestampStr}.json`;
+    const fileName = `backup-${timestampStr}.enc.json`;
     const filePath = path.join(backupDir, fileName);
 
-    const serializedData = JSON.stringify(backupData, null, 2);
-    await fs.writeFile(filePath, serializedData, "utf-8");
+    // تشفير البيانات قبل الحفظ
+    const serializedData = JSON.stringify(backupData);
+    const encryptedData = encryptData(serializedData);
+    await fs.writeFile(filePath, encryptedData, "utf-8");
 
     // تنظيف النسخ القديمة والاحتفاظ بآخر 7 نسخ فقط
+    // يدعم كلا الامتدادين (.json و .enc.json) للتوافق مع النسخ القديمة
     const files = await fs.readdir(backupDir);
     const backupFiles = files
-      .filter((f) => f.startsWith("backup-") && f.endsWith(".json"))
+      .filter((f) => f.startsWith("backup-") && (f.endsWith(".json") || f.endsWith(".enc.json")))
       .map((f) => ({
         name: f,
-        time: f.replace("backup-", "").replace(".json", ""),
+        time: f.replace("backup-", "").replace(".enc.json", "").replace(".json", ""),
       }));
 
     // ترتيب تنازلي (الأحدث أولاً)
@@ -126,7 +185,8 @@ export async function runBackup(): Promise<BackupResult> {
       success: true,
       fileName,
       filePath,
-      size: serializedData.length,
+      size: encryptedData.length,
+      encrypted: true,
     };
   } catch (error) {
     console.error("Backup process encountered an error:", error);
