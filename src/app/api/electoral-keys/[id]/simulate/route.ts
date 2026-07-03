@@ -3,13 +3,14 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { simulateScenario, type ElectoralKeyData } from "@/lib/electoral-calculations";
 
 async function postHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }>; user: any }
+  { params }: { params: Promise<{ id: string }>; user: AuthenticatedUser }
 ) {
   try {
     const { id } = await params;
