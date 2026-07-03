@@ -3,6 +3,7 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
@@ -13,7 +14,7 @@ import { calculateAll } from "@/lib/electoral-calculations";
 // PUT /api/electoral-keys/[id]
 async function putHandler(
   req: NextRequest,
-  { params, user }: { params: Promise<{ id: string }>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: AuthenticatedUser }
 ) {
   try {
     const { id } = await params;
@@ -125,7 +126,7 @@ async function putHandler(
 // DELETE /api/electoral-keys/[id]
 async function deleteHandler(
   _req: NextRequest,
-  { params, user }: { params: Promise<{ id: string }>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: AuthenticatedUser }
 ) {
   try {
     const { id } = await params;

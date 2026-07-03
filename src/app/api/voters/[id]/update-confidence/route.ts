@@ -3,12 +3,13 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 
 async function postHandler(
   request: NextRequest,
-  { params, user }: { params: Promise<{ id: string }>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: AuthenticatedUser }
 ) {
   try {
     const { id } = await params;

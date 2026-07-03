@@ -3,6 +3,7 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
@@ -11,7 +12,7 @@ import { updateVoterSchema, formatZodError } from "@/lib/validators";
 
 async function putHandler(
   req: NextRequest,
-  { params, user }: { params: Promise<{ id: string }>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: AuthenticatedUser }
 ) {
   try {
     const { id } = await params;
@@ -111,7 +112,7 @@ async function putHandler(
 
 async function deleteHandler(
   _req: NextRequest,
-  { params, user }: { params: Promise<{ id: string }>; user: any }
+  { params, user }: { params: Promise<{ id: string }>; user: AuthenticatedUser }
 ) {
   try {
     const { id } = await params;
