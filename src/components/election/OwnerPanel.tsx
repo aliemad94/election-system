@@ -80,7 +80,13 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFileForRestore(e.target.files[0]);
+      const file = e.target.files[0];
+      const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+      if (file.size > MAX_SIZE) {
+        showMessage('error', `حجم الملف كبير جداً (${(file.size / 1024 / 1024).toFixed(1)}MB). الحد الأقصى المسموح به هو 10MB.`);
+        return;
+      }
+      setSelectedFileForRestore(file);
     }
   };
 
@@ -387,10 +393,11 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
                   onChange={handleFileChange}
                   className="hidden"
                   id="backup-restore-file"
+                  disabled={backupLoading}
                 />
                 <label
-                  htmlFor="backup-restore-file"
-                  className="flex-1 border border-dashed border-border hover:border-primary/50 bg-background text-muted-foreground px-3 py-2 rounded-lg text-xs truncate flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                  htmlFor={backupLoading ? undefined : "backup-restore-file"}
+                  className={`flex-1 border border-dashed border-border hover:border-primary/50 bg-background text-muted-foreground px-3 py-2 rounded-lg text-xs truncate flex items-center justify-center gap-1.5 text-center ${backupLoading ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}
                 >
                   <Upload className="w-3.5 h-3.5" />
                   {selectedFileForRestore ? selectedFileForRestore.name : 'اختر ملف نسخة احتياطية (.json)'}
@@ -401,7 +408,8 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
                       setSelectedFileForRestore(null);
                       setRestoreConfirm(false);
                     }}
-                    className="p-2 text-destructive border border-destructive/20 bg-destructive/5 rounded-lg hover:bg-destructive/10 cursor-pointer"
+                    disabled={backupLoading}
+                    className="p-2 text-destructive border border-destructive/20 bg-destructive/5 rounded-lg hover:bg-destructive/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
