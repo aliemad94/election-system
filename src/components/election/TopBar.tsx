@@ -229,16 +229,16 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
                 <div className="font-bold text-xs text-el-primary border-b border-el-outline-variant pb-1.5 flex justify-between items-center">
                   <span>الناخبون</span>
                   <span className="bg-el-primary-container text-el-on-primary-container px-2 py-0.5 rounded text-[10px]">
-                    {searching ? '...' : searchResults.voters.length}
+                    {searching ? '...' : (searchResults?.voters || []).length}
                   </span>
                 </div>
                 <div className="flex-grow overflow-y-auto max-h-[45vh] space-y-1.5 divide-y divide-el-outline-variant/30">
                   {searching ? (
                     <div className="text-center text-xs text-el-on-surface-variant p-4">جاري البحث...</div>
-                  ) : searchResults.voters.length === 0 ? (
+                  ) : (searchResults?.voters || []).length === 0 ? (
                     <div className="text-center text-xs text-el-on-surface-variant p-4">لا توجد نتائج</div>
                   ) : (
-                    searchResults.voters.map((v) => (
+                    (searchResults?.voters || []).map((v) => (
                       <button
                         key={v.id}
                         onClick={() => handleSearchSelect('voter', v)}
@@ -257,16 +257,16 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
                 <div className="font-bold text-xs text-el-primary border-b border-el-outline-variant pb-1.5 flex justify-between items-center">
                   <span>المفاتيح الانتخابية</span>
                   <span className="bg-el-primary-container text-el-on-primary-container px-2 py-0.5 rounded text-[10px]">
-                    {searching ? '...' : searchResults.electionKeys.length}
+                    {searching ? '...' : (searchResults?.electionKeys || []).length}
                   </span>
                 </div>
                 <div className="flex-grow overflow-y-auto max-h-[45vh] space-y-1.5 divide-y divide-el-outline-variant/30">
                   {searching ? (
                     <div className="text-center text-xs text-el-on-surface-variant p-4">جاري البحث...</div>
-                  ) : searchResults.electionKeys.length === 0 ? (
+                  ) : (searchResults?.electionKeys || []).length === 0 ? (
                     <div className="text-center text-xs text-el-on-surface-variant p-4">لا توجد نتائج</div>
                   ) : (
-                    searchResults.electionKeys.map((k) => (
+                    (searchResults?.electionKeys || []).map((k) => (
                       <button
                         key={k.id}
                         onClick={() => handleSearchSelect('key', k)}
@@ -285,16 +285,16 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
                 <div className="font-bold text-xs text-el-primary border-b border-el-outline-variant pb-1.5 flex justify-between items-center">
                   <span>العشائر</span>
                   <span className="bg-el-primary-container text-el-on-primary-container px-2 py-0.5 rounded text-[10px]">
-                    {searching ? '...' : searchResults.tribes.length}
+                    {searching ? '...' : (searchResults?.tribes || []).length}
                   </span>
                 </div>
                 <div className="flex-grow overflow-y-auto max-h-[45vh] space-y-1.5 divide-y divide-el-outline-variant/30">
                   {searching ? (
                     <div className="text-center text-xs text-el-on-surface-variant p-4">جاري البحث...</div>
-                  ) : searchResults.tribes.length === 0 ? (
+                  ) : (searchResults?.tribes || []).length === 0 ? (
                     <div className="text-center text-xs text-el-on-surface-variant p-4">لا توجد نتائج</div>
                   ) : (
-                    searchResults.tribes.map((t) => (
+                    (searchResults?.tribes || []).map((t) => (
                       <button
                         key={t.id}
                         onClick={() => handleSearchSelect('tribe', t)}
