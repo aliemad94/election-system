@@ -74,31 +74,55 @@ const navItems: { id: PageId; label: string; description: string; icon: React.El
   { id: 'warroom', label: 'غرفة عمليات الاقتراع', description: 'متابعة مباشرة ليوم التصويت والفرز', icon: Activity, section: 'يوم الحسم' },
 ];
 
+import { motion, AnimatePresence } from 'framer-motion';
+
 export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: SidebarProps) {
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const handleNavClick = (pageId: PageId) => {
     onPageChange(pageId);
     onClose();
   };
 
+  const sidebarVariants = {
+    open: {
+      x: 0,
+      transition: { type: 'spring' as const, stiffness: 280, damping: 28 }
+    },
+    closed: {
+      x: isMobile ? '100%' : 0,
+      transition: { type: 'spring' as const, stiffness: 280, damping: 28 }
+    }
+  };
+
   return (
     <>
       {/* Mobile overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={onClose}
-        />
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={onClose}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar */}
-      <nav
-        className={`
-          fixed right-0 top-0 h-full z-50 w-64 flex flex-col
-          bg-el-surface-container border-l border-el-outline-variant
-          pt-12 pb-4 transition-transform duration-300
-          ${isOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
-          md:translate-x-0
-        `}
+      <motion.nav
+        variants={sidebarVariants}
+        initial={false}
+        animate={isOpen ? 'open' : 'closed'}
+        className="fixed right-0 top-0 h-full z-50 w-64 flex flex-col bg-el-surface-container border-l border-el-outline-variant pt-12 pb-4"
       >
         {/* Header */}
         <div className="p-4 border-b border-el-outline-variant mb-4 flex flex-col items-center">
@@ -131,7 +155,9 @@ export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: S
                       {item.section}
                     </div>
                   )}
-                  <button
+                  <motion.button
+                    whileHover={{ x: -4 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => handleNavClick(item.id)}
                     title={item.description}
                     className={`
@@ -149,7 +175,7 @@ export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: S
                       <span className="text-[13.5px] leading-[18px] tracking-tight">{item.label}</span>
                       <span className="text-[10px] leading-[14px] text-el-on-surface-variant/70 font-medium group-hover:opacity-100 transition-opacity mt-0.5">{item.description}</span>
                     </div>
-                  </button>
+                  </motion.button>
                 </React.Fragment>
               );
             });
@@ -158,26 +184,37 @@ export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: S
 
         {/* Footer */}
         <div className="px-4 mt-auto space-y-4">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => handleNavClick('sms')}
-            className="w-full bg-el-primary text-el-on-primary py-2 px-4 rounded text-[14px] leading-[20px] flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+            className="w-full bg-el-primary text-el-on-primary py-2 px-4 rounded text-[14px] leading-[20px] flex items-center justify-center gap-2 hover:opacity-90 transition-opacity cursor-pointer"
           >
             <MessageSquare className="w-[18px] h-[18px]" />
             بث رسائل
-          </button>
+          </motion.button>
           <div className="pt-2 border-t border-el-outline-variant space-y-1">
-            <button className="flex items-center gap-3 px-3 py-2 rounded text-el-on-surface-variant hover:bg-el-surface-container-highest transition-all cursor-pointer active:scale-95 w-full">
+            <motion.button 
+              whileHover={{ x: -4 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-3 px-3 py-2 rounded text-el-on-surface-variant hover:bg-el-surface-container-highest transition-all cursor-pointer w-full"
+            >
               <Settings className="w-5 h-5" />
               <span className="text-[14px] leading-[20px]">الإعدادات</span>
-            </button>
-            <button className="flex items-center gap-3 px-3 py-2 rounded text-el-on-surface-variant hover:bg-el-surface-container-highest transition-all cursor-pointer active:scale-95 w-full">
+            </motion.button>
+            <motion.button 
+              whileHover={{ x: -4 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-3 px-3 py-2 rounded text-el-on-surface-variant hover:bg-el-surface-container-highest transition-all cursor-pointer w-full"
+            >
               <HelpCircle className="w-5 h-5" />
               <span className="text-[14px] leading-[20px]">المساعدة</span>
-            </button>
+            </motion.button>
           </div>
         </div>
-      </nav>
+      </motion.nav>
     </>
   );
 }
+
 
