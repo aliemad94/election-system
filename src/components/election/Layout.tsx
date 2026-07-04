@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Sidebar, { type PageId } from './Sidebar';
 import TopBar from './TopBar';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface LayoutProps {
   activePage: PageId;
@@ -38,11 +39,24 @@ export default function Layout({ activePage, onPageChange, children, isOwner, on
             {excelToolbar}
           </div>
         )}
-        <div key={activePage} className="animate-fade-in duration-300">
-          {children}
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activePage}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{
+              type: 'spring' as const,
+              stiffness: 140,
+              damping: 18
+            }}
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
 }
+
 

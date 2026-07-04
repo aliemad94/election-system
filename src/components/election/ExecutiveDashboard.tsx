@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import dynamic from 'next/dynamic';
+import { motion } from 'framer-motion';
 
 const DistrictMap = dynamic(() => import('./districtmap'), { ssr: false });
 import IndicatorInfoBar from "./IndicatorInfoBar";
@@ -80,9 +81,29 @@ export default function ExecutiveDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 gap-3">
-        <Activity className="w-6 h-6 text-el-primary animate-pulse" />
-        <span className="text-el-on-surface-variant text-[14px]">جاري حساب المؤشرات الحاسمة...</span>
+      <div className="flex flex-col gap-6 max-w-[1440px] mx-auto w-full p-4 animate-pulse">
+        {/* Title skeleton */}
+        <div className="flex justify-between items-center border-b border-el-outline-variant/30 pb-3">
+          <div className="h-8 bg-el-surface-container-highest rounded-md w-64"></div>
+          <div className="h-5 bg-el-surface-container-highest rounded-md w-32"></div>
+        </div>
+
+        {/* Top metrics grids skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 bg-el-surface-container border border-el-outline-variant/20 rounded-xl p-6 flex flex-col justify-between">
+              <div className="h-4 bg-el-surface-container-highest rounded w-24"></div>
+              <div className="h-8 bg-el-surface-container-highest rounded w-32 mt-2"></div>
+              <div className="h-3 bg-el-surface-container-highest rounded w-48 mt-1"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Main section skeletons */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 h-[450px] bg-el-surface-container border border-el-outline-variant/20 rounded-xl p-6"></div>
+          <div className="h-[450px] bg-el-surface-container border border-el-outline-variant/20 rounded-xl p-6"></div>
+        </div>
       </div>
     );
   }
@@ -140,10 +161,38 @@ export default function ExecutiveDashboard() {
   const geoDistribution = d.geoDistribution || [];
   const keyRanking = d.keyRanking || [];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.08
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring' as const,
+        stiffness: 140,
+        damping: 18
+      }
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-4 max-w-[1440px] mx-auto w-full animate-fade-in-up duration-500 premium-noise-bg">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="flex flex-col gap-4 max-w-[1440px] mx-auto w-full premium-noise-bg"
+    >
       {/* ═══ العنوان ═══ */}
-      <div className="flex justify-between items-start border-b border-el-outline-variant/30 pb-3">
+      <motion.div variants={itemVariants} className="flex justify-between items-start border-b border-el-outline-variant/30 pb-3">
         <div>
           <h1 className="text-[24px] font-extrabold text-el-primary flex items-center gap-2 tracking-tight">
             <Target className="w-6 h-6 text-el-secondary" /> المؤشرات الحاسمة — ذي قار
@@ -155,10 +204,10 @@ export default function ExecutiveDashboard() {
         <div className="text-[11px] text-el-on-surface-variant bg-el-surface-container/60 px-3 py-1.5 rounded-lg border border-el-outline-variant/20 kowalski-shadow-sm font-mono">
           آخر تحديث: {new Date(m.calculatedAt || Date.now()).toLocaleString('en-US')}
         </div>
-      </div>
+      </motion.div>
 
       {/* ═══ Hero: المؤشرات الاستراتيجية ═══ */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <motion.section variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* المقاعد المتوقعة - بنر عريض فاخر */}
         <div className="lg:col-span-3">
           <IndicatorInfoBar indicatorKey="PROJECTED_SEATS" />
@@ -341,7 +390,7 @@ export default function ExecutiveDashboard() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* ═══ مؤشرا الدقة والخطر + نسب التأييد ═══ */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -699,7 +748,7 @@ export default function ExecutiveDashboard() {
           </table>
         </div>
       </section>
-    </div>
+    </motion.div>
   );
 }
 
