@@ -174,7 +174,7 @@ async function setup() {
     const adminLogin = await httpReq("POST", "/api/access", {
       body: JSON.stringify({
         action: "owner-login",
-        ownerPassword: process.env.ADMIN_PASSWORD || "LocalAdminDev2026!",
+        ownerPassword: process.env.ADMIN_PASSWORD || "DhiQarOwner2026!",
       }),
     });
     saveCookie(adminLogin.headers["set-cookie"], ADMIN_COOKIE);
@@ -182,7 +182,7 @@ async function setup() {
     const userLogin = await httpReq("POST", "/api/access", {
       body: JSON.stringify({
         action: "login",
-        password: process.env.USER_PASSWORD || "LocalUserDev2026!",
+        password: process.env.USER_PASSWORD || "DhiQarUser2026!",
       }),
     });
     saveCookie(userLogin.headers["set-cookie"], USER_COOKIE);
