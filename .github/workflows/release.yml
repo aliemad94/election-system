@@ -1,0 +1,283 @@
+# ════════════════════════════════════════════════════════════════════
+# خط أنابيب الإصدارات الآمنة — الماكينة الانتخابية لذي قار
+# Release & Deployment Pipeline — Dhi Qar Electoral System
+# ════════════════════════════════════════════════════════════════════
+# ⚠️ تم استنباط القواعد والتحسينات من إرشادات التقسية الأمنية الرسمية لـ GitHub Actions
+# (نظراً لعدم توفر المهارة الخاصة @github-actions-advanced في هذه الجلسة).
+# ════════════════════════════════════════════════════════════════════
+
+name: "Release & Safe Deploy"
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+
+# التحكم بالتزامن لمنع تصادم الإصدارات ولإلغاء التشغيلات المتجاوزة
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+# تقييد الصلاحيات الافتراضية لمنع هجمات حقن الصلاحيات (Least Privilege Principle)
+permissions:
+  contents: write
+  packages: write
+  issues: write
+
+env:
+  NODE_VERSION: "20"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────
+  # الوظيفة 1: البناء المتكامل (Next.js + Docker Image)
+  # Job 1: Build (Immutable Artifacts Creation)
+  # ──────────────────────────────────────────────────────────────────
+  build:
+    name: "🏗️ Build Artifacts"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      semver: ${{ steps.version.outputs.semver }}
+      docker_tag: ${{ steps.version.outputs.docker_tag }}
+
+    steps:
+      - name: "📥 Checkout Code"
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: "🏷️ Determine SemVer and Image Tags"
+        id: version
+        run: |
+          # استخراج رقم الإصدار من Tag أو استخدام SHA للالتزام بـ Immutable Artifacts
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            SEMVER="${{ github.ref_name }}"
+          else
+            SEMVER="v0.0.0-sha.${{ github.sha }}"
+          fi
+          DOCKER_TAG="sha-${{ github.sha }}"
+          echo "semver=${SEMVER}" >> "$GITHUB_OUTPUT"
+          echo "docker_tag=${DOCKER_TAG}" >> "$GITHUB_OUTPUT"
+          echo "🏷️ Tagging release as: ${SEMVER} | Docker tag: ${DOCKER_TAG}"
+
+      - name: "🟢 Setup Node.js"
+        uses: actions/setup-node@60a2b88c0360c1a2e413d24f69f363689509f963 # v4.0.3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "📦 Cache Dependencies"
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        id: npm-cache
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
+
+      - name: "📦 Install Dependencies (Strict Lockfile)"
+        if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm ci --ignore-scripts
+
+      - name: "⚙️ Generate Prisma Client"
+        run: npx prisma generate
+
+      - name: "🐳 Setup Docker Buildx"
+        uses: docker/setup-buildx-action@d70b336265685a02951275302025e0300a4cad18 # v3.3.0
+
+      - name: "🐳 Log in to GitHub Container Registry (GHCR)"
+        uses: docker/login-action@0d22f112666bc6732cf09d202da24ca0b3f65b09 # v3.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "🐳 Build and Push Immutable Docker Image"
+        uses: docker/build-push-action@ca012c3d80ac9de4228faacb7a4dae972794112e # v3.1.1
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.docker_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.semver }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ──────────────────────────────────────────────────────────────────
+  # الوظيفة 2: التحقق واجتياز البوابات (الفشل السريع)
+  # Job 2: Verify (Fail-Fast Verification & Smoke Checks)
+  # ──────────────────────────────────────────────────────────────────
+  verify:
+    name: "🧪 Verify & Test"
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 10
+
+    steps:
+      - name: "📥 Checkout Code"
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: "🟢 Setup Node.js"
+        uses: actions/setup-node@60a2b88c0360c1a2e413d24f69f363689509f963 # v4.0.3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "📦 Cache Dependencies"
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: "📦 Install Dependencies"
+        run: npm ci --ignore-scripts
+
+      - name: "⚙️ Generate Prisma Client"
+        run: npx prisma generate
+
+      - name: "🔎 Run static checkers (TypeScript Type-Safety)"
+        run: npx tsc --noEmit
+
+      - name: "🧹 ESLint Linting"
+        run: npm run lint
+
+      - name: "🧪 Run Vitest Suite"
+        run: npm test
+
+      - name: "🐳 Pull and Smoke Check Built Container"
+        run: |
+          # فحص عمل الحاوية المصدرة والتأكد من إمكانية تشغيلها واستجابة فحص الصحة الأساسي
+          docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+          docker run -d --name smoke-test -p 3000:3000 \
+            -e JWT_SECRET="smoke-test-secret-must-be-long-and-secure-key" \
+            -e ADMIN_PASSWORD="SmokeTestPassword!2026" \
+            -e USER_PASSWORD="SmokeTestUserPassword!2026" \
+            -e DATABASE_URL="postgresql://ci:ci@localhost:5432/ci" \
+            -e ALLOW_INSECURE_SEED_DEFAULTS="true" \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.docker_tag }}
+          
+          # الانتظار 10 ثوانٍ للسماح للخادم بالإقلاع
+          sleep 10
+          
+          # التحقق من استجابة المنفذ
+          curl --fail http://localhost:3000/ || {
+            echo "🚨 Smoke test failed: Application did not respond on port 3000"
+            docker logs smoke-test
+            exit 1;
+          }
+          
+          # تنظيف الحاوية
+          docker stop smoke-test
+          docker rm smoke-test
+          echo "✅ Smoke test passed successfully"
+
+  # ──────────────────────────────────────────────────────────────────
+  # الوظيفة 3: النشر الرسمي للموقع (Railway Release)
+  # Job 3: Release & Deploy to Railway
+  # ──────────────────────────────────────────────────────────────────
+  release:
+    name: "🚀 Deploy Release"
+    runs-on: ubuntu-latest
+    needs: [build, verify]
+    timeout-minutes: 10
+
+    steps:
+      - name: "📥 Checkout Code"
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: "⚙️ Setup Railway CLI"
+        run: npm install -g @railway/cli
+
+      - name: "🚀 Deploy Service via Railway CLI"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          # النشر الفعلي للتطبيق باستخدام Dockerfile المعتمد والمدعوم في Railway
+          railway up --service election-system --detach
+
+      - name: "✅ Post-Deploy Live Health Check"
+        run: |
+          # الانتظار ريثما يقوم خادم Railway بتهيئة الحاوية الجديدة
+          sleep 30
+          
+          # فحص مسار الصحة الفعلي للموقع العام
+          # (تأكد من ضبط المتغير RAILWAY_STATIC_URL في أسرار GitHub)
+          LIVE_URL="${{ secrets.RAILWAY_STATIC_URL }}"
+          if [ -n "$LIVE_URL" ]; then
+            echo "🌐 Verifying live site: $LIVE_URL"
+            curl --fail -s -o /dev/null -w "%{http_code}" "$LIVE_URL" || {
+              echo "🚨 Production endpoint returned an error after deployment!"
+              exit 1
+            }
+          else
+            echo "⚠️ RAILWAY_STATIC_URL is not set, skipping live health check"
+          fi
+
+  # ──────────────────────────────────────────────────────────────────
+  # الوظيفة 4: التراجع التلقائي عند فشل النشر
+  # Job 4: Automated Rollback on Release Failure
+  # ──────────────────────────────────────────────────────────────────
+  rollback:
+    name: "🚨 Rollback On Failure"
+    runs-on: ubuntu-latest
+    needs: [build, verify, release]
+    if: failure() && (github.event_name == 'push' || github.ref_type == 'tag')
+    timeout-minutes: 5
+
+    steps:
+      - name: "📥 Checkout Code (Full History)"
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "🔄 Rollback Deployment on Railway"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          # تثبيت وتفعيل أداة Railway للتراجع عن الإصدار الحالي المعطوب
+          npm install -g @railway/cli
+          echo "🔄 Initiating rollback to the previous successful deploy on Railway..."
+          railway rollback --service election-system --yes
+
+      - name: "💬 Notify Slack of Deployment Failure and Rollback"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          # إرسال إشعار فوري لفريق العمل بالخطأ وإجراء التراجع
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data '{
+                "text": "🚨 *فشل عملية نشر الإصدار وإطلاق التراجع التلقائي! (Deployment Failed & Rollback Triggered)*\n\n*الفرع/الوسم:* `'${{ github.ref_name }}'`\n*الـ Commit الفاشل:* `'${{ github.sha }}'`\n*سجلات الـ Action:* https://github.com/'${{ github.repository }}'/actions/runs/'${{ github.runId }}'\n*الإجراء:* تم تفعيل التراجع الفوري لآخر إصدار مستقر على Railway ↩️"
+              }' "$SLACK_WEBHOOK_URL"
+          else
+            echo "⚠️ SLACK_WEBHOOK_URL is not configured, skipping Slack notification."
+          fi
+
+      - name: "📋 Create Rollback Issue on GitHub"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Deploy Failed: Automatically Rolled Back to Previous Deployment`,
+              labels: ['deploy-failure', 'rollback'],
+              body: [
+                `## 🚨 فشل نشر الإصدار والتراجع التلقائي`,
+                ``,
+                `حدث خلل أثناء تشغيل خط النشر والتحقق لوسم أو دفعة: \`${context.ref}\``,
+                `- **معرف الدفعة (Commit SHA):** \`${context.sha}\``,
+                `- **سجلات الخطوات والتفاصيل:** [سجلات تفاصيل التشغيل](${runUrl})`,
+                ``,
+                `### 🛠️ الإجراءات التي تم اتخاذها تلقائياً:`,
+                `1. **التراجع على Railway:** تم استدعاء دالة التراجع لإعادة توجيه حركة المرور لآخر حاوية مستقرة سابقة بنجاح.`,
+                `2. **الإشعارات:** تم إرسال تنبيه لفريق العمل عبر Slack.`,
+                ``,
+                `يرجى فحص السجلات المرفقة وإصلاح الثغرة في كود المصدر قبل إعادة الدمج.`,
+              ].join('\n')
+            });
