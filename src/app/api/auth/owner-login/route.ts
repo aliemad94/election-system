@@ -25,7 +25,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate Limiting
-    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const rawIp = request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for") || "127.0.0.1";
+    const ip = rawIp.split(",")[0].trim();
     const rateLimitKey = `owner_login:${ip}`;
 
     const rateLimit = await prisma.rateLimit.findUnique({
