@@ -146,15 +146,35 @@ export default function TribalManagement() {
   }, [fetchAllTribes]);
 
   useEffect(() => {
-    const handleGlobalSelect = (e: Event) => {
+    const handleGlobalSelect = async (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail && customEvent.detail.type === 'tribe') {
-        setSearchQuery(customEvent.detail.fullName);
+        const tribeId = customEvent.detail.id;
+        let tribe = allTribesForStats.find(t => t.id === tribeId);
+        if (!tribe) {
+          tribe = tribes.find(t => t.id === tribeId);
+        }
+        
+        if (tribe) {
+          setSelectedTribe(tribe);
+        } else {
+          try {
+            const res = await fetch(`/api/tribes?search=${encodeURIComponent(customEvent.detail.fullName)}`);
+            const data = await res.json();
+            const list = data.list || (Array.isArray(data) ? data : []);
+            const found = list.find((t: any) => t.id === tribeId);
+            if (found) {
+              setSelectedTribe(found);
+            }
+          } catch (err) {
+            console.error('Error fetching tribe details:', err);
+          }
+        }
       }
     };
     window.addEventListener('global-search-select', handleGlobalSelect);
     return () => window.removeEventListener('global-search-select', handleGlobalSelect);
-  }, []);
+  }, [allTribesForStats, tribes]);
 
   const handleAddTribe = async () => {
     try {

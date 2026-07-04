@@ -197,15 +197,31 @@ export default function VoterRegistration() {
   }, [searchQuery, filterDistrict, filterVoted, limit]);
 
   useEffect(() => {
-    const handleGlobalSelect = (e: Event) => {
+    const handleGlobalSelect = async (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail && customEvent.detail.type === 'voter') {
-        setSearchQuery(customEvent.detail.fullName);
+        const voterId = customEvent.detail.id;
+        const localVoter = voters.find(v => v.id === voterId);
+        if (localVoter) {
+          handleEditClick(localVoter);
+        } else {
+          try {
+            const res = await fetch(`/api/voters/${voterId}`);
+            if (res.ok) {
+              const voter = await res.json();
+              if (voter) {
+                handleEditClick(voter);
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching selected voter details:', err);
+          }
+        }
       }
     };
     window.addEventListener('global-search-select', handleGlobalSelect);
     return () => window.removeEventListener('global-search-select', handleGlobalSelect);
-  }, []);
+  }, [voters]);
   const handleExportCSV = async () => {
     try {
       const params = new URLSearchParams();

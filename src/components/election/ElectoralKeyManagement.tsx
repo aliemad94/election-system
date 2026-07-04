@@ -209,15 +209,31 @@ export default function ElectoralKeyManagement() {
   useEffect(() => { fetchKeys(); fetchTribes(); }, [fetchKeys, fetchTribes]);
 
   useEffect(() => {
-    const handleGlobalSelect = (e: Event) => {
+    const handleGlobalSelect = async (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail && customEvent.detail.type === 'key') {
-        setSearchQuery(customEvent.detail.fullName);
+        const keyId = customEvent.detail.id;
+        const localKey = keys.find(k => k.id === keyId);
+        if (localKey) {
+          handleStartEdit(localKey);
+        } else {
+          try {
+            const res = await fetch(`/api/electoral-keys/${keyId}`);
+            if (res.ok) {
+              const key = await res.json();
+              if (key) {
+                handleStartEdit(key);
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching selected key details:', err);
+          }
+        }
       }
     };
     window.addEventListener('global-search-select', handleGlobalSelect);
     return () => window.removeEventListener('global-search-select', handleGlobalSelect);
-  }, []);
+  }, [keys]);
 
   const handleSaveKey = async () => {
     try {
