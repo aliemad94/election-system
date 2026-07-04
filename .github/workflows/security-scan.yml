@@ -1,0 +1,149 @@
+# ════════════════════════════════════════════════════════════════════
+# فحص أمني أسبوعي مجدول — منظومة الماكينة الانتخابية
+# Weekly Security Scan — Electoral Machine Management System
+# ════════════════════════════════════════════════════════════════════
+# يعمل كل يوم اثنين الساعة 6 صباحاً UTC (9 صباحاً بغداد)
+# ويمكن تشغيله يدوياً أيضاً
+# ════════════════════════════════════════════════════════════════════
+
+name: "🛡️ Weekly Security Scan"
+
+on:
+  schedule:
+    # كل يوم اثنين الساعة 6:00 صباحاً UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch: # تشغيل يدوي من واجهة GitHub
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  NODE_VERSION: "20"
+  DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+  JWT_SECRET: "ci-scan-only-not-a-real-secret"
+  ADMIN_PASSWORD: "CiScanOnly!2026"
+  USER_PASSWORD: "CiScanOnly!2026"
+  ALLOW_INSECURE_SEED_DEFAULTS: "true"
+
+jobs:
+  security-scan:
+    name: "🛡️ Security Audit"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: "📥 Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "🟢 Setup Node.js ${{ env.NODE_VERSION }}"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "📦 Install dependencies"
+        run: npm ci --ignore-scripts
+
+      - name: "⚙️ Generate Prisma Client"
+        run: npx prisma generate
+
+      - name: "🔍 npm audit (JSON output)"
+        id: audit
+        run: |
+          set +e
+          AUDIT_OUTPUT=$(npm audit --json 2>&1)
+          AUDIT_EXIT=$?
+          echo "$AUDIT_OUTPUT" > audit-results.json
+          echo "exit_code=$AUDIT_EXIT" >> "$GITHUB_OUTPUT"
+          set -e
+
+          # Parse critical/high counts
+          CRITICAL=$(echo "$AUDIT_OUTPUT" | node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('/dev/stdin','utf8'));
+            const v = data.metadata?.vulnerabilities || {};
+            console.log(v.critical || 0);
+          " 2>/dev/null || echo "0")
+          HIGH=$(echo "$AUDIT_OUTPUT" | node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('/dev/stdin','utf8'));
+            const v = data.metadata?.vulnerabilities || {};
+            console.log(v.high || 0);
+          " 2>/dev/null || echo "0")
+
+          echo "critical=$CRITICAL" >> "$GITHUB_OUTPUT"
+          echo "high=$HIGH" >> "$GITHUB_OUTPUT"
+          echo "📊 Vulnerabilities found — Critical: $CRITICAL, High: $HIGH"
+
+      - name: "🔐 Run verify-security.js"
+        id: verify
+        run: |
+          set +e
+          node scripts/verify-security.js 2>&1 | tee verify-output.txt
+          VERIFY_EXIT=$?
+          echo "exit_code=$VERIFY_EXIT" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: "📋 Create issue if vulnerabilities found"
+        if: steps.audit.outputs.critical != '0' || steps.audit.outputs.high != '0' || steps.verify.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const critical = '${{ steps.audit.outputs.critical }}';
+            const high = '${{ steps.audit.outputs.high }}';
+            const verifyFailed = '${{ steps.verify.outputs.exit_code }}' !== '0';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const today = new Date().toISOString().split('T')[0];
+
+            // Check if a similar issue already exists (don't spam)
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'security-scan',
+              state: 'open',
+            });
+
+            if (existingIssues.data.length > 0) {
+              console.log('Open security scan issue already exists, skipping creation');
+              return;
+            }
+
+            const sections = [];
+            sections.push(`## 🛡️ فحص أمني أسبوعي — ${today}`);
+            sections.push('');
+
+            if (critical !== '0' || high !== '0') {
+              sections.push(`### ⚠️ ثغرات في التبعيات (npm audit)`);
+              sections.push(`- **حرجة (Critical):** ${critical}`);
+              sections.push(`- **عالية (High):** ${high}`);
+              sections.push('');
+            }
+
+            if (verifyFailed) {
+              sections.push(`### 🔐 فشل سكربت التحقق الأمني`);
+              sections.push(`سكربت \`scripts/verify-security.js\` فشل. راجع السجلات للتفاصيل.`);
+              sections.push('');
+            }
+
+            sections.push(`### 📋 الإجراء المطلوب`);
+            sections.push(`1. راجع [سجلات الفحص](${runUrl})`);
+            sections.push(`2. شغّل \`npm audit fix\` لإصلاح الثغرات التلقائية`);
+            sections.push(`3. راجع الثغرات المتبقية يدوياً وحدّث الحزم حسب الحاجة`);
+            sections.push('');
+            sections.push('---');
+            sections.push('*تم إنشاء هذا التقرير تلقائياً بواسطة Weekly Security Scan* 🤖');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🛡️ Security Alert: ${today} — ${critical} critical, ${high} high vulnerabilities`,
+              labels: ['security-scan', 'security'],
+              body: sections.join('\n'),
+            });
+
+      - name: "✅ Summary"
+        run: |
+          echo "=== Security Scan Complete ==="
+          echo "npm audit critical: ${{ steps.audit.outputs.critical }}"
+          echo "npm audit high: ${{ steps.audit.outputs.high }}"
+          echo "verify-security.js exit: ${{ steps.verify.outputs.exit_code }}"
