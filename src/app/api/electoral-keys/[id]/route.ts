@@ -141,8 +141,13 @@ async function deleteHandler(
       );
     }
 
-    // حذف المفتاح يضمن حذف الناخبين المرتبطين (cascade عبر Prisma)
-    await prisma.electionKey.delete({ where: { id } });
+    // حذف السجلات المرتبطة لتفادي انتهاك القيود الخارجية (Foreign Key Constraints)
+    await prisma.$transaction([
+      prisma.task.deleteMany({ where: { electoralKeyId: id } }),
+      prisma.service.deleteMany({ where: { keyId: id } }),
+      prisma.voter.deleteMany({ where: { keyId: id } }),
+      prisma.electionKey.delete({ where: { id } }),
+    ]);
 
     await auditLog({
       userId: user.userId,
