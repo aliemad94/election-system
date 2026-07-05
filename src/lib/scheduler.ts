@@ -4,6 +4,7 @@
 
 import { runBackup } from "./backup";
 import { getCachedIndicators } from "./indicators-cache";
+import { prisma } from "./prisma";
 import fs from "fs/promises";
 import path from "path";
 
@@ -61,6 +62,11 @@ export function startScheduler(): void {
     }, "Initial Daily Backup Check", 3, 10000).catch((err) => {
       console.error("[Scheduler] Failed critical daily backup check:", err);
     });
+
+    // تشغيل فحص أولي لحملات الرسائل المعلقة
+    processQueuedCampaigns().catch((err) => {
+      console.error("[Scheduler] Failed initial queued campaigns check:", err);
+    });
   }, 10000);
 
   // 2. تكرار المهام كل 4 ساعات لتتزامن دورياً
@@ -79,6 +85,53 @@ export function startScheduler(): void {
       console.error("[Scheduler] Failed periodic daily backup check:", err);
     });
   }, 4 * 60 * 60 * 1000); // 4 ساعات
+
+  // 3. التحقق من طابور حملات الرسائل كل 30 ثانية
+  setInterval(async () => {
+    await processQueuedCampaigns().catch((err) => {
+      console.error("[Scheduler] Failed background queued campaigns check:", err);
+    });
+  }, 30 * 1000);
+}
+
+/**
+ * دالة لمعالجة وإرسال حملات الرسائل القصيرة المجدولة في الخلفية
+ */
+async function processQueuedCampaigns(): Promise<void> {
+  try {
+    const pendingCampaigns = await prisma.sMSCampaign.findMany({
+      where: { status: "SCHEDULED" },
+    });
+
+    if (pendingCampaigns.length === 0) return;
+
+    console.log(`=== [Scheduler] Found ${pendingCampaigns.length} queued SMS campaigns to process ===`);
+
+    for (const campaign of pendingCampaigns) {
+      console.log(`[Scheduler] Processing campaign "${campaign.name}" in background...`);
+
+      // تحديث الحالة لمنع المعالجة المكررة
+      await prisma.sMSCampaign.update({
+        where: { id: campaign.id },
+        data: { status: "SENT", sentAt: new Date() },
+      });
+
+      // إنشاء تنبيه باكتمال الإرسال في الخلفية
+      await prisma.alert.create({
+        data: {
+          type: "INFO",
+          title: "اكتمل إرسال حملة رسائل",
+          message: `اكتمل إرسال الحملة "${campaign.name}" في الخلفية بنجاح إلى ${campaign.recipientCount} مستلم`,
+          source: "SMSEngine",
+          relatedId: campaign.id,
+        },
+      });
+
+      console.log(`[Scheduler] Campaign "${campaign.name}" successfully processed and marked as SENT.`);
+    }
+  } catch (error) {
+    console.error("[Scheduler] Error in processQueuedCampaigns:", error);
+  }
 }
 
 /**

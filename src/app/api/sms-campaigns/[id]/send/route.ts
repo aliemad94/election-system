@@ -32,22 +32,21 @@ async function postHandler(
       );
     }
 
-    // في بيئة الإنتاج، هنا يتم الاتصال بـ Twilio/Vonage API
-    // حالياً نُحدّث الحالة فقط كمحاكاة
+    // تغيير الحالة إلى SCHEDULED ليقوم معالج الخلفية بإرسالها بشكل متوازٍ وآمن
     const updated = await prisma.sMSCampaign.update({
       where: { id },
       data: {
-        status: "SENT",
-        sentAt: new Date(),
+        status: "SCHEDULED",
+        scheduledAt: new Date(),
       },
     });
 
-    // إنشاء تنبيه بنجاح الإرسال
+    // إنشاء تنبيه بجدولة الإرسال
     await prisma.alert.create({
       data: {
         type: "INFO",
-        title: "تم إرسال حملة رسائل",
-        message: `تم إرسال الحملة "${campaign.name}" إلى ${campaign.recipientCount} مستلم`,
+        title: "تم جدولة حملة الرسائل",
+        message: `تمت جدولة الحملة "${campaign.name}" وجاري معالجتها وإرسالها في الخلفية إلى ${campaign.recipientCount} مستلم`,
         source: "SMSEngine",
         relatedId: campaign.id,
       },

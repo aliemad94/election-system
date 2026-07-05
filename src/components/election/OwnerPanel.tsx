@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Shield, Power, Copy, Eye, EyeOff, LogOut, Check, Loader2, Link as LinkIcon, Key, Database, Download, Upload, AlertTriangle } from 'lucide-react';
+import { X, Shield, Power, Copy, Eye, EyeOff, LogOut, Check, Loader2, Link as LinkIcon, Key, Database, Download, Upload, AlertTriangle, Terminal, Activity, Globe, RefreshCw } from 'lucide-react';
 
 interface OwnerPanelProps {
   isOpen: boolean;
@@ -21,6 +21,12 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Tab State
+  const [activeTab, setActiveTab] = useState<'config' | 'logs'>('config');
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [expandedLogs, setExpandedLogs] = useState<Record<string, boolean>>({});
+
   const fetchAccessStatus = async () => {
     try {
       const res = await fetch('/api/access');
@@ -28,6 +34,21 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
       setAccessEnabled(data.enabled);
     } catch {
       // default
+    }
+  };
+
+  const fetchLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const res = await fetch('/api/system-logs?limit=50');
+      const data = await res.json();
+      if (data.success) {
+        setLogs(data.logs || []);
+      }
+    } catch (err) {
+      console.error('Error fetching logs:', err);
+    } finally {
+      setLogsLoading(false);
     }
   };
 
@@ -53,8 +74,11 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
     if (isOpen) {
       fetchAccessStatus();
       fetchBackups();
+      if (activeTab === 'logs') {
+        fetchLogs();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, activeTab]);
 
   const handleCreateBackup = async () => {
     setBackupLoading(true);
@@ -250,6 +274,30 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
           </button>
         </div>
 
+        {/* Tab Switcher */}
+        <div className="flex border-b border-border/40 bg-muted/30 shrink-0">
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`flex-1 py-3 text-center text-xs font-bold transition-all border-b-2 cursor-pointer ${
+              activeTab === 'config'
+                ? 'border-primary text-primary bg-background/50'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            إعدادات الأمان
+          </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`flex-1 py-3 text-center text-xs font-bold transition-all border-b-2 cursor-pointer ${
+              activeTab === 'logs'
+                ? 'border-primary text-primary bg-background/50'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            سجلات النظام والتدقيق
+          </button>
+        </div>
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {/* Message Toast */}
@@ -264,226 +312,318 @@ export default function OwnerPanel({ isOpen, onClose, onLogout }: OwnerPanelProp
             </div>
           )}
 
-          {/* Access Toggle Section */}
-          <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-foreground text-sm">حالة الوصول</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {accessEnabled ? 'النظام متاح للزوار' : 'النظام معطل عن الزوار'}
-                </p>
-              </div>
-              <div className={`w-3 h-3 rounded-full ${accessEnabled ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
-            </div>
-
-            <button
-              onClick={handleToggleAccess}
-              disabled={loading}
-              className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 ${
-                accessEnabled
-                  ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
-                  : 'bg-green-500/10 text-green-500 border border-green-500/20 hover:bg-green-500/20'
-              }`}
-            >
-              <Power className="w-4 h-4" />
-              {accessEnabled ? 'إيقاف الوصول' : 'تفعيل الوصول'}
-            </button>
-          </div>
-
-          {/* Change Password Section */}
-          <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-3">
-            <h3 className="font-semibold text-foreground text-sm">تغيير كلمة مرور المالك</h3>
-            <div className="space-y-2">
-              <div className="relative">
-                <input
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="كلمة المرور الحالية"
-                  className="w-full px-4 py-2.5 pr-10 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  dir="ltr"
-                />
-                <button
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground cursor-pointer"
-                  tabIndex={-1}
-                >
-                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <div className="relative">
-                <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder={`كلمة المرور الجديدة (${PASSWORD_MIN_LENGTH} أحرف على الأقل)`}
-                  className="w-full px-4 py-2.5 pr-10 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  dir="ltr"
-                />
-                <button
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground cursor-pointer"
-                  tabIndex={-1}
-                >
-                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-            <button
-              onClick={handleChangePassword}
-              disabled={loading || !newPassword || !currentPassword}
-              className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm disabled:opacity-50 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-              تغيير كلمة المرور
-            </button>
-          </div>
-
-          {/* مركز النسخ الاحتياطي واستعادة البيانات */}
-          <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-4">
-            <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
-              <Database className="w-4 h-4 text-primary" />
-              مركز الحماية والنسخ الاحتياطي
-            </h3>
-            <p className="text-xs text-muted-foreground">حفظ نسخة احتياطية من البيانات محلياً وتنزيلها لضمان عدم الفقدان أو التلف.</p>
-
-            {/* زر إنشاء نسخة احتياطية */}
-            <button
-              onClick={handleCreateBackup}
-              disabled={backupLoading}
-              className="w-full py-2.5 px-4 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-semibold text-xs transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-            >
-              {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-              إنشاء نسخة احتياطية فورية
-            </button>
-
-            {/* قائمة الملفات */}
-            {backups.length > 0 && (
-              <div className="space-y-2 border-t border-border/40 pt-3">
-                <span className="text-[10px] font-bold text-muted-foreground block">النسخ الاحتياطية المتاحة على السيرفر (آخر 7 نسخ):</span>
-                <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
-                  {backups.map((b) => (
-                    <div key={b.fileName} className="flex justify-between items-center bg-background border border-border/40 p-2 rounded-lg text-xs">
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-mono text-[10px] text-foreground truncate" dir="ltr">{b.fileName}</span>
-                        <span className="text-[9px] text-muted-foreground">
-                          الحجم: {(b.size / 1024).toFixed(1)} KB • {new Date(b.createdAt).toLocaleDateString('ar-IQ')}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleDownloadBackup(b.fileName)}
-                        className="p-1 hover:bg-muted text-primary rounded transition-colors cursor-pointer"
-                        title="تنزيل الملف"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+          {activeTab === 'config' ? (
+            <>
+              {/* Access Toggle Section */}
+              <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground text-sm">حالة الوصول</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {accessEnabled ? 'النظام متاح للزوار' : 'النظام معطل عن الزوار'}
+                    </p>
+                  </div>
+                  <div className={`w-3 h-3 rounded-full ${accessEnabled ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
                 </div>
-              </div>
-            )}
 
-            {/* استعادة البيانات */}
-            <div className="space-y-2 border-t border-border/40 pt-3">
-              <span className="text-[10px] font-bold text-muted-foreground block">استعادة قاعدة البيانات من ملف خارجي:</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  id="backup-restore-file"
+                <button
+                  onClick={handleToggleAccess}
+                  disabled={loading}
+                  className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 ${
+                    accessEnabled
+                      ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
+                      : 'bg-green-500/10 text-green-500 border border-green-500/20 hover:bg-green-500/20'
+                  }`}
+                >
+                  <Power className="w-4 h-4" />
+                  {accessEnabled ? 'إيقاف الوصول' : 'تفعيل الوصول'}
+                </button>
+              </div>
+
+              {/* Change Password Section */}
+              <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-3">
+                <h3 className="font-semibold text-foreground text-sm">تغيير كلمة مرور المالك</h3>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="كلمة المرور الحالية"
+                      className="w-full px-4 py-2.5 pr-10 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      dir="ltr"
+                    />
+                    <button
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder={`كلمة المرور الجديدة (${PASSWORD_MIN_LENGTH} أحرف على الأقل)`}
+                      className="w-full px-4 py-2.5 pr-10 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      dir="ltr"
+                    />
+                    <button
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <button
+                  onClick={handleChangePassword}
+                  disabled={loading || !newPassword || !currentPassword}
+                  className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm disabled:opacity-50 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                  تغيير كلمة المرور
+                </button>
+              </div>
+
+              {/* مركز النسخ الاحتياطي واستعادة البيانات */}
+              <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-4">
+                <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                  <Database className="w-4 h-4 text-primary" />
+                  مركز الحماية والنسخ الاحتياطي
+                </h3>
+                <p className="text-xs text-muted-foreground">حفظ نسخة احتياطية من البيانات محلياً وتنزيلها لضمان عدم الفقدان أو التلف.</p>
+
+                {/* زر إنشاء نسخة احتياطية */}
+                <button
+                  onClick={handleCreateBackup}
                   disabled={backupLoading}
-                />
-                <label
-                  htmlFor={backupLoading ? undefined : "backup-restore-file"}
-                  className={`flex-1 border border-dashed border-border hover:border-primary/50 bg-background text-muted-foreground px-3 py-2 rounded-lg text-xs truncate flex items-center justify-center gap-1.5 text-center ${backupLoading ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}
+                  className="w-full py-2.5 px-4 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-semibold text-xs transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <Upload className="w-3.5 h-3.5" />
-                  {selectedFileForRestore ? selectedFileForRestore.name : 'اختر ملف نسخة احتياطية (.json)'}
-                </label>
-                {selectedFileForRestore && (
-                  <button
-                    onClick={() => {
-                      setSelectedFileForRestore(null);
-                      setRestoreConfirm(false);
-                    }}
-                    disabled={backupLoading}
-                    className="p-2 text-destructive border border-destructive/20 bg-destructive/5 rounded-lg hover:bg-destructive/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                  {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                  إنشاء نسخة احتياطية فورية
+                </button>
+
+                {/* قائمة الملفات */}
+                {backups.length > 0 && (
+                  <div className="space-y-2 border-t border-border/40 pt-3">
+                    <span className="text-[10px] font-bold text-muted-foreground block">النسخ الاحتياطية المتاحة على السيرفر (آخر 7 نسخ):</span>
+                    <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                      {backups.map((b) => (
+                        <div key={b.fileName} className="flex justify-between items-center bg-background border border-border/40 p-2 rounded-lg text-xs">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-mono text-[10px] text-foreground truncate" dir="ltr">{b.fileName}</span>
+                            <span className="text-[9px] text-muted-foreground">
+                              الحجم: {(b.size / 1024).toFixed(1)} KB • {new Date(b.createdAt).toLocaleDateString('ar-IQ')}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleDownloadBackup(b.fileName)}
+                            className="p-1 hover:bg-muted text-primary rounded transition-colors cursor-pointer"
+                            title="تنزيل الملف"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
+
+                {/* استعادة البيانات */}
+                <div className="space-y-2 border-t border-border/40 pt-3">
+                  <span className="text-[10px] font-bold text-muted-foreground block">استعادة قاعدة البيانات من ملف خارجي:</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={handleFileChange}
+                      className="hidden"
+                      id="backup-restore-file"
+                      disabled={backupLoading}
+                    />
+                    <label
+                      htmlFor={backupLoading ? undefined : "backup-restore-file"}
+                      className={`flex-1 border border-dashed border-border hover:border-primary/50 bg-background text-muted-foreground px-3 py-2 rounded-lg text-xs truncate flex items-center justify-center gap-1.5 text-center ${backupLoading ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      {selectedFileForRestore ? selectedFileForRestore.name : 'اختر ملف نسخة احتياطية (.json)'}
+                    </label>
+                    {selectedFileForRestore && (
+                      <button
+                        onClick={() => {
+                          setSelectedFileForRestore(null);
+                          setRestoreConfirm(false);
+                        }}
+                        disabled={backupLoading}
+                        className="p-2 text-destructive border border-destructive/20 bg-destructive/5 rounded-lg hover:bg-destructive/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {selectedFileForRestore && !restoreConfirm && (
+                    <button
+                      onClick={() => setRestoreConfirm(true)}
+                      className="w-full py-2 px-3 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20 font-bold text-xs transition-colors cursor-pointer active:scale-95"
+                    >
+                      استعادة البيانات من الملف المحدد
+                    </button>
+                  )}
+
+                  {restoreConfirm && (
+                    <div className="bg-red-500/5 border border-red-500/20 p-3 rounded-lg space-y-2">
+                      <div className="flex gap-1.5 items-start text-[11px] text-red-500 font-semibold leading-relaxed">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+                        <span>تحذير: سيتم حذف كافة البيانات الحالية بالكامل واستبدالها ببيانات الملف المرفوع! هل أنت متأكد؟</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleRestoreBackup}
+                          disabled={backupLoading}
+                          className="flex-1 py-1.5 px-2 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer transition disabled:opacity-50"
+                        >
+                          {backupLoading ? 'جاري الاستعادة...' : 'نعم، استعد البيانات'}
+                        </button>
+                        <button
+                          onClick={() => setRestoreConfirm(false)}
+                          disabled={backupLoading}
+                          className="flex-1 py-1.5 px-2 bg-muted hover:bg-border border border-border text-foreground rounded text-[10px] font-bold cursor-pointer transition"
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {selectedFileForRestore && !restoreConfirm && (
+              {/* Share Link Section */}
+              <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-3">
+                <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4 text-primary" />
+                  رابط المشاركة
+                </h3>
+                <p className="text-xs text-muted-foreground">شارك هذا الرابط مع الأشخاص الذين تريد منحهم الوصول بعد إعطائهم كلمة المرور</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={typeof window !== 'undefined' ? window.location.href : ''}
+                    readOnly
+                    className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-muted-foreground text-xs truncate"
+                    dir="ltr"
+                  />
+                  <button
+                    onClick={handleCopyLink}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                      copied
+                        ? 'bg-green-500/10 text-green-500 border border-green-500/20'
+                        : 'bg-primary hover:bg-primary/95 text-primary-foreground'
+                    }`}
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'تم النسخ' : 'نسخ'}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center pb-2 border-b border-border/40">
+                <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-primary" />
+                  سجل آخر 50 عملية على السيرفر
+                </span>
                 <button
-                  onClick={() => setRestoreConfirm(true)}
-                  className="w-full py-2 px-3 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20 font-bold text-xs transition-colors cursor-pointer active:scale-95"
+                  onClick={fetchLogs}
+                  disabled={logsLoading}
+                  className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded transition-colors cursor-pointer"
+                  title="تحديث السجلات"
                 >
-                  استعادة البيانات من الملف المحدد
+                  <RefreshCw className={`w-4 h-4 ${logsLoading ? 'animate-spin' : ''}`} />
                 </button>
-              )}
+              </div>
 
-              {restoreConfirm && (
-                <div className="bg-red-500/5 border border-red-500/20 p-3 rounded-lg space-y-2">
-                  <div className="flex gap-1.5 items-start text-[11px] text-red-500 font-semibold leading-relaxed">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
-                    <span>تحذير: سيتم حذف كافة البيانات الحالية بالكامل واستبدالها ببيانات الملف المرفوع! هل أنت متأكد؟</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleRestoreBackup}
-                      disabled={backupLoading}
-                      className="flex-1 py-1.5 px-2 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer transition disabled:opacity-50"
-                    >
-                      {backupLoading ? 'جاري الاستعادة...' : 'نعم، استعد البيانات'}
-                    </button>
-                    <button
-                      onClick={() => setRestoreConfirm(false)}
-                      disabled={backupLoading}
-                      className="flex-1 py-1.5 px-2 bg-muted hover:bg-border border border-border text-foreground rounded text-[10px] font-bold cursor-pointer transition"
-                    >
-                      إلغاء
-                    </button>
-                  </div>
+              {logsLoading && logs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-2">
+                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                  <span className="text-xs text-muted-foreground">جاري تحميل سجلات التدقيق...</span>
+                </div>
+              ) : logs.length === 0 ? (
+                <div className="text-center py-12 text-xs text-muted-foreground">
+                  لا توجد سجلات تدقيق متوفرة حالياً.
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+                  {logs.map((log) => {
+                    const isExpanded = !!expandedLogs[log.id];
+                    let actionColor = "bg-muted text-muted-foreground";
+                    if (log.action === "CREATE" || log.action === "LOGIN" || log.action === "TOGGLE_ACCESS") {
+                      actionColor = "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20";
+                    } else if (log.action === "UPDATE" || log.action === "CHANGE_PASSWORD") {
+                      actionColor = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20";
+                    } else if (log.action === "DELETE") {
+                      actionColor = "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20";
+                    }
+
+                    return (
+                      <div key={log.id} className="bg-muted/30 border border-border/40 rounded-xl p-4 space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex flex-col gap-1 text-right">
+                            <span className="text-[12px] font-bold text-foreground">
+                              بواسطة: <span className="font-mono text-primary">{log.username}</span>
+                            </span>
+                            {log.entity && (
+                              <span className="text-[10px] text-muted-foreground">
+                                النوع: <span className="font-semibold text-foreground">{log.entity}</span>
+                              </span>
+                            )}
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${actionColor}`}>
+                            {log.action}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center text-[10px] text-muted-foreground border-t border-border/20 pt-1.5">
+                          <span className="flex items-center gap-1">
+                            <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                            {log.ipAddress || "مجهول"}
+                          </span>
+                          <span>
+                            {new Date(log.createdAt).toLocaleDateString('ar-IQ')} {new Date(log.createdAt).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+
+                        {log.details && (
+                          <div className="pt-1.5">
+                            <button
+                              onClick={() => setExpandedLogs(prev => ({ ...prev, [log.id]: !isExpanded }))}
+                              className="text-[10px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-1"
+                            >
+                              {isExpanded ? "إخفاء التفاصيل" : "عرض تفاصيل العملية"}
+                            </button>
+                            {isExpanded && (
+                              <pre className="mt-2 p-2 bg-background border border-border/40 rounded text-[9px] font-mono overflow-x-auto text-left max-w-full" dir="ltr">
+                                {JSON.stringify(log.details, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Share Link Section */}
-          <div className="bg-muted/50 rounded-xl p-5 border border-border/40 space-y-3">
-            <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
-              <LinkIcon className="w-4 h-4 text-primary" />
-              رابط المشاركة
-            </h3>
-            <p className="text-xs text-muted-foreground">شارك هذا الرابط مع الأشخاص الذين تريد منحهم الوصول بعد إعطائهم كلمة المرور</p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={typeof window !== 'undefined' ? window.location.href : ''}
-                readOnly
-                className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-muted-foreground text-xs truncate"
-                dir="ltr"
-              />
-              <button
-                onClick={handleCopyLink}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
-                  copied
-                    ? 'bg-green-500/10 text-green-500 border border-green-500/20'
-                    : 'bg-primary hover:bg-primary/95 text-primary-foreground'
-                }`}
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? 'تم النسخ' : 'نسخ'}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border/40">
+        <div className="px-6 py-4 border-t border-border/40 shrink-0">
           <button
             onClick={onLogout}
             className="w-full py-3 px-4 rounded-xl bg-destructive/10 text-destructive font-semibold text-sm border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
