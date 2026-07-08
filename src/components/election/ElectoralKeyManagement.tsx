@@ -350,7 +350,7 @@ export default function ElectoralKeyManagement() {
     } catch (e) { console.error('Inline save error:', e); }
   };
 
-  const handleStartEdit = (key: ElectoralKeyData) => {
+  function handleStartEdit(key: ElectoralKeyData) {
     let fb = '', tg = '', wa = '';
     if (key.socialMedia) {
       try {
@@ -403,7 +403,7 @@ export default function ElectoralKeyManagement() {
     setEditMode(true);
     setShowAddDialog(true);
     setEditingKey(key);
-  };
+  }
 
   const calcNetVotes = (s: number, n: number, w: number) => {
     const net = s * 0.8 + n * 0.5 + w * 0.3;

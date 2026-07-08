@@ -14,6 +14,8 @@
 import { prisma } from "./prisma";
 import { enrichElectoralKey, type EnrichedKey } from "./indicators-helper";
 import { DHIQAR_DISTRICTS } from "@/lib/types";
+import { classifyKey } from "./electoral-calculations";
+import { allocateSeatsLaguë } from "./seat-projection";
 
 // ═══ الأنواع ═══
 
@@ -152,7 +154,8 @@ function calculateHHI(shares: number[]): number {
 
 function calcDecisiveIndicators(
   keys: KeyData[], voters: VoterData[], ihec: IHECRecord[],
-  districtKeys: Record<string, KeyData[]>
+  districtKeys: Record<string, KeyData[]>,
+  competitors: any[]
 ) {
   const totalRegistered = ihec.reduce((s, r) => s + r.registeredVoters, 0) || 0;
   const avgParticipation = ihec.length > 0
@@ -260,7 +263,17 @@ function calcDecisiveIndicators(
     areaMap,
     totalNetVotes,
     totalRegistered,
-    projectedSeats: round1((totalNetVotes > 0 && baseParticipation > 0) ? (totalNetVotes / baseParticipation) * 18 : 0),
+    projectedSeats: (() => {
+      const parties = [
+        { partyName: "حملتنا الانتخابية", votes: totalNetVotes },
+        ...competitors.map(c => ({
+          partyName: c.party || c.name,
+          votes: c.estimatedVotes || 1000,
+        })),
+      ];
+      const allocated = allocateSeatsLaguë(parties, 18);
+      return allocated.find(p => p.partyName === "حملتنا الانتخابية")?.seats || 0;
+    })(),
   };
 }
 
@@ -543,10 +556,10 @@ function calcInfluenceIndicators(
 
   // 37. تصنيف المفاتيح حسب القوة النهائية (نظام النفوذ والتأثير)
   const classificationStats = {
-    weak: keys.filter(k => classifyByScore(k.weightedScore) === 'ضعيف').length,
-    acceptable: keys.filter(k => classifyByScore(k.weightedScore) === 'مقبول').length,
-    good: keys.filter(k => classifyByScore(k.weightedScore) === 'جيد').length,
-    strong: keys.filter(k => classifyByScore(k.weightedScore) === 'قوي').length,
+    weak: keys.filter(k => classifyKey(k.weightedScore) === 'ضعيف').length,
+    acceptable: keys.filter(k => classifyKey(k.weightedScore) === 'مقبول').length,
+    good: keys.filter(k => classifyKey(k.weightedScore) === 'جيد').length,
+    strong: keys.filter(k => classifyKey(k.weightedScore) === 'قوي').length,
     total: keys.length,
   };
 
@@ -559,7 +572,7 @@ function calcInfluenceIndicators(
       name: k.firstName || 'غير معروف',
       district: k.district,
       weightedScore: k.weightedScore,
-      classification: classifyByScore(k.weightedScore),
+      classification: classifyKey(k.weightedScore),
       netVotes: k.netVotes,
       loyaltyLevel: k.loyaltyLevel,
       influenceLevel: k.influenceLevel,
@@ -601,11 +614,9 @@ function calcInfluenceIndicators(
   };
 }
 
+/** @deprecated Use classifyKey from electoral-calculations instead */
 function classifyByScore(score: number): string {
-  if (score < 20) return 'ضعيف';
-  if (score < 50) return 'مقبول';
-  if (score < 100) return 'جيد';
-  return 'قوي';
+  return classifyKey(score);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -839,7 +850,7 @@ function calcCompositeAnalyticalIndicators(
 
 export async function calculateComprehensiveIndicators() {
   // جلب البيانات من قاعدة البيانات الحالية
-  const [rawKeys, rawVoters, rawTribes, rawCommission, rawServices, rawVolunteers, rawSentiments] = await Promise.all([
+  const [rawKeys, rawVoters, rawTribes, rawCommission, rawServices, rawVolunteers, rawSentiments, rawCompetitors] = await Promise.all([
     prisma.electionKey.findMany({
       include: { tribe: true, services: true },
     }),
@@ -853,6 +864,7 @@ export async function calculateComprehensiveIndicators() {
     prisma.service.findMany(),
     prisma.volunteer.findMany(),
     prisma.sentimentTrend.findMany(),
+    prisma.competitor.findMany(),
   ]);
 
   // تجميع الناخبين حسب keyId في Map — O(N) بدل O(N×M)
@@ -949,11 +961,11 @@ export async function calculateComprehensiveIndicators() {
   const ihec: IHECRecord[] = rawCommission.map(c => ({
     district: c.district,
     registeredVoters: c.registeredVoters,
-    actualParticipants: Math.round(c.registeredVoters * ((c.registeredVoters > 0 ? (c.actualVoters / c.registeredVoters) * 100 : 50) / 100)),
-    participationRate: c.registeredVoters > 0 ? (c.actualVoters / c.registeredVoters) * 100 : 50,
+    actualParticipants: Math.round(c.registeredVoters * ((c.registeredVoters > 0 ? (c.actualVoters / c.registeredVoters) * 100 : 0) / 100)),
+    participationRate: c.registeredVoters > 0 ? (c.actualVoters / c.registeredVoters) * 100 : 0,
     maleVoters: 0,
     femaleVoters: 0,
-    pollingCenters: 1,
+    pollingCenters: c.pollingCenters || 0,
     electionYear: null,
   }));
 
@@ -966,7 +978,7 @@ export async function calculateComprehensiveIndicators() {
   });
 
   // حساب جميع الفئات السبع
-  const decisive = calcDecisiveIndicators(keys, voters, ihec, districtKeys);
+  const decisive = calcDecisiveIndicators(keys, voters, ihec, districtKeys, rawCompetitors);
   const campaign = calcCampaignIndicators(keys, voters, districtKeys);
   const audience = calcAudienceIndicators(keys, voters);
   const influence = calcInfluenceIndicators(keys, voters, tribes);

@@ -129,8 +129,8 @@ describe("allocateSeatsLaguë — توزيع المقاعد (القاسم الع
 describe("DHI_QAR_CONSTANTS — ثوابت المحافظة", () => {
   it("18 مقعداً", () => { expect(DHI_QAR_CONSTANTS.PARLIAMENTARY_SEATS).toBe(18); });
   it("7 أقضية", () => { expect(DHI_QAR_CONSTANTS.DISTRICTS.length).toBe(7); });
-  it("أصوات العتبة = 24795", () => { expect(calculateThresholdVotes()).toBe(24795); });
-  it("أصوات المقعد = 27550", () => { expect(calculateVotesPerSeat()).toBe(27550); });
+  it("أصوات العتبة = 26920", () => { expect(calculateThresholdVotes()).toBe(26920); });
+  it("أصوات المقعد = 29911", () => { expect(calculateVotesPerSeat()).toBe(29911); });
 });
 
 describe("calculateElectionResults — حساب النتائج الانتخابية", () => {

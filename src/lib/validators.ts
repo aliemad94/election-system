@@ -4,16 +4,17 @@
 // ====================================================================
 
 import { z } from "zod";
+import { sanitizeString } from "./security";
 
 // ===== العشائر =====
 export const createTribeSchema = z.object({
   name: z.string().min(1, "اسم العشيرة مطلوب").max(200),
-  description: z.string().max(2000).optional().nullable(),
+  description: z.string().max(2000).optional().nullable().transform(val => val === null || val === undefined ? val : sanitizeString(val)),
   leaderName: z.string().max(200).optional().nullable(),
   leaderPhone: z.string().max(50).optional().nullable(),
   district: z.string().max(100).optional().nullable(),
   influence: z.number().int().min(1).max(5).optional().default(3),
-  notes: z.string().max(2000).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable().transform(val => val === null || val === undefined ? val : sanitizeString(val)),
 });
 
 export const updateTribeSchema = createTribeSchema.partial();
@@ -56,7 +57,7 @@ export const createElectionKeySchema = z.object({
   specialization: z.string().optional().nullable(),
   maritalStatus: z.string().optional().nullable(),
   familySize: z.number().int().optional().nullable(),
-  notes: z.string().optional().nullable(),
+  notes: z.string().optional().nullable().transform(val => val === null || val === undefined ? val : sanitizeString(val)),
   isActive: z.boolean().default(true),
   firstContactDate: z.string().optional().nullable(),
   lastContactDate: z.string().optional().nullable(),
@@ -120,7 +121,7 @@ export const createVoterSchema = z.object({
   subTribeId: z.string().optional().nullable(),
   status: z.enum(["SUPPORTED", "NEUTRAL", "WEAK"]).default("NEUTRAL"),
   supportDegree: z.number().int().min(1).max(5).default(3),
-  supportReason: z.string().max(500).optional().nullable(),
+  supportReason: z.string().max(500).optional().nullable().transform(val => val === null || val === undefined ? val : sanitizeString(val)),
   profession: z.string().max(100).optional().nullable(),
   education: z.string().max(100).optional().nullable(),
   specialization: z.string().max(100).optional().nullable(),
@@ -146,7 +147,7 @@ export const checkinSchema = z.object({
 // ===== الخدمات =====
 export const createServiceSchema = z.object({
   title: z.string().max(300).default(""),
-  description: z.string().default(""),
+  description: z.string().default("").transform(val => sanitizeString(val)),
   category: z.string().default("أخرى"),
   priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
   status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).default("PENDING"),

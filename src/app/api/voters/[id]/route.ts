@@ -36,6 +36,19 @@ async function putHandler(
       );
     }
 
+    if (user.role === "KEY_USER") {
+      const key = await prisma.electionKey.findFirst({
+        where: { phone: user.username },
+        select: { id: true },
+      });
+      if (!key || existing.keyId !== key.id) {
+        return NextResponse.json(
+          { error: "غير مصرح - لا تملك صلاحية تعديل هذا الناخب" },
+          { status: 403 }
+        );
+      }
+    }
+
     // التحقق من تكرار الهاتف باستثناء السجل الحالي
     if (parsed.data.phone) {
       const phoneExists = await prisma.voter.findFirst({
@@ -88,10 +101,33 @@ async function putHandler(
       delete data.keyId;
     }
 
-    const updated = await prisma.voter.update({
-      where: { id },
-      data,
-    });
+    const expectedVersion = body.version !== undefined ? Number(body.version) : undefined;
+    let updated;
+    if (expectedVersion !== undefined) {
+      const result = await prisma.voter.updateMany({
+        where: { id, version: expectedVersion },
+        data: { ...data, version: { increment: 1 } } as any
+      });
+      if (result.count === 0) {
+        return NextResponse.json(
+          { error: "السجل تغيّر بواسطة مستخدم آخر، أعد التحميل" },
+          { status: 409 }
+        );
+      }
+      const fetched = await prisma.voter.findUnique({ where: { id } });
+      if (!fetched) {
+        return NextResponse.json(
+          { error: "الناخب غير موجود" },
+          { status: 404 }
+        );
+      }
+      updated = fetched;
+    } else {
+      updated = await prisma.voter.update({
+        where: { id },
+        data,
+      });
+    }
 
     await auditLog({
       userId: user.userId,

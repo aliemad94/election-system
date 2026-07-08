@@ -255,9 +255,9 @@ export const DHI_QAR_CONSTANTS = {
   /** عدد المقاعد البرلمانية */
   PARLIAMENTARY_SEATS: 18,
   /** عدد الناخبين المسجّلين */
-  REGISTERED_VOTERS: 855000,
+  REGISTERED_VOTERS: 1099438,
   /** نسبة المشاركة التاريخية */
-  HISTORICAL_PARTICIPATION_RATE: 0.58,
+  HISTORICAL_PARTICIPATION_RATE: 0.4897,
   /** العتبة الانتخابية */
   ELECTORAL_THRESHOLD: 0.05,
   /** الأقضية السبعة */

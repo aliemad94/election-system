@@ -26,7 +26,7 @@ async function postHandler(
     // الحصول على الدرجة الحالية للناخب
     const voter = await prisma.voter.findUnique({
       where: { id },
-      select: { confidenceScore: true },
+      select: { confidenceScore: true, district: true, keyId: true },
     });
 
     if (!voter) {
@@ -34,6 +34,23 @@ async function postHandler(
         { error: "الناخب غير موجود" },
         { status: 404 }
       );
+    }
+
+    if (user.role === "KEY_USER") {
+      const key = await prisma.electionKey.findFirst({
+        where: { phone: user.username },
+        select: { id: true },
+      });
+      const v = await prisma.voter.findUnique({
+        where: { id },
+        select: { keyId: true },
+      });
+      if (!v || !key || v.keyId !== key.id) {
+        return NextResponse.json(
+          { error: "غير مصرح - لا تملك صلاحية تعديل هذا الناخب" },
+          { status: 403 }
+        );
+      }
     }
 
     const oldScore = voter.confidenceScore;
@@ -57,6 +74,21 @@ async function postHandler(
         },
       }),
     ]);
+
+    // إذا حدث انهيار في الثقة، نقوم بإنشاء سجل إنذار مبكر تلقائي
+    if (change < -20 || newScore < 30) {
+      await prisma.earlyWarning.create({
+        data: {
+          warningType: "CONFIDENCE_DROP",
+          severity: (change < -40 || newScore < 20) ? "CRITICAL" : "HIGH",
+          description: `انهيار ثقة الناخب من ${oldScore} إلى ${newScore}`,
+          status: "ACTIVE",
+          areaName: voter.district || "غير محدد",
+          electoralKeyId: voter.keyId,
+          estimatedVotesAtRisk: 1,
+        },
+      });
+    }
 
     // تسجيل في سجل التدقيق العام
     await prisma.auditLog.create({

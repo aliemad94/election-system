@@ -296,7 +296,10 @@ export default function CommunicationEngine() {
 
           {/* Action Bar */}
           <div className="flex justify-end pt-4">
-            <button className="flex items-center gap-2 bg-el-primary text-el-on-primary px-6 py-2 rounded shadow-sm hover:opacity-90 transition-all active:scale-95 border border-el-primary-container">
+            <button
+              onClick={() => alert("ميزة إطلاق بث الرسائل قيد التطوير حالياً.")}
+              className="flex items-center gap-2 bg-el-primary text-el-on-primary px-6 py-2 rounded shadow-sm hover:opacity-90 transition-all active:scale-95 border border-el-primary-container"
+            >
               <Send className="w-[18px] h-[18px]" />
               <span className="text-[18px] leading-[24px] font-semibold">إطلاق البث</span>
             </button>

@@ -98,6 +98,7 @@ model ElectionKey {
   loyaltyScore    Int         @default(3) // (1-5)
   riskLevel       Int         @default(1) // (1-5)
   deletedAt       DateTime?   // سلة مهملات (soft delete)
+  version         Int         @default(0)
 
   // محرك المعايرة الذكية لنسب الانحياز (Dynamic Calibration Engine)
   keyAccuracyScore Float      @default(1.0) // معامل الدقة التاريخية (0.0 - 1.0)
@@ -249,6 +250,7 @@ model Voter {
   tasks               Task[]
   confidenceLogs      ConfidenceLog[]
   deletedAt           DateTime?   // سلة مهملات (soft delete)
+  version             Int         @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

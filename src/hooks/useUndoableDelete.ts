@@ -53,7 +53,6 @@ export function useUndoableDelete<T extends { id: string | number }>(
       });
       pending.current.clear();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { requestDelete, undoDelete };
