@@ -14,6 +14,7 @@ import { prisma } from "./prisma";
 import { enrichElectoralKey } from "./indicators-helper";
 import { allocateSeatsLaguë } from "./seat-projection";
 import { DHIQAR_DISTRICTS } from "./types";
+import { calculateNetVotes } from "./electoral-calculations";
 
 export interface AreaMetrics {
   eiiScore: number;
@@ -124,7 +125,9 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
     }
 
     const totalVotes = supportedVotes + neutralVotes + weakVotes;
-    const netVotes = Math.max(0, supportedVotes - weakVotes);
+    const netVotes = calculateNetVotes({
+      supportedVotes, neutralVotes, weakVotes
+    });
 
     // متوسطات موزونة للمؤشرات الفردية
     const sumVotes = Math.max(1, totalVotes);

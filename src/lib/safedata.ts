@@ -52,10 +52,10 @@ export interface SafeDecisiveData {
 
 /** قيم افتراضية آمنة للبيانات الفارغة */
 export const EMPTY_DECISIVE: SafeDecisiveData = {
-  expectedVotesOnDay: 0, expectedVotes: 0, expectedParticipation: 58, expectedTurnout: 58,
+  expectedVotesOnDay: 0, expectedVotes: 0, expectedParticipation: 48.97, expectedTurnout: 48.97,
   votesNeededToWin: 12000, electoralGap: 12000, winProbability: 0,
   overallRisk: 0, stability: 0, earlyWarning: 0,
-  totalNetVotes: 0, totalRegistered: 855000, projectedSeats: 0,
+  totalNetVotes: 0, totalRegistered: 1099438, projectedSeats: 0,
   avgKRI: 0, avgDRS: 0,
   strongAreas: [], weakAreas: [], geoDistribution: [], areaMap: [], keyRanking: [],
   supportDistribution: {

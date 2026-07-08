@@ -331,7 +331,7 @@ export default function VoterRegistration() {
     }
   };
 
-  const handleEditClick = (voter: Voter) => {
+  function handleEditClick(voter: Voter) {
     setIsEditMode(true);
     setEditingId(voter.id);
     const social = parseSocialMedia(voter.socialMedia);
@@ -389,7 +389,7 @@ export default function VoterRegistration() {
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }
 
   const handleDelete = async (voterId: string, voterName: string) => {
     if (!confirm(`هل تريد الحذف؟ يرجى التأكيد (حذف الناخب ${voterName} نهائياً)`)) return;

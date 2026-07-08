@@ -3,13 +3,23 @@
 // ====================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withAuth } from "@/lib/auth-guard";
+import { withAuth, type AuthenticatedUser } from "@/lib/auth-guard";
 import * as XLSX from "xlsx";
 
-async function getHandler(req: NextRequest) {
+async function getHandler(
+  req: NextRequest,
+  { user }: { user: AuthenticatedUser }
+) {
   try {
     const { searchParams } = new URL(req.url);
     const entity = searchParams.get("entity") || "voters";
+
+    if (entity === "voters" && user.role === "OBSERVER") {
+      return NextResponse.json(
+        { error: "غير مصرح - لا تملك صلاحية تصدير بيانات الناخبين" },
+        { status: 403 }
+      );
+    }
 
     const wb = XLSX.utils.book_new();
 

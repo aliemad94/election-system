@@ -20,9 +20,11 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-// تشغيل محرك الجدولة في الخلفية تلقائياً عند تحميل قاعدة البيانات
-import { startScheduler } from "./scheduler";
-startScheduler();
+if (process.env.NEXT_PHASE !== "phase-production-build") {
+  import("./scheduler").then(({ startScheduler }) => {
+    startScheduler();
+  });
+}
 
 export async function disconnectPrisma() {
   await prisma.$disconnect();

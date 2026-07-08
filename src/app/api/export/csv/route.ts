@@ -4,12 +4,22 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withAuth } from "@/lib/auth-guard";
+import { withAuth, type AuthenticatedUser } from "@/lib/auth-guard";
 
-async function getHandler(request: NextRequest) {
+async function getHandler(
+  request: NextRequest,
+  { user }: { user: AuthenticatedUser }
+) {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "electoral-keys";
+
+    if (type === "voters" && user.role === "OBSERVER") {
+      return NextResponse.json(
+        { error: "غير مصرح - لا تملك صلاحية تصدير بيانات الناخبين" },
+        { status: 403 }
+      );
+    }
 
     let csvContent = "";
     const BOM = "\uFEFF"; // Byte Order Mark for Arabic in Excel
@@ -61,7 +71,7 @@ async function getHandler(request: NextRequest) {
         });
 
         csvContent = BOM + [
-          "الاسم الأول,اسم الأب,اسم الجد,اسم العائلة,الهاتف,الرقم الوطني,القضاء,الناحية,الحالة,درجة الدعم,درجة الثقة,العشيرة,المفتاح الانتخابي",
+          "الاسم الأول,اسم الأب,اسم الجد,اسم العائلة,الهاتف,القضاء,الناحية,الحالة,درجة الدعم,درجة الثقة,العشيرة,المفتاح الانتخابي",
           ...voters.map((v) =>
             [
               v.firstName,
@@ -69,7 +79,6 @@ async function getHandler(request: NextRequest) {
               v.grandfatherName,
               v.fourthName,
               v.phone || "",
-              v.nationalId || "",
               v.district,
               v.subDistrict,
               v.status,
