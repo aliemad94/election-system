@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 import { prisma as db } from "./prisma";
+import { ZodError } from "zod";
 
 // ==================== RBAC ====================
 
@@ -84,30 +85,47 @@ export interface AuditLogParams {
  * (لا ترمي خطأ — فقط يسجّله في الـ console عند الفشل)
  */
 export async function auditLog(params: AuditLogParams): Promise<void> {
-  try {
-    await db.auditLog.create({
-      data: {
-        userId: params.userId || null,
-        username: params.username,
-        action: params.action,
-        entity: params.entity || null,
-        entityId: params.entityId || null,
-        details: params.details ? JSON.stringify(params.details) : null,
-        ipAddress: params.ipAddress || null,
-      },
-    });
+  // تشغيل مهمة الكتابة في الخلفية دون تعطيل لطلب العميل الأساسي
+  const logTask = async () => {
+    try {
+      const writePromise = db.auditLog.create({
+        data: {
+          userId: params.userId || null,
+          username: params.username,
+          action: params.action,
+          entity: params.entity || null,
+          entityId: params.entityId || null,
+          details: params.details ? JSON.stringify(params.details) : null,
+          ipAddress: params.ipAddress || null,
+        },
+      });
 
-    // إبطال الكاش عند العمليات الكتابية على البيانات الأساسية
-    const writeActions = ["CREATE", "UPDATE", "DELETE", "TOGGLE_ACCESS"];
-    const cacheEntities = ["Voter", "ElectionKey", "Tribe", "Service", "CommissionData", "Competitor", "Volunteer"];
-    if (writeActions.includes(params.action) && cacheEntities.includes(params.entity || "")) {
-      try {
-        invalidateComprehensiveIndicatorsCache();
-      } catch { /* silent - cache invalidation should never break the main flow */ }
+      // مهلة زمنية 500ms لحماية الطلبات عند بطء الاستجابة
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Database timeout (500ms)")), 500)
+      );
+
+      await Promise.race([writePromise, timeoutPromise]);
+
+      // إبطال الكاش عند العمليات الكتابية على البيانات الأساسية
+      const writeActions = ["CREATE", "UPDATE", "DELETE", "TOGGLE_ACCESS"];
+      const cacheEntities = ["Voter", "ElectionKey", "Tribe", "Service", "CommissionData", "Competitor", "Volunteer"];
+      if (writeActions.includes(params.action) && cacheEntities.includes(params.entity || "")) {
+        try {
+          invalidateComprehensiveIndicatorsCache();
+        } catch { /* silent - cache invalidation should never break the main flow */ }
+      }
+    } catch (error) {
+      console.error("Failed to save audit log (Fallback to Stdout):", {
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : String(error),
+        params,
+      });
     }
-  } catch (error) {
-    console.error("Failed to save audit log to DB:", error);
-  }
+  };
+
+  // تشغيل الخلفية فوراً
+  logTask();
 }
 
 // ==================== تحديد المعدل (DB-backed — متعدد المثيلات) ====================
@@ -189,41 +207,73 @@ export async function resetRateLimit(key: string): Promise<void> {
  * معالجة الخطأ دون تسريب تفاصيل داخلية للعميل
  */
 export function handleApiError(error: unknown, context?: string): NextResponse {
-  console.error(`API Error${context ? ` (${context})` : ""}:`, error);
+  try {
+    console.error(`API Error${context ? ` (${context})` : ""}:`, error);
 
-  // أخطاء Prisma المعروفة
-  if (error && typeof error === "object" && "code" in error) {
-    const prismaError = error as {
-      code: string;
-      meta?: { target?: string[] };
-    };
-
-    switch (prismaError.code) {
-      case "P2002":
-        return NextResponse.json(
-          { error: "البيانات موجودة مسبقاً - تكرار في حقل فريد" },
-          { status: 409 }
-        );
-      case "P2025":
-        return NextResponse.json(
-          { error: "السجل غير موجود" },
-          { status: 404 }
-        );
-      case "P2003":
-        return NextResponse.json(
-          { error: "مرجع غير صالح - السجل المرتبط غير موجود" },
-          { status: 400 }
-        );
-      default:
-        break;
+    // التحقق من أخطاء Zod
+    if (error instanceof ZodError) {
+      const first = error.issues[0];
+      const msg = first?.message || "بيانات غير صالحة";
+      return NextResponse.json({ error: msg }, { status: 400 });
     }
-  }
 
-  // خطأ عام — لا نكشف stack traces
-  return NextResponse.json(
-    { error: "حدث خطأ في النظام. يرجى المحاولة لاحقاً" },
-    { status: 500 }
-  );
+    // أخطاء Prisma المعروفة
+    if (error && typeof error === "object" && "code" in error) {
+      const prismaError = error as {
+        code: string;
+        meta?: { target?: string[] };
+      };
+
+      // أخطاء انقطاع الاتصال بقاعدة البيانات
+      const dbOutageCodes = ["P1001", "P1002", "P1008", "P1017"];
+      if (dbOutageCodes.includes(prismaError.code)) {
+        return NextResponse.json(
+          { error: "الخدمة غير متوفرة مؤقتاً بسبب انقطاع الاتصال بقاعدة البيانات. يرجى المحاولة لاحقاً." },
+          {
+            status: 503,
+            headers: {
+              "Retry-After": "5",
+            },
+          }
+        );
+      }
+
+      switch (prismaError.code) {
+        case "P2002":
+          return NextResponse.json(
+            { error: "البيانات موجودة مسبقاً - تكرار في حقل فريد" },
+            { status: 409 }
+          );
+        case "P2025":
+          return NextResponse.json(
+            { error: "السجل غير موجود" },
+            { status: 404 }
+          );
+        case "P2003":
+          return NextResponse.json(
+            { error: "مرجع غير صالح - السجل المرتبط غير موجود" },
+            { status: 400 }
+          );
+        default:
+          break;
+      }
+    }
+
+    // خطأ عام — لا نكشف stack traces
+    return NextResponse.json(
+      { error: "حدث خطأ في النظام. يرجى المحاولة لاحقاً" },
+      { status: 500 }
+    );
+  } catch (fallbackError) {
+    console.error("FATAL: handleApiError failed internally:", fallbackError);
+    return new NextResponse(
+      JSON.stringify({ error: "حدث خطأ غير متوقع في النظام." }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    ) as any;
+  }
 }
 
 // ==================== سياسة كلمات المرور ====================

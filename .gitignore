@@ -69,3 +69,7 @@ generate-md-source.js
 
 # Agent config
 .gemini/
+
+# Project archive and analysis outputs
+/archive_unused/
+/graphify-out/
