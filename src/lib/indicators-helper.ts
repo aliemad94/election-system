@@ -65,12 +65,11 @@ export function enrichElectoralKey(
       else neutralVotes++;
     });
   } else {
-    // fallback لتقدير expectedVotes
-    const exp = key.expectedVotes || 0;
-    supportedVotes = Math.round(exp * 0.6);
-    neutralVotes = Math.round(exp * 0.3);
-    weakVotes = Math.round(exp * 0.1);
-    totalVotes = exp;
+    // لا يوجد ناخبون مربوطون بالمفتاح الانتخابي
+    supportedVotes = 0;
+    neutralVotes = 0;
+    weakVotes = 0;
+    totalVotes = 0;
   }
 
   const net = supportedVotes * 0.8 + neutralVotes * 0.5 + weakVotes * 0.3;
@@ -106,7 +105,7 @@ export function enrichElectoralKey(
         ).length /
           totalVotes) *
         100
-      : 80;
+      : 0;
   // الحماية = عكس مستوى الخطر
   const riskLevelInvNormalized = ((6 - (key.riskLevel || 1)) / 5) * 100;
 
@@ -137,12 +136,12 @@ export function enrichElectoralKey(
           (supportedVotes * 80 + neutralVotes * 50 + weakVotes * 30) /
             totalVotes
         )
-      : 80;
+      : 0;
 
   // ===== 6. DRS (Defection Risk Score) =====
   const loyaltyInv = ((5 - (key.loyaltyScore || 3)) / 4) * 100;
   const weakSupportRatio =
-    totalVotes > 0 ? (weakVotes / totalVotes) * 100 : 10;
+    totalVotes > 0 ? (weakVotes / totalVotes) * 100 : 0;
   const needsPressure = ((key.riskLevel || 1) / 5) * 100;
 
   const lowEducationRatio =
@@ -153,12 +152,12 @@ export function enrichElectoralKey(
         ).length /
           totalVotes) *
         100
-      : 20;
+      : 0;
   const lowOrg = (1 - (key.keyAccuracyScore || 1.0)) * 100;
   const noContactRatio =
     totalVotes > 0
       ? (voters.filter((v) => !v.lastContactDate).length / totalVotes) * 100
-      : 30;
+      : 0;
 
   const drsScore = Math.round(
     loyaltyInv * 0.25 +
