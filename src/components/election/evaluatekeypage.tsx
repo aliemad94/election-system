@@ -35,20 +35,20 @@ const RatingBar = ({ field, label, weight, scores, setScores }: RatingBarProps) 
   })();
   const v = scores[field] ?? 3;
   return (
-    <div className="space-y-1.5 bg-slate-900 border border-slate-700 rounded-lg p-3">
+    <div className="space-y-1.5 bg-el-surface-container border border-el-outline-variant rounded-lg p-3">
       <div className="flex items-center justify-between">
-        <span className="text-[12px] font-bold text-slate-100">{label}</span>
-        <span className="text-[10px] bg-blue-900/50 text-blue-300 px-1.5 py-0.5 rounded font-bold">الوزن: {weight}%</span>
+        <span className="text-[12px] font-bold text-el-on-surface">{label}</span>
+        <span className="text-[10px] bg-blue-600/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded font-bold">الوزن: {weight}%</span>
       </div>
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map(n => (
           <button key={n} type="button" onClick={() => setScores(s => ({ ...s, [field]: n }))}
-            className={`flex-1 py-1.5 text-[11px] rounded border transition-all ${v >= n ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-blue-500/50'}`}>
+            className={`flex-1 py-1.5 text-[11px] rounded border transition-all ${v >= n ? 'bg-blue-600 text-white border-blue-500' : 'bg-el-surface border-el-outline-variant text-el-on-surface-variant hover:border-blue-500/50'}`}>
             {n}
           </button>
         ))}
       </div>
-      <div className="text-[10px] text-slate-400">{labels[v - 1]}</div>
+      <div className="text-[10px] text-el-on-surface-variant">{labels[v - 1]}</div>
     </div>
   );
 };
@@ -223,17 +223,17 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
   };
 
   return (
-    <div className="text-slate-100" dir="rtl">
+    <div className="text-el-on-surface" dir="rtl">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
-          <Shield className="w-6 h-6 text-blue-400" />
+          <Shield className="w-6 h-6 text-blue-500 dark:text-blue-400" />
           <h1 className="text-xl font-bold">تقييم النفوذ والتأثير</h1>
         </div>
 
         <div className="mb-6">
           <label className="text-[13px] font-semibold block mb-2">اختيار المفتاح الانتخابي</label>
           <select
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm"
+            className="w-full bg-el-surface border border-el-outline-variant text-el-on-surface rounded-lg px-3 py-2.5 text-sm"
             value={selectedKey?.id || ''}
             onChange={e => {
               const k = keys.find(x => x.id === e.target.value);
@@ -249,14 +249,14 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
 
         {selectedKey && (
           <>
-            <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4 mb-6">
+            <div className="bg-blue-600/10 border border-blue-500/25 rounded-lg p-4 mb-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-lg font-bold text-blue-300">{selectedKey.fullName || selectedKey.firstName}</h2>
-                  <p className="text-[12px] text-slate-400">صافي الأصوات: {selectedKey.netVotes} | التصنيف الحالي: {selectedKey.classification}</p>
+                  <h2 className="text-lg font-bold text-blue-600 dark:text-blue-400">{selectedKey.fullName || selectedKey.firstName}</h2>
+                  <p className="text-[12px] text-el-on-surface-variant">صافي الأصوات: {selectedKey.netVotes} | التصنيف الحالي: {selectedKey.classification}</p>
                 </div>
                 <button onClick={save} disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-5 py-2 rounded-lg text-[13px] font-bold transition">
+                  className="bg-blue-600 hover:bg-blue-500 disabled:bg-el-surface-container disabled:text-muted-foreground text-white px-5 py-2 rounded-lg text-[13px] font-bold transition">
                   {loading ? 'جاري الحفظ...' : 'حفظ التقييم'}
                 </button>
               </div>
@@ -277,7 +277,7 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
             <div className="grid grid-cols-2 gap-3 mb-6">
               <div>
                 <label className="text-[11px] font-semibold block mb-1">دقة المعلومات (F10)</label>
-                <select className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm" value={accuracy}
+                <select className="w-full bg-el-surface border border-el-outline-variant text-el-on-surface rounded-lg px-3 py-2 text-sm" value={accuracy}
                   onChange={e => setAccuracy(e.target.value)}>
                   <option value="1">1 — غير دقيقة</option>
                   <option value="2">2 — مشكوك فيها</option>
@@ -288,7 +288,7 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
               </div>
               <div>
                 <label className="text-[11px] font-semibold block mb-1">حالة التدريب (F11)</label>
-                <select className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm" value={training}
+                <select className="w-full bg-el-surface border border-el-outline-variant text-el-on-surface rounded-lg px-3 py-2 text-sm" value={training}
                   onChange={e => setTraining(e.target.value)}>
                   <option value="غير مدرب">غير مدرب</option>
                   <option value="تحت التدريب">تحت التدريب</option>
@@ -299,82 +299,82 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               {/* خلاصة التقييم الحسابية */}
-              <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
-                <h4 className="text-[12px] font-bold text-slate-300 border-b border-slate-700 pb-1.5 mb-2.5">
+              <div className="bg-el-surface-container border border-el-outline-variant rounded-lg p-4 flex flex-col justify-between">
+                <h4 className="text-[12px] font-bold text-el-on-surface border-b border-el-outline-variant pb-1.5 mb-2.5">
                   <Explainable termKey="WEIGHTED_SCORE">معادلة الكفاءة الموزونة</Explainable>
                 </h4>
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="text-[11px] text-el-on-surface-variant">
                       <Explainable termKey="WEIGHTED_SCORE">معامل الكفاءة</Explainable>
                     </div>
-                    <div className="text-3xl font-extrabold text-blue-400 font-mono">{efficiency}%</div>
+                    <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 font-mono">{efficiency}%</div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="text-[11px] text-el-on-surface-variant">
                       <Explainable termKey="VOTER_CLASSIFICATION">التصنيف</Explainable>
                     </div>
-                    <div className={`text-lg font-bold ${efficiency >= 100 ? 'text-green-400' : efficiency >= 50 ? 'text-blue-400' : efficiency >= 20 ? 'text-yellow-400' : 'text-red-400'}`}>
+                    <div className={`text-lg font-bold ${efficiency >= 100 ? 'text-green-500 dark:text-green-400' : efficiency >= 50 ? 'text-blue-600 dark:text-blue-400' : efficiency >= 20 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-500 dark:text-red-400'}`}>
                       {classification}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="text-[11px] text-el-on-surface-variant">
                       <Explainable termKey="GUARANTEED_VOTES">الأصوات المضمونة</Explainable>
                     </div>
-                    <div className="text-3xl font-extrabold text-green-400 font-mono">{guaranteed}</div>
+                    <div className="text-3xl font-extrabold text-green-500 dark:text-green-400 font-mono">{guaranteed}</div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-slate-400">الأصوات المتسربة</div>
-                    <div className="text-3xl font-extrabold text-red-400 font-mono">{Math.max(0, (selectedKey?.netVotes || 0) - guaranteed)}</div>
+                    <div className="text-[11px] text-el-on-surface-variant">الأصوات المتسربة</div>
+                    <div className="text-3xl font-extrabold text-red-500 dark:text-red-400 font-mono">{Math.max(0, (selectedKey?.netVotes || 0) - guaranteed)}</div>
                   </div>
                 </div>
               </div>
 
               {/* تشخيص الذكاء الاصطناعي لمخاطر التسرب */}
-              <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
-                <h4 className="text-[12px] font-bold text-blue-400 border-b border-slate-700 pb-1.5 mb-2.5 flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-blue-400 animate-pulse" /> تشخيص مخاطر تسرب الأصوات (AI Diagnostic)
+              <div className="bg-el-surface-container border border-el-outline-variant rounded-lg p-4">
+                <h4 className="text-[12px] font-bold text-blue-600 dark:text-blue-400 border-b border-el-outline-variant pb-1.5 mb-2.5 flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-blue-500 animate-pulse" /> تشخيص مخاطر تسرب الأصوات (AI Diagnostic)
                 </h4>
                 <div className="space-y-2 text-xs">
-                  <div className="flex justify-between items-center bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800">
-                    <span className="text-slate-400">احتمالية الالتزام الانتخابي:</span>
-                    <span className={`font-bold font-mono ${efficiency >= 70 ? 'text-green-400' : efficiency >= 45 ? 'text-yellow-400' : 'text-red-400'}`}>
+                  <div className="flex justify-between items-center bg-el-surface px-2.5 py-1.5 rounded border border-el-outline-variant">
+                    <span className="text-el-on-surface-variant">احتمالية الالتزام الانتخابي:</span>
+                    <span className={`font-bold font-mono ${efficiency >= 70 ? 'text-green-500 dark:text-green-400' : efficiency >= 45 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-500 dark:text-red-400'}`}>
                       {efficiency}%
                     </span>
                   </div>
 
                   <div className="space-y-1.5 mt-2.5">
-                    <span className="text-[10px] font-bold text-slate-400 block mb-1">عوامل خطر تسرب الأصوات النشطة:</span>
+                    <span className="text-[10px] font-bold text-el-on-surface-variant block mb-1">عوامل خطر تسرب الأصوات النشطة:</span>
                     {(scores.loyaltyScore ?? 3) <= 2 && (
-                      <p className="text-red-400 flex gap-1.5 items-start">⚠️ <span>ولاء متذبذب أو ضعيف للجهة المنظمة.</span></p>
+                      <p className="text-red-500 dark:text-red-400 flex gap-1.5 items-start">⚠️ <span>ولاء متذبذب أو ضعيف للجهة المنظمة.</span></p>
                     )}
                     {(scores.needsLevel ?? 3) <= 2 && (
-                      <p className="text-amber-400 flex gap-1.5 items-start">⚠️ <span>مطالب خدمية مرتفعة قد تؤدي لانشقاق وتراجع الأصوات.</span></p>
+                      <p className="text-amber-600 dark:text-amber-400 flex gap-1.5 items-start">⚠️ <span>مطالب خدمية مرتفعة قد تؤدي لانشقاق وتراجع الأصوات.</span></p>
                     )}
                     {(scores.voteProtection ?? 3) <= 2 && (
-                      <p className="text-red-400 flex gap-1.5 items-start">⚠️ <span>ضعف المتابعة الميدانية وتأمين وصول الناخبين.</span></p>
+                      <p className="text-red-500 dark:text-red-400 flex gap-1.5 items-start">⚠️ <span>ضعف المتابعة الميدانية وتأمين وصول الناخبين.</span></p>
                     )}
                     {(parseInt(accuracy) || 3) <= 2 && (
-                      <p className="text-amber-400 flex gap-1.5 items-start">⚠️ <span>دقة البيانات الميدانية مشكوك بها وتضخيم للأرقام.</span></p>
+                      <p className="text-amber-600 dark:text-amber-400 flex gap-1.5 items-start">⚠️ <span>دقة البيانات الميدانية مشكوك بها وتضخيم للأرقام.</span></p>
                     )}
                     {training !== 'مكتمل' && (
-                      <p className="text-slate-400 flex gap-1.5 items-start">ℹ️ <span>لم يتم إكمال التدريب التنظيمي للمندوبين.</span></p>
+                      <p className="text-el-on-surface-variant flex gap-1.5 items-start">ℹ️ <span>لم يتم إكمال التدريب التنظيمي للمندوبين.</span></p>
                     )}
                     {((scores.loyaltyScore ?? 3) > 2 && (scores.needsLevel ?? 3) > 2 && (scores.voteProtection ?? 3) > 2 && (parseInt(accuracy) || 3) > 2 && training === 'مكتمل') && (
-                      <p className="text-green-400 flex gap-1.5 items-start">✅ <span>الوضع مستقر ولا توجد مؤشرات خطر نشطة.</span></p>
+                      <p className="text-green-500 dark:text-green-400 flex gap-1.5 items-start">✅ <span>الوضع مستقر ولا توجد مؤشرات خطر نشطة.</span></p>
                     )}
                   </div>
 
                   {/* AI Action Hub */}
-                  <div className="mt-4 pt-3 border-t border-slate-700 space-y-2">
-                    <span className="text-[10px] font-bold text-blue-300 block mb-1">⚡ إجراءات الذكاء الاصطناعي التنفيذية المقترحة:</span>
+                  <div className="mt-4 pt-3 border-t border-el-outline-variant space-y-2">
+                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 block mb-1">⚡ إجراءات الذكاء الاصطناعي التنفيذية المقترحة:</span>
                     <div className="grid grid-cols-3 gap-2">
                       <button
                         type="button"
                         onClick={handleSmsAction}
                         disabled={actionLoading}
-                        className="bg-blue-600/20 hover:bg-blue-600/45 text-blue-300 border border-blue-500/20 rounded py-1.5 px-2 text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition disabled:opacity-50"
+                        className="bg-blue-600/10 hover:bg-blue-600/25 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded py-1.5 px-2 text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition disabled:opacity-50"
                       >
                         <span>💬 حملة SMS موجهة</span>
                       </button>
@@ -382,7 +382,7 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
                         type="button"
                         onClick={handleTaskAction}
                         disabled={actionLoading}
-                        className="bg-amber-600/20 hover:bg-amber-600/45 text-amber-300 border border-amber-500/20 rounded py-1.5 px-2 text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition disabled:opacity-50"
+                        className="bg-amber-600/10 hover:bg-amber-600/25 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded py-1.5 px-2 text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition disabled:opacity-50"
                       >
                         <span>📋 إنشاء مهمة ميدانية</span>
                       </button>
@@ -390,7 +390,7 @@ export default function EvaluateKeyPage({ preselectedKeyId, preselectedKey, onCl
                         type="button"
                         onClick={handleWarningAction}
                         disabled={actionLoading}
-                        className="bg-red-600/20 hover:bg-red-600/45 text-red-300 border border-red-500/20 rounded py-1.5 px-2 text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition disabled:opacity-50"
+                        className="bg-red-600/10 hover:bg-red-600/25 text-red-600 dark:text-red-400 border border-red-500/20 rounded py-1.5 px-2 text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition disabled:opacity-50"
                       >
                         <span>🚨 تسجيل إنذار مبكر</span>
                       </button>
