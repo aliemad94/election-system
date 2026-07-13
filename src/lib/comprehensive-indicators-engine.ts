@@ -636,7 +636,7 @@ function calcPerformanceIndicators(keys: KeyData[], _voters: VoterData[], servic
     pendingCount: pendingServices.length,
     totalCost,
     totalVotesImpact,
-    avgSatisfaction: 3, // افتراضي
+    avgSatisfaction: services.length > 0 ? 3 : 0,
   };
 
   // 43. نسبة الولاء العامة للحملة
@@ -662,7 +662,7 @@ function calcPerformanceIndicators(keys: KeyData[], _voters: VoterData[], servic
     avgEfficiency: avgVolunteerEfficiency,
     tasksPerformance: volunteers.length > 0
       ? round1((volunteers.reduce((sum: number, v: any) => sum + (v.totalCompletedTasks || 0), 0) / Math.max(volunteers.reduce((sum: number, v: any) => sum + (v.totalAssignedTasks || 0), 0), 1)) * 100)
-      : 80,
+      : 0,
   };
 
   // 45. تأثير العوامل الاقتصادية
@@ -949,8 +949,8 @@ export async function calculateComprehensiveIndicators() {
   const tribes: TribeData[] = rawTribes.map(t => ({
     id: t.id,
     name: t.name,
-    influence: 3, // قيمة افتراضية (حقل التأثير غير موجود في الـ schema الحالية)
-    district: null,
+    influence: t.influenceRating ?? 3,
+    district: t.district || null,
     _count: {
       voters: t._count.voters,
       electoralKeys: t._count.electionKeys,
