@@ -19,6 +19,14 @@ export type AuthenticatedHandler = (
   context: { params: any; user: AuthenticatedUser }
 ) => Promise<NextResponse> | Promise<Response>;
 
+interface CachedSession {
+  user: { id: string; role: string; mustChangePwd: boolean } | null;
+  expiresAt: number;
+}
+
+const sessionCache = new Map<string, CachedSession>();
+const CACHE_TTL_MS = 20 * 1000; // كاش الجلسات مدته 20 ثانية لتقليل عبء قاعدة البيانات
+
 /**
  * غلاف يفرض التحكم بالوصول حسب الدور لكل طريقة HTTP.
  */
@@ -56,33 +64,52 @@ export function withAuth(
     const { userId, role, username } = payload;
     const normalizedRole = role.toUpperCase();
 
-    // 2. التحقق من قاعدة البيانات مباشرة (صلاحيات مجمّدة أو مستخدم محذوف)
-    const dbUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true, mustChangePwd: true }
-    });
+    // 2. التحقق من قاعدة البيانات مع نظام كاش وصمود
+    let dbUser: { id: string; role: string; mustChangePwd: boolean } | null = null;
+    let databaseFailed = false;
 
-    if (!dbUser) {
-      return NextResponse.json(
-        { error: "غير مصرح - الحساب لم يعد موجوداً" },
-        { status: 401 }
-      );
+    const cached = sessionCache.get(userId);
+    const now = Date.now();
+    if (cached && cached.expiresAt > now) {
+      dbUser = cached.user;
+    } else {
+      try {
+        dbUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, role: true, mustChangePwd: true }
+        });
+        sessionCache.set(userId, { user: dbUser, expiresAt: now + CACHE_TTL_MS });
+      } catch (dbError) {
+        console.error("Database check failed during auth, entering Grace Mode:", dbError);
+        databaseFailed = true;
+      }
     }
 
-    if (dbUser.role.toUpperCase() !== normalizedRole) {
-      return NextResponse.json(
-        { error: "غير مصرح - تم تعديل صلاحيات الحساب" },
-        { status: 403 }
-      );
-    }
+    if (databaseFailed) {
+      // وضع الصمود: قاعدة البيانات معطلة ولكن التوكن موقع رقمياً وصالح
+      console.warn(`AUTH WARNING: Database offline. Authorizing user '${username}' with role '${normalizedRole}' from JWT signature.`);
+    } else {
+      if (!dbUser) {
+        return NextResponse.json(
+          { error: "غير مصرح - الحساب لم يعد موجوداً" },
+          { status: 401 }
+        );
+      }
 
-    // 3. فرض تغيير كلمة المرور عند أول دخول (باستثناء مسارات الدخول وتغيير كلمة المرور)
-    // ملاحظة: مسار change-password تتم حمايته بالتحقق من التوكن مباشرة داخل المعالج وليس عبر withAuth لتمكينه من التغيير
-    if (dbUser.mustChangePwd) {
-      return NextResponse.json(
-        { error: "يجب تغيير كلمة المرور قبل استخدام النظام" },
-        { status: 403 }
-      );
+      if (dbUser.role.toUpperCase() !== normalizedRole) {
+        return NextResponse.json(
+          { error: "غير مصرح - تم تعديل صلاحيات الحساب" },
+          { status: 403 }
+        );
+      }
+
+      // 3. فرض تغيير كلمة المرور عند أول دخول
+      if (dbUser.mustChangePwd) {
+        return NextResponse.json(
+          { error: "يجب تغيير كلمة المرور قبل استخدام النظام" },
+          { status: 403 }
+        );
+      }
     }
 
     const allowed = allowedRoles.map((r) => {

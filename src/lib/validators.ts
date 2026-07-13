@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { sanitizeString } from "./security";
+import { NextRequest } from "next/server";
 
 // ===== العشائر =====
 export const createTribeSchema = z.object({
@@ -190,9 +191,47 @@ export type CreateServiceInput = z.infer<typeof createServiceSchema>;
 export type CreateEarlyWarningInput = z.infer<typeof createEarlyWarningSchema>;
 
 /**
- * تنسيق خطأ Zod لرسالة عربية موحّدة
+ * تنسيق خطأ Zod لرسالة عربية موحّدة ومعرّبة تلقائياً
  */
 export function formatZodError(error: z.ZodError): string {
   const first = error.issues[0];
-  return first?.message || "بيانات غير صالحة";
+  if (!first) return "بيانات غير صالحة";
+
+  const message = first.message;
+  const pathName = first.path.join(".") || "الحقل";
+
+  // تعريب الرسائل الافتراضية الشائعة من Zod
+  if (message === "Required") {
+    return `الحقل [${pathName}] مطلوب`;
+  }
+  if (message === "Invalid email") {
+    return "البريد الإلكتروني المدخل غير صالح";
+  }
+  if (message.startsWith("Expected ") && message.includes("received")) {
+    return `نوع البيانات المدخلة للحقل [${pathName}] غير صحيح`;
+  }
+  if (message.includes("Invalid enum value")) {
+    return `القيمة المحددة للحقل [${pathName}] غير صالحة`;
+  }
+  if (message.includes("String must contain at least")) {
+    return `النص في [${pathName}] قصير جداً`;
+  }
+  if (message.includes("Number must be greater than or equal to")) {
+    return `القيمة الرقمية للحقل [${pathName}] يجب أن تكون أكبر أو تساوي الحد الأدنى`;
+  }
+
+  return message || "بيانات غير صالحة";
+}
+
+/**
+ * تحليل وقراءة الـ request body بأمان لمنع الانهيارات عند إرسال JSON تالف أو فارغ
+ */
+export async function safeParseBody<T>(req: NextRequest): Promise<T | null> {
+  try {
+    const text = await req.text();
+    if (!text.trim()) return null;
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
 }
