@@ -229,6 +229,12 @@
   body {
     @apply bg-background text-foreground transition-colors duration-300;
   }
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    @apply text-foreground bg-el-surface border-el-outline-variant placeholder:text-muted-foreground/60;
+  }
+  option {
+    @apply bg-el-surface text-foreground;
+  }
 }
 
 /* Custom scrollbar for data density */

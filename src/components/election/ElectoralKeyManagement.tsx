@@ -1274,13 +1274,13 @@ export default function ElectoralKeyManagement() {
 
       {/* صفحة تقييم النفوذ والتأثير (مستقلة) */}
       {showEvaluate && (
-        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
-          <div className="bg-slate-950 rounded-lg border border-slate-700 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-slate-950 border-b border-slate-700 p-4 flex justify-between items-center z-10">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Shield className="w-5 h-5 text-yellow-400" /> تقييم النفوذ والتأثير
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-el-surface rounded-lg border border-el-outline-variant w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-el-surface border-b border-el-outline-variant p-4 flex justify-between items-center z-10">
+              <h3 className="text-lg font-bold text-el-on-surface flex items-center gap-2">
+                <Shield className="w-5 h-5 text-amber-500 dark:text-yellow-400" /> تقييم النفوذ والتأثير
               </h3>
-              <button onClick={() => { setShowEvaluate(false); setEvalKeyId(null); }} className="text-slate-400 hover:text-white">
+              <button onClick={() => { setShowEvaluate(false); setEvalKeyId(null); }} className="text-el-on-surface-variant hover:text-el-on-surface">
                 <X className="w-5 h-5" />
               </button>
             </div>
