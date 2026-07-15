@@ -10,7 +10,7 @@ import { simulateScenario, type ElectoralKeyData } from "@/lib/electoral-calcula
 
 async function postHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }>; user: AuthenticatedUser }
+  { params, user }: { params: Promise<{ id: string }>; user: AuthenticatedUser }
 ) {
   try {
     const { id } = await params;
@@ -24,6 +24,14 @@ async function postHandler(
       return NextResponse.json(
         { error: "المفتاح الانتخابي غير موجود" },
         { status: 404 }
+      );
+    }
+
+    // KEY_USER يمكنه محاكاة مفتاحه فقط
+    if (user.role === "KEY_USER" && key.phone !== user.username) {
+      return NextResponse.json(
+        { error: "غير مصرح - يمكنك محاكاة مفتاحك فقط" },
+        { status: 403 }
       );
     }
 

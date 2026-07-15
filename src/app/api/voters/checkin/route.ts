@@ -42,9 +42,42 @@ async function checkinHandler(req: NextRequest, { user }: { user: AuthenticatedU
   const { voterId } = parsed.data;
 
   try {
+    // التحقق من وجود الناخب وصلاحية الوصول
+    const voter = await prisma.voter.findUnique({
+      where: { id: voterId },
+      select: { keyId: true, votedOnDay: true },
+    });
+
+    if (!voter) {
+      return NextResponse.json(
+        { error: "الناخب غير موجود", status: "not_found" },
+        { status: 404 }
+      );
+    }
+
+    if (user.role === "KEY_USER") {
+      const key = await prisma.electionKey.findFirst({
+        where: { phone: user.username },
+        select: { id: true },
+      });
+      if (!key || voter.keyId !== key.id) {
+        return NextResponse.json(
+          { error: "غير مصرح - لا تملك صلاحية تسجيل حضور هذا الناخب" },
+          { status: 403 }
+        );
+      }
+    }
+
+    if (voter.votedOnDay) {
+      // سبق التسجيل — idempotent: نُرجع نجاحاً دون تكرار
+      return NextResponse.json({
+        status: "already_checked_in",
+        voterId,
+        message: "الناخب سبق تسجيل حضوره",
+      });
+    }
+
     // ===== العملية الذرية idempotent =====
-    // updateMany يُرجع count = عدد الصفوف المُحدّثة فعلياً.
-    // شرط votedOnDay: false يضمن أن التحديث يحدث مرة واحدة فقط.
     const result = await prisma.voter.updateMany({
       where: { id: voterId, votedOnDay: false },
       data: {
@@ -55,20 +88,6 @@ async function checkinHandler(req: NextRequest, { user }: { user: AuthenticatedU
     });
 
     if (result.count === 0) {
-      // لم يُحدّث شيء — إما الناخب غير موجود أو سبق التسجيل
-      const voter = await prisma.voter.findUnique({
-        where: { id: voterId },
-        select: { id: true, votedOnDay: true, firstName: true },
-      });
-
-      if (!voter) {
-        return NextResponse.json(
-          { error: "الناخب غير موجود", status: "not_found" },
-          { status: 404 }
-        );
-      }
-
-      // سبق التسجيل — idempotent: نُرجع نجاحاً دون تكرار
       return NextResponse.json({
         status: "already_checked_in",
         voterId,

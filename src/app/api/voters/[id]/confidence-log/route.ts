@@ -10,10 +10,35 @@ import { withAuth } from "@/lib/auth-guard";
 
 async function getHandler(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params, user }: { params: Promise<{ id: string }>; user: AuthenticatedUser }
 ) {
   try {
     const { id } = await params;
+
+    const voter = await prisma.voter.findUnique({
+      where: { id },
+      select: { keyId: true },
+    });
+
+    if (!voter) {
+      return NextResponse.json(
+        { error: "الناخب غير موجود" },
+        { status: 404 }
+      );
+    }
+
+    if (user.role === "KEY_USER") {
+      const key = await prisma.electionKey.findFirst({
+        where: { phone: user.username },
+        select: { id: true },
+      });
+      if (!key || voter.keyId !== key.id) {
+        return NextResponse.json(
+          { error: "غير مصرح - لا تملك صلاحية الوصول لسجلات هذا الناخب" },
+          { status: 403 }
+        );
+      }
+    }
 
     const logs = await prisma.confidenceLog.findMany({
       where: { voterId: id },
@@ -48,7 +73,7 @@ async function postHandler(
 
     const voter = await prisma.voter.findUnique({
       where: { id },
-      select: { confidenceScore: true },
+      select: { confidenceScore: true, keyId: true },
     });
 
     if (!voter) {
@@ -56,6 +81,19 @@ async function postHandler(
         { error: "الناخب غير موجود" },
         { status: 404 }
       );
+    }
+
+    if (user.role === "KEY_USER") {
+      const key = await prisma.electionKey.findFirst({
+        where: { phone: user.username },
+        select: { id: true },
+      });
+      if (!key || voter.keyId !== key.id) {
+        return NextResponse.json(
+          { error: "غير مصرح - لا تملك صلاحية تعديل هذا الناخب" },
+          { status: 403 }
+        );
+      }
     }
 
     const oldScore = voter.confidenceScore;

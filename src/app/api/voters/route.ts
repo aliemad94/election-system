@@ -84,8 +84,8 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
       grandfatherName: v.grandfatherName,
       fourthName: v.fourthName,
       gender: v.gender,
-      phone: v.phone || "",
-      nationalId: v.nationalId,
+      phone: (user.role === "ADMIN" || user.role === "KEY_USER") ? (v.phone || "") : "",
+      nationalId: user.role === "ADMIN" ? v.nationalId : undefined,
       district: v.district,
       subDistrict: v.subDistrict,
       pollingCenter: v.pollingCenter,
@@ -137,7 +137,7 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
       });
       if (phoneExists) {
         return NextResponse.json(
-          { error: `رقم الهاتف مسجل مسبقاً للناخب ${phoneExists.firstName} ${phoneExists.fatherName} تحت المفتاح ${phoneExists.electionKey?.firstName || "غير معروف"}` },
+          { error: "رقم الهاتف مسجل مسبقاً في النظام" },
           { status: 400 }
         );
       }
@@ -151,7 +151,7 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
       });
       if (nationalIdExists) {
         return NextResponse.json(
-          { error: `رقم الهوية الوطنية مسجل مسبقاً للناخب ${nationalIdExists.firstName} ${nationalIdExists.fatherName} تحت المفتاح ${nationalIdExists.electionKey?.firstName || "غير معروف"}` },
+          { error: "رقم الهوية الوطنية مسجل مسبقاً في النظام" },
           { status: 400 }
         );
       }

@@ -26,6 +26,14 @@ async function postHandler(
       );
     }
 
+    // KEY_USER يمكنه تقييم مفتاحه فقط
+    if (user.role === "KEY_USER" && key.phone !== user.username) {
+      return NextResponse.json(
+        { error: "غير مصرح - يمكنك تقييم مفتاحك فقط" },
+        { status: 403 }
+      );
+    }
+
     // إعداد بيانات الحساب — النظام الجديد: 11 حقلاً
     const votes = {
       supportedVotes: key.supportedVotes,
