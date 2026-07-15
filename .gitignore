@@ -73,3 +73,6 @@ generate-md-source.js
 # Project archive and analysis outputs
 /archive_unused/
 /graphify-out/
+
+# Database backups
+/backups/

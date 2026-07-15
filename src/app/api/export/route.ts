@@ -25,7 +25,16 @@ async function getHandler(
 
     switch (entity) {
       case "voters": {
+        const where: any = {};
+        if (user.role === "KEY_USER") {
+          const key = await prisma.electionKey.findFirst({
+            where: { phone: user.username },
+            select: { id: true },
+          });
+          where.keyId = key?.id || "none";
+        }
         const voters = await prisma.voter.findMany({
+          where,
           include: { electionKey: { select: { keyCode: true, firstName: true } }, tribe: { select: { name: true } } },
           orderBy: { createdAt: "desc" },
         });
@@ -50,7 +59,12 @@ async function getHandler(
       }
 
       case "keys": {
+        const where: any = {};
+        if (user.role === "KEY_USER") {
+          where.phone = user.username;
+        }
         const keys = await prisma.electionKey.findMany({
+          where,
           include: { tribe: { select: { name: true } }, _count: { select: { voters: true } } },
           orderBy: { createdAt: "desc" },
         });

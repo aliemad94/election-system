@@ -57,7 +57,7 @@ async function putHandler(
       });
       if (phoneExists) {
         return NextResponse.json(
-          { error: `رقم الهاتف مسجل مسبقاً للناخب ${phoneExists.firstName} ${phoneExists.fatherName} تحت المفتاح ${phoneExists.electionKey?.firstName || "غير معروف"}` },
+          { error: "رقم الهاتف مسجل مسبقاً في النظام" },
           { status: 400 }
         );
       }
@@ -71,7 +71,7 @@ async function putHandler(
       });
       if (nationalIdExists) {
         return NextResponse.json(
-          { error: `رقم الهوية الوطنية مسجل مسبقاً للناخب ${nationalIdExists.firstName} ${nationalIdExists.fatherName} تحت المفتاح ${nationalIdExists.electionKey?.firstName || "غير معروف"}` },
+          { error: "رقم الهوية الوطنية مسجل مسبقاً في النظام" },
           { status: 400 }
         );
       }
