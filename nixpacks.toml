@@ -1,12 +1,11 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "openssl"]
+nixPkgs = ['nodejs', 'openssl']
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ['npm ci']
 
 [phases.build]
-cmds = ["npx prisma generate && npx next build && node copy-standalone.js"]
+cmds = ['npx prisma generate', 'npm run build']
 
 [start]
-cmd = "npx prisma db push --skip-generate && npx prisma db seed && node .next/standalone/server.js"
-
+cmd = 'npm start'
