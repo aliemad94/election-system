@@ -162,6 +162,41 @@ function calcDecisiveIndicators(
   const avgParticipation = ihec.length > 0
     ? ihec.reduce((s, r) => s + r.participationRate, 0) / ihec.length : 0;
 
+  if (keys.length === 0) {
+    return {
+      expectedVotesOnDay: 0,
+      expectedVotes: 0,
+      expectedTurnout: 0,
+      expectedParticipation: 0,
+      votesNeededToWin: 0,
+      electoralGap: 0,
+      winProbability: 0,
+      overallRisk: 0,
+      stability: 0,
+      earlyWarning: 0,
+      supportDistribution: {
+        supported: { count: 0, percentage: 0 },
+        neutral: { count: 0, percentage: 0 },
+        weak: { count: 0, percentage: 0 },
+      },
+      supportersDistribution: {
+        supported: 0,
+        neutral: 0,
+        opponent: 0,
+      },
+      strongAreas: [],
+      weakAreas: [],
+      geoDistribution: [],
+      keyRanking: [],
+      avgKRI: 0,
+      avgDRS: 0,
+      areaMap: DHIQAR_DISTRICTS.map(dist => ({ district: dist, color: 'red' as const, strength: 0, netVotes: 0, keyCount: 0 })),
+      totalNetVotes: 0,
+      totalRegistered: totalRegistered,
+      projectedSeats: 0,
+    };
+  }
+
   // 1. عدد الأصوات المتوقعة يوم الاقتراع
   const totalNetVotes = keys.reduce((s, k) => s + k.netVotes, 0);
   const expectedVotesOnDay = Math.round(totalNetVotes * (avgParticipation / 100));
