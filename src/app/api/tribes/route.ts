@@ -9,6 +9,7 @@ import { withAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/security";
 import { auditLog } from "@/lib/security";
 import { createTribeSchema, formatZodError } from "@/lib/validators";
+import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 
 // GET /api/tribes — قائمة العشائر مع إحصاءات الناخبين والتقسيم والبحث
 async function getHandler(req: NextRequest) {
@@ -195,6 +196,8 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
       entityId: tribe.id,
       details: { name: tribe.name },
     });
+
+    invalidateComprehensiveIndicatorsCache();
 
     return NextResponse.json(tribe, { status: 201 });
   } catch (error) {

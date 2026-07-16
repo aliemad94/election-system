@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
+import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 
 async function postHandler(
   request: NextRequest,
@@ -49,6 +50,9 @@ async function postHandler(
       prisma.competitor.deleteMany(),
       prisma.volunteer.deleteMany(),
     ]);
+
+    // إبطال الكاش فوراً
+    invalidateComprehensiveIndicatorsCache();
 
     // تسجيل العملية
     const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
