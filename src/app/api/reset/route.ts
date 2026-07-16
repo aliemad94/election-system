@@ -20,6 +20,14 @@ async function postHandler(
       );
     }
 
+    // منع الحذف في الإنتاج إلا في حال تفعيل ALLOW_PRODUCTION_RESET
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_RESET !== "true") {
+      return NextResponse.json(
+        { error: "عملية إعادة تعيين قاعدة البيانات محظورة في بيئة الإنتاج" },
+        { status: 403 }
+      );
+    }
+
     // التحقق من التأكيد المزدوج
     const body = await request.json().catch(() => ({}));
     const { confirmReset } = body;
@@ -33,22 +41,22 @@ async function postHandler(
     // حذف جميع البيانات مع الاحتفاظ بالمستخدمين فقط
     await prisma.$transaction([
       prisma.confidenceLog.deleteMany(),
+      prisma.task.deleteMany(),
+      prisma.alert.deleteMany(),
       prisma.earlyWarning.deleteMany(),
       prisma.dynamicIndicator.deleteMany(),
       prisma.compositeIndicator.deleteMany(),
-      prisma.sMSCampaign.deleteMany(),
-      prisma.alert.deleteMany(),
-      prisma.service.deleteMany(),
-      prisma.task.deleteMany(),
       prisma.sentimentTrend.deleteMany(),
+      prisma.sMSCampaign.deleteMany(),
+      prisma.service.deleteMany(),
+      prisma.volunteer.deleteMany(),
+      prisma.electionResult.deleteMany(),
       prisma.voter.deleteMany(),
       prisma.electionKey.deleteMany(),
-      prisma.electionResult.deleteMany(),
-      prisma.tribe.deleteMany(),
       prisma.subTribe.deleteMany(),
+      prisma.tribe.deleteMany(),
       prisma.commissionData.deleteMany(),
       prisma.competitor.deleteMany(),
-      prisma.volunteer.deleteMany(),
     ]);
 
     // إبطال الكاش فوراً

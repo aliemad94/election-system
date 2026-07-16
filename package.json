@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "npx prisma generate && next build --webpack && node copy-standalone.js",
-    "start": "npx prisma db push && node prisma/seed.js && node .next/standalone/server.js",
+    "start": "npx prisma db push && node .next/standalone/server.js",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -16,6 +16,8 @@
     "db:migrate:prod": "prisma migrate deploy",
     "db:reset": "prisma migrate reset",
     "db:seed": "node prisma/seed.js",
+    "db:seed:core": "node prisma/seed.core.js",
+    "db:seed:demo": "node prisma/seed.demo.js",
     "postinstall": "prisma generate || true",
     "precommit": "npx tsc --noEmit && npx vitest run && npm run build && node scripts/verify-security.js"
   },
