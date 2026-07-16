@@ -142,7 +142,7 @@ export default function ExecutiveDashboard() {
   const avgDRS = d.avgDRS ?? 0;
   const gpsVerificationRate = d.gpsVerificationRate ?? 0;
   const registryVerificationRate = d.registryVerificationRate ?? 0;
-  const averageKeyAccuracy = d.averageKeyAccuracy ?? 100;
+  const averageKeyAccuracy = d.averageKeyAccuracy ?? 0;
   const serviceConversionRate = d.serviceConversionRate ?? 0;
 
   const votesNeededToWin = d.votesNeededToWin ?? 12000;

@@ -46,6 +46,7 @@ interface KeyData {
   organizationalNote: number;
   generalNote: number;
   weightedScore: number;
+  keyAccuracyScore: number;
   totalSpent: number;
   monthlyBudget: number;
   lastContactDate: string | null;
@@ -174,6 +175,7 @@ function calcDecisiveIndicators(
       overallRisk: 0,
       stability: 0,
       earlyWarning: 0,
+      averageKeyAccuracy: 0,
       supportDistribution: {
         supported: { count: 0, percentage: 0 },
         neutral: { count: 0, percentage: 0 },
@@ -280,6 +282,9 @@ function calcDecisiveIndicators(
   const overallRisk = Math.round(avgDRS * 0.6 + (100 - avgKRI) * 0.4);
   const stability = Math.round(Math.min(100, avgKRI));
   const earlyWarning = Math.round(avgDRS * 0.5);
+  const averageKeyAccuracy = keys.length > 0
+    ? Math.round((keys.reduce((s, k) => s + (k.keyAccuracyScore ?? 1.0), 0) / keys.length) * 100)
+    : 0;
   const supportersDistribution = {
     supported: supportDistribution.supported.percentage || 0,
     neutral: supportDistribution.neutral.percentage || 0,
@@ -289,6 +294,7 @@ function calcDecisiveIndicators(
   return {
     expectedVotesOnDay, expectedVotes, expectedTurnout, expectedParticipation,
     votesNeededToWin, electoralGap, winProbability, overallRisk, stability, earlyWarning,
+    averageKeyAccuracy,
     supportDistribution, supportersDistribution,
     strongAreas,
     weakAreas,
@@ -991,6 +997,7 @@ export async function calculateComprehensiveIndicators() {
     organizationalNote: (k as any).organizationalNote || 3,
     generalNote: (k as any).generalNote || 3,
     weightedScore: k.weightedScore,
+    keyAccuracyScore: (k as any).keyAccuracyScore || k.keyAccuracyScore || 1.0,
     totalSpent: (k as any).totalSpent || ((k as any).services || []).reduce((sum: number, s: any) => sum + (s.cost || 0), 0),
     monthlyBudget: (k as any).monthlyBudget || 0,
     lastContactDate: (k as any).lastContactDate ? new Date((k as any).lastContactDate).toISOString() : null,
