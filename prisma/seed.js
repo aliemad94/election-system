@@ -42,6 +42,28 @@ const REFERENCE_TRIBES = [
 
 async function main() {
   console.log('🌱 بدء تهيئة قاعدة البيانات الشاملة (JS)...');
+  
+  console.log('🧹 تنظيف البيانات الوهمية القديمة...');
+  await prisma.$transaction([
+    prisma.confidenceLog.deleteMany(),
+    prisma.earlyWarning.deleteMany(),
+    prisma.dynamicIndicator.deleteMany(),
+    prisma.compositeIndicator.deleteMany(),
+    prisma.sMSCampaign.deleteMany(),
+    prisma.alert.deleteMany(),
+    prisma.service.deleteMany(),
+    prisma.task.deleteMany(),
+    prisma.sentimentTrend.deleteMany(),
+    prisma.voter.deleteMany(),
+    prisma.electionKey.deleteMany(),
+    prisma.electionResult.deleteMany(),
+    prisma.tribe.deleteMany(),
+    prisma.subTribe.deleteMany(),
+    prisma.commissionData.deleteMany(),
+    prisma.competitor.deleteMany(),
+    prisma.volunteer.deleteMany(),
+  ]);
+  console.log('✅ تم تنظيف كافة البيانات العالقة بنجاح.');
 
   // 1. قراءة كلمات المرور من متغيرات البيئة إلزامياً (بدل fallback صامت لقيم معروفة للعامة).
   // يتطابق هذا مع آلية start.sh في Docker التي تخرج بـ FATAL عند غياب المتغيرات،
