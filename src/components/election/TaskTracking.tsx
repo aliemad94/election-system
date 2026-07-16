@@ -54,7 +54,7 @@ interface Task {
 
 interface TaskData {
   tasks: Task[];
-  statusCounts: { status: string; _count: { id: number } }[];
+  statusCounts: { status: string; count: number }[];
 }
 
 const priorityLabels: Record<string, string> = {
@@ -105,10 +105,10 @@ export default function TaskTracking() {
   const tasks = Array.isArray(taskData?.tasks) ? taskData.tasks : [];
   const statusCounts = Array.isArray(taskData?.statusCounts) ? taskData.statusCounts : [];
 
-  const totalTasks = statusCounts.reduce((sum, sc) => sum + sc._count.id, 0);
-  const pendingCount = statusCounts.find((sc) => sc.status === 'PENDING')?._count.id || 0;
-  const inProgressCount = statusCounts.find((sc) => sc.status === 'IN_PROGRESS')?._count.id || 0;
-  const completedCount = statusCounts.find((sc) => sc.status === 'COMPLETED')?._count.id || 0;
+  const totalTasks = statusCounts.reduce((sum, sc) => sum + (sc.count || 0), 0);
+  const pendingCount = statusCounts.find((sc) => sc.status === 'PENDING')?.count || 0;
+  const inProgressCount = statusCounts.find((sc) => sc.status === 'IN_PROGRESS')?.count || 0;
+  const completedCount = statusCounts.find((sc) => sc.status === 'COMPLETED')?.count || 0;
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-el-on-surface-variant">جاري التحميل...</div>;

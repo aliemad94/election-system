@@ -235,7 +235,6 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
-    // ===== حماية إجراءات ADMIN: toggle-access و change-password =====
     const tokenCookie = req.cookies.get("election_auth");
     if (!tokenCookie) {
       return NextResponse.json(
@@ -245,15 +244,21 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = await verifyToken(tokenCookie.value);
-    if (!payload || payload.role !== "ADMIN") {
+    if (!payload) {
       return NextResponse.json(
-        { error: "غير مصرح - الصلاحيات غير كافية" },
-        { status: 403 }
+        { error: "غير مصرح - يرجى تسجيل الدخول" },
+        { status: 401 }
       );
     }
 
     // ===== إجراء: تفعيل/تعطيل وصول الزوار =====
     if (action === "toggle-access") {
+      if (payload.role !== "ADMIN") {
+        return NextResponse.json(
+          { error: "غير مصرح - الصلاحيات غير كافية" },
+          { status: 403 }
+        );
+      }
       if (enabled === undefined) {
         return NextResponse.json(
           { success: false, message: "حقل enabled مطلوب" },

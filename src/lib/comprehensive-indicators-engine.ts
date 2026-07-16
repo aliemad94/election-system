@@ -14,7 +14,7 @@
 import { prisma } from "./prisma";
 import { enrichElectoralKey, type EnrichedKey } from "./indicators-helper";
 import { DHIQAR_DISTRICTS } from "@/lib/types";
-import { classifyKey } from "./electoral-calculations";
+import { classifyKey, calculateThresholdVotes } from "./electoral-calculations";
 import { allocateSeatsLaguë } from "./seat-projection";
 
 // ═══ الأنواع ═══
@@ -47,6 +47,7 @@ interface KeyData {
   generalNote: number;
   weightedScore: number;
   totalSpent: number;
+  monthlyBudget: number;
   lastContactDate: string | null;
   trainingStatus: string | null;
   district: string | null;
@@ -237,7 +238,7 @@ function calcDecisiveIndicators(
 
   const expectedVotes = expectedVotesOnDay;
   const expectedTurnout = expectedParticipation;
-  const votesNeededToWin = 12000;
+  const votesNeededToWin = calculateThresholdVotes(totalRegistered, avgParticipation / 100);
   const electoralGap = Math.max(0, votesNeededToWin - expectedVotesOnDay);
   const baseParticipation = (totalRegistered * avgParticipation) / 100;
   const winProbability = (totalNetVotes > 0 && baseParticipation > 0) ? round1(clamp((totalNetVotes / baseParticipation) * 100)) : 0;
@@ -268,7 +269,7 @@ function calcDecisiveIndicators(
         { partyName: "حملتنا الانتخابية", votes: totalNetVotes },
         ...competitors.map(c => ({
           partyName: c.party || c.name,
-          votes: c.estimatedVotes || 1000,
+          votes: c.estimatedVotes || 0,
         })),
       ];
       const allocated = allocateSeatsLaguë(parties, 18);
@@ -282,8 +283,13 @@ function calcDecisiveIndicators(
 // ═══════════════════════════════════════════════════════════════
 
 function calcCampaignIndicators(
-  keys: KeyData[], _voters: VoterData[],
-  districtKeys: Record<string, KeyData[]>
+  keys: KeyData[],
+  _voters: VoterData[],
+  districtKeys: Record<string, KeyData[]>,
+  services: any[],
+  smsCampaigns: any[],
+  totalNetVotes: number,
+  totalVoters: number
 ) {
   // 11. أعلى المفاتيح للأصوات
   const topKeysByVotes = [...keys]
@@ -351,14 +357,26 @@ function calcCampaignIndicators(
     })
     .sort((a, b) => b.effortScore - a.effortScore);
 
+  // 16. كفاءة حملات SMS
+  const sentSMS = smsCampaigns.filter(c => c.status === 'SENT');
+  const messageEffectivenessVal = smsCampaigns.length > 0
+    ? round1((sentSMS.reduce((sum, c) => sum + (c.recipientCount || 0), 0) / Math.max(totalVoters, 1)) * 100)
+    : 0;
+
+  // 17. تأثير الخدمات المقدمة
+  const completedServices = services.filter(s => s.status === 'COMPLETED');
+  const serviceImpactVal = services.length > 0
+    ? round1((completedServices.reduce((sum, s) => sum + (s.estimatedVotesImpact || 0), 0) / Math.max(totalNetVotes, 1)) * 100)
+    : 0;
+
   return {
     topKeysByVotes,
     investmentKeys,
     mobilizationIndex,
     protectionIndex,
     areasNeedingEffort,
-    messageEffectiveness: { available: false, message: 'يحتاج بيانات حملات SMS ونتائجها' },
-    serviceImpact: { available: false, message: 'يحتاج نظام تتبع الخدمات المقدمة' },
+    messageEffectiveness: messageEffectivenessVal,
+    serviceImpact: serviceImpactVal,
   };
 }
 
@@ -366,7 +384,7 @@ function calcCampaignIndicators(
 // الفئة 3: مؤشرات فهم الجمهور (21-30)
 // ═══════════════════════════════════════════════════════════════
 
-function calcAudienceIndicators(keys: KeyData[], voters: VoterData[]) {
+function calcAudienceIndicators(keys: KeyData[], voters: VoterData[], sentimentTrends: any[]) {
   const allPeople = [
     ...keys.map(k => ({ dob: k.dateOfBirth, gender: k.gender, edu: k.educationLevel, prof: k.profession, category: 'مفتاح' as string, voted: true })),
     ...voters.map(v => ({ dob: v.dateOfBirth, gender: v.gender, edu: v.educationLevel, prof: v.profession, category: v.voterCategory, voted: v.votedStatus })),
@@ -465,6 +483,31 @@ function calcAudienceIndicators(keys: KeyData[], voters: VoterData[]) {
     { name: 'عمال وحرفيون', count: allPeople.filter(p => ['عامل', 'حرفي', 'سائق', 'فلاح'].includes(p.prof || '')).length },
   ].filter(s => s.count > 0);
 
+  // 37. القضايا الأكثر تأثيراً من اتجاهات الرأي العام الحقيقية
+  const topIssues = sentimentTrends.length > 0
+    ? sentimentTrends.map(s => {
+        let keyword = 'عامة';
+        try {
+          const parsed = JSON.parse(s.keywords || '[]');
+          if (Array.isArray(parsed) && parsed.length > 0) keyword = parsed[0];
+          else if (typeof parsed === 'string') keyword = parsed;
+        } catch {
+          if (s.keywords) keyword = s.keywords;
+        }
+        return { issue: `ملف ${keyword} في ${s.region}`, weight: Math.round(clamp(s.score * 100)) };
+      }).slice(0, 5)
+    : [];
+
+  // 38. نوع الخطاب المناسب لكل شريحة تصويتية
+  const segmentMessaging = segments.map(s => {
+    let messageType = 'خطاب تنموي عام';
+    if (s.name.includes('شباب')) messageType = 'تركيز على فرص العمل والتأهيل الرقمي والأنشطة الشبابية';
+    else if (s.name.includes('جامعيون')) messageType = 'خطاب مؤسسي، تحفيز الكفاءات، والاصلاح الإداري والنزاهة';
+    else if (s.name.includes('نساء')) messageType = 'تركيز على التنمية الأسرية والخدمات الصحية المباشرة والتعليم';
+    else if (s.name.includes('كبار')) messageType = 'تركيز على الخدمات البلدية الأساسية والاستقرار الاجتماعي العشائري';
+    return { segment: s.name, messageType };
+  });
+
   return {
     topSupportingAgeGroups,
     mostHesitantAgeGroups,
@@ -475,8 +518,8 @@ function calcAudienceIndicators(keys: KeyData[], voters: VoterData[]) {
     universityCount,
     professionSupport,
     segments,
-    topIssues: { available: false, message: 'يحتاج بيانات المؤشرات الديناميكية' },
-    segmentMessaging: { available: false, message: 'يُحسب بناءً على تحليل الشرائح أعلاه' },
+    topIssues,
+    segmentMessaging,
   };
 }
 
@@ -636,7 +679,7 @@ function calcPerformanceIndicators(keys: KeyData[], _voters: VoterData[], servic
     pendingCount: pendingServices.length,
     totalCost,
     totalVotesImpact,
-    avgSatisfaction: services.length > 0 ? 3 : 0,
+    avgSatisfaction: services.length > 0 ? round1((completedServices.length / services.length) * 5) : 0,
   };
 
   // 43. نسبة الولاء العامة للحملة
@@ -742,7 +785,7 @@ function calcCompositeAnalyticalIndicators(
   // 56. مؤشر استنزاف الحملة
   const totalSpent = keys.reduce((s, k) => s + k.totalSpent, 0);
   const costPerVote = totalNetVotes > 0 ? round1(totalSpent / totalNetVotes) : 0;
-  const exhaustionIndex = totalSpent > 0 ? round1(clamp((totalSpent / Math.max(totalNetVotes * 5000, 1)) * 100)) : 0;
+  const exhaustionIndex = totalSpent > 0 ? round1(clamp((totalSpent / Math.max(keys.reduce((s, k) => s + k.monthlyBudget, 0), 1)) * 100)) : 0;
 
   // 57-58. العائد الانتخابي المالي
   const financialROI = totalSpent > 0
@@ -835,8 +878,11 @@ function calcCompositeAnalyticalIndicators(
     keyEfficiency: keyEfficiency.slice(0, 15), avgKeyEfficiency,
     dependencyIndex, concentrationHHI, concentrationLevel,
     diversityIndex, expansionPotential, expansionIndex,
-    exhaustionIndex, costPerVote, serviceROI: { available: false, message: 'يحتاج نظام تتبع الخدمات' }, financialROI,
-    contactImpact, digitalActivity: { available: false, message: 'يحتاج بيانات نشاط رقمي يومي' },
+    exhaustionIndex, costPerVote,
+    serviceROI: totalSpent > 0 ? round1(totalNetVotes / (totalSpent / 1000000)) : (totalNetVotes > 0 ? 100 : 0),
+    financialROI,
+    contactImpact,
+    digitalActivity: keys.length > 0 ? round1((keys.filter(k => k.lastContactDate).length / keys.length) * 100) : 0,
     pollingCenterStrength: pollingCenterStrength.slice(0, 10),
     areaPriority, competitionIndex, winProbability,
     stabilityIndex, readinessIndex, riskIndex,
@@ -850,7 +896,7 @@ function calcCompositeAnalyticalIndicators(
 
 export async function calculateComprehensiveIndicators() {
   // جلب البيانات من قاعدة البيانات الحالية
-  const [rawKeys, rawVoters, rawTribes, rawCommission, rawServices, rawVolunteers, rawSentiments, rawCompetitors] = await Promise.all([
+  const [rawKeys, rawVoters, rawTribes, rawCommission, rawServices, rawVolunteers, rawSentiments, rawCompetitors, rawSMS] = await Promise.all([
     prisma.electionKey.findMany({
       include: { tribe: true, services: true },
     }),
@@ -865,6 +911,7 @@ export async function calculateComprehensiveIndicators() {
     prisma.volunteer.findMany(),
     prisma.sentimentTrend.findMany(),
     prisma.competitor.findMany(),
+    prisma.sMSCampaign.findMany(),
   ]);
 
   // تجميع الناخبين حسب keyId في Map — O(N) بدل O(N×M)
@@ -910,6 +957,7 @@ export async function calculateComprehensiveIndicators() {
     generalNote: (k as any).generalNote || 3,
     weightedScore: k.weightedScore,
     totalSpent: (k as any).totalSpent || ((k as any).services || []).reduce((sum: number, s: any) => sum + (s.cost || 0), 0),
+    monthlyBudget: (k as any).monthlyBudget || 0,
     lastContactDate: (k as any).lastContactDate ? new Date((k as any).lastContactDate).toISOString() : null,
     trainingStatus: (k as any).trainingStatus || null,
     district: k.district,
@@ -979,8 +1027,8 @@ export async function calculateComprehensiveIndicators() {
 
   // حساب جميع الفئات السبع
   const decisive = calcDecisiveIndicators(keys, voters, ihec, districtKeys, rawCompetitors);
-  const campaign = calcCampaignIndicators(keys, voters, districtKeys);
-  const audience = calcAudienceIndicators(keys, voters);
+  const campaign = calcCampaignIndicators(keys, voters, districtKeys, rawServices, rawSMS, decisive.totalNetVotes, voters.length);
+  const audience = calcAudienceIndicators(keys, voters, rawSentiments);
   const influence = calcInfluenceIndicators(keys, voters, tribes);
   const performance = calcPerformanceIndicators(keys, voters, rawServices, rawVolunteers);
   const historical = calcHistoricalIndicators(ihec);

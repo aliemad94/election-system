@@ -35,13 +35,36 @@ async function getHandler(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
+    const severityMap: Record<string, string> = {
+      CRITICAL: "حرج",
+      HIGH: "مرتفع",
+      MEDIUM: "متوسط",
+      LOW: "منخفض",
+      "حرج": "حرج",
+      "مرتفع": "مرتفع",
+      "متوسط": "متوسط",
+      "منخفض": "منخفض"
+    };
+
+    const typeMap: Record<string, string> = {
+      DEFECTION_RISK: "مهددة_خسارة",
+      CONFIDENCE_DROP: "متأرجحة",
+      LOYALTY_CHANGE: "متأرجحة",
+      FIELD_ISSUE: "قابلة_لاختراق",
+      "مهددة_خسارة": "مهددة_خسارة",
+      "متأرجحة": "متأرجحة",
+      "مشاركة_منخفضة": "مشاركة_منخفضة",
+      "مشاركة_منخفض": "مشاركة_منخفضة",
+      "قابلة_لاختراق": "قابلة_لاختراق"
+    };
+
     dbWarnings.forEach((w) => {
       warnings.push({
         id: w.id,
         areaType: w.areaType || "قضاء",
         areaName: w.areaName || "ذي قار",
-        warningType: w.warningType,
-        severity: w.severity,
+        warningType: typeMap[w.warningType] || w.warningType,
+        severity: severityMap[w.severity] || w.severity,
         description: w.description,
         estimatedVotesAtRisk: w.estimatedVotesAtRisk,
         recommendedAction: w.recommendedAction,

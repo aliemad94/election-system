@@ -136,6 +136,7 @@ export const createVoterSchema = z.object({
   socialMedia: z.string().max(2000).optional().nullable(),
   checkedIn: z.boolean().default(false),
   checkedInAt: z.string().optional().nullable(),
+  votedOnDay: z.boolean().optional(),
 });
 
 export const updateVoterSchema = createVoterSchema.partial();

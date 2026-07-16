@@ -65,11 +65,11 @@ export function enrichElectoralKey(
       else neutralVotes++;
     });
   } else {
-    // لا يوجد ناخبون مربوطون بالمفتاح الانتخابي
-    supportedVotes = 0;
-    neutralVotes = 0;
-    weakVotes = 0;
-    totalVotes = 0;
+    // لا يوجد ناخبون مربوطون بالمفتاح الانتخابي - استخدم تعهدات المفتاح المخزنة كـ fallback
+    supportedVotes = key.supportedVotes || 0;
+    neutralVotes = key.neutralVotes || 0;
+    weakVotes = key.weakVotes || 0;
+    totalVotes = key.totalVotes || (supportedVotes + neutralVotes + weakVotes);
   }
 
   const net = supportedVotes * 0.8 + neutralVotes * 0.5 + weakVotes * 0.3;

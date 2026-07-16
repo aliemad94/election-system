@@ -10,6 +10,94 @@ import { handleApiError, auditLog } from "@/lib/security";
 import { createElectionKeySchema, formatZodError } from "@/lib/validators";
 import { calculateAll } from "@/lib/electoral-calculations";
 
+function mapElectionKeyToUI(k: any) {
+  if (!k) return null;
+  const votersCount = k.voters ? k.voters.length : (k._count?.voters ?? 0);
+  return {
+    id: k.id,
+    code: k.keyCode,
+    keyCode: k.keyCode,
+    fullName: [k.firstName, k.fatherName, k.grandfatherName, k.fourthName]
+      .filter(Boolean)
+      .join(" ")
+      .trim(),
+    firstName: k.firstName,
+    fatherName: k.fatherName,
+    grandfatherName: k.grandfatherName,
+    fourthName: k.fourthName,
+    gender: k.gender,
+    phone: k.phone,
+    district: k.district,
+    subDistrict: k.subDistrict,
+    area: k.subDistrict, // UI name mapping
+    pollingCenter: k.pollingCenter,
+    dateOfBirth: k.birthDate ? (k.birthDate instanceof Date ? k.birthDate : new Date(k.birthDate)).toISOString().split("T")[0] : null,
+    education: k.education || "",
+    educationLevel: k.education || "",
+    expectedVotes: k.expectedVotes || 0,
+    totalVotes: k.totalVotes !== undefined && k.totalVotes !== null ? k.totalVotes : (k.expectedVotes || 0),
+    influenceLevel: k.influenceLevel || 3,
+    mobilizationCap: k.mobilizationCap || 3,
+    mobilizationAbility: k.mobilizationCap || 3,
+    loyaltyScore: k.loyaltyScore || 3,
+    loyaltyLevel: k.loyaltyScore || 3,
+    riskLevel: k.riskLevel || 1,
+    tribeId: k.tribeId || null,
+    tribeName: k.tribe?.name || "غير محدد",
+    voterCount: votersCount,
+    createdAt: k.createdAt ? (k.createdAt instanceof Date ? k.createdAt : new Date(k.createdAt)).toISOString() : null,
+    socialMedia: k.socialMedia || null,
+    nickname: k.nickname || null,
+    phone2: k.phone2 || null,
+    email: k.email || null,
+    address: k.address || null,
+    neighborhood: k.neighborhood || null,
+    pollingStation: k.pollingStation || null,
+    age: k.age || null,
+    specialization: k.specialization || null,
+    maritalStatus: k.maritalStatus || null,
+    familySize: k.familySize || null,
+    notes: k.notes || null,
+    isActive: k.isActive !== undefined ? k.isActive : true,
+    firstContactDate: k.firstContactDate ? (k.firstContactDate instanceof Date ? k.firstContactDate : new Date(k.firstContactDate)).toISOString() : null,
+    lastContactDate: k.lastContactDate ? (k.lastContactDate instanceof Date ? k.lastContactDate : new Date(k.lastContactDate)).toISOString() : null,
+    lastSpentDate: k.lastSpentDate ? (k.lastSpentDate instanceof Date ? k.lastSpentDate : new Date(k.lastSpentDate)).toISOString() : null,
+    trainingStatus: k.trainingStatus || null,
+    dataAccuracy: k.dataAccuracy || null,
+    createdBy: k.createdBy || null,
+    lastEvaluationAt: k.lastEvaluationAt ? (k.lastEvaluationAt instanceof Date ? k.lastEvaluationAt : new Date(k.lastEvaluationAt)).toISOString() : null,
+
+    // الأصوات
+    supportedVotes: k.supportedVotes || 0,
+    neutralVotes: k.neutralVotes || 0,
+    weakVotes: k.weakVotes || 0,
+    netVotes: k.netVotes || 0,
+
+    // التقييمات
+    voteProtection: k.voteProtection || 3,
+    supportReason: k.supportReason || 3,
+    needsLevel: k.needsLevel || 3,
+    politicalNote: k.politicalNote || 3,
+    organizationalNote: k.organizationalNote || 3,
+    generalNote: k.generalNote || 3,
+
+    // الدرجات
+    weightedScore: k.weightedScore || 0,
+    classification: k.classification || "مقبول",
+    eiiScore: k.eiiScore || 0,
+    kriScore: k.kriScore || 0,
+    vpsScore: k.vpsScore || 0,
+    drsScore: k.drsScore || 0,
+    campaignROI: k.campaignROI || 0,
+
+    // مالية
+    totalSpent: k.totalSpent || 0,
+    monthlyBudget: k.monthlyBudget || 0,
+    totalInvestment: k.totalInvestment || 0,
+    costPerVote: k.costPerVote || 0,
+  };
+}
+
 // GET /api/electoral-keys — قائمة المفاتيح مع فلترة وبحث
 async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
@@ -70,87 +158,7 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
       prisma.electionKey.count({ where }),
     ]);
 
-    const result = (keys as any[]).map((k) => ({
-      id: k.id,
-      code: k.keyCode, // موائمة مع المتوقع في الواجهة الأمامية
-      keyCode: k.keyCode,
-      fullName: [k.firstName, k.fatherName, k.grandfatherName, k.fourthName]
-        .filter(Boolean)
-        .join(" ")
-        .trim(),
-      firstName: k.firstName,
-      fatherName: k.fatherName,
-      grandfatherName: k.grandfatherName,
-      fourthName: k.fourthName,
-      gender: k.gender,
-      phone: k.phone,
-      district: k.district,
-      subDistrict: k.subDistrict,
-      pollingCenter: k.pollingCenter,
-      dateOfBirth: k.birthDate ? k.birthDate.toISOString().split("T")[0] : null,
-      educationLevel: k.education || "",
-      expectedVotes: k.expectedVotes,
-      influenceLevel: k.influenceLevel,
-      mobilizationCap: k.mobilizationCap,
-      loyaltyScore: k.loyaltyScore,
-      riskLevel: k.riskLevel,
-      tribeId: k.tribeId,
-      tribeName: k.tribe?.name || "غير محدد",
-      voterCount: k._count.voters,
-      createdAt: k.createdAt.toISOString(),
-      socialMedia: k.socialMedia || null,
-
-      // === الحقول والتقييمات الإضافية ===
-      nickname: k.nickname || null,
-      phone2: k.phone2 || null,
-      email: k.email || null,
-      address: k.address || null,
-      neighborhood: k.neighborhood || null,
-      pollingStation: k.pollingStation || null,
-      age: k.age || null,
-      specialization: k.specialization || null,
-      maritalStatus: k.maritalStatus || null,
-      familySize: k.familySize || null,
-      notes: k.notes || null,
-      isActive: k.isActive,
-      firstContactDate: k.firstContactDate ? k.firstContactDate.toISOString() : null,
-      lastContactDate: k.lastContactDate ? k.lastContactDate.toISOString() : null,
-      lastSpentDate: k.lastSpentDate ? k.lastSpentDate.toISOString() : null,
-      trainingStatus: k.trainingStatus || null,
-      dataAccuracy: k.dataAccuracy || null,
-      createdBy: k.createdBy || null,
-      lastEvaluationAt: k.lastEvaluationAt ? k.lastEvaluationAt.toISOString() : null,
-
-      // الأصوات
-      totalVotes: k.totalVotes,
-      supportedVotes: k.supportedVotes,
-      neutralVotes: k.neutralVotes,
-      weakVotes: k.weakVotes,
-      netVotes: k.netVotes,
-
-      // التقييمات
-      voteProtection: k.voteProtection,
-      supportReason: k.supportReason,
-      needsLevel: k.needsLevel,
-      politicalNote: k.politicalNote,
-      organizationalNote: k.organizationalNote,
-      generalNote: k.generalNote,
-
-      // الدرجات الموزونة والمؤشرات
-      weightedScore: k.weightedScore,
-      classification: k.classification,
-      eiiScore: k.eiiScore,
-      kriScore: k.kriScore,
-      vpsScore: k.vpsScore,
-      drsScore: k.drsScore,
-      campaignROI: k.campaignROI,
-
-      // مالية
-      totalSpent: k.totalSpent,
-      monthlyBudget: k.monthlyBudget,
-      totalInvestment: k.totalInvestment,
-      costPerVote: k.costPerVote,
-    }));
+    const result = (keys as any[]).map(mapElectionKeyToUI);
 
     if (page && limit) {
       return NextResponse.json({ keys: result, total, page, limit });
@@ -165,6 +173,21 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
 async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const body = await req.json();
+    
+    // Map UI names to DB names before Zod validation
+    if (body.educationLevel !== undefined && body.education === undefined) {
+      body.education = body.educationLevel;
+    }
+    if (body.area !== undefined && body.subDistrict === undefined) {
+      body.subDistrict = body.area;
+    }
+    if (body.loyaltyLevel !== undefined && body.loyaltyScore === undefined) {
+      body.loyaltyScore = body.loyaltyLevel;
+    }
+    if (body.mobilizationAbility !== undefined && body.mobilizationCap === undefined) {
+      body.mobilizationCap = body.mobilizationAbility;
+    }
+    
     const parsed = createElectionKeySchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -308,7 +331,7 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
       details: { keyCode: key.keyCode, name: key.firstName },
     });
 
-    return NextResponse.json({ ...key, code: key.keyCode }, { status: 201 });
+    return NextResponse.json(mapElectionKeyToUI(key), { status: 201 });
   } catch (error) {
     return handleApiError(error, "electoral-keys-post");
   }
