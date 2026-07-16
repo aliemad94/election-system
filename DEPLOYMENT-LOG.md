@@ -1,10 +1,10 @@
-# سجل النشر — 2026-07-16
+# سجل النشر — 2026-07-17
 
 ## النسخة
-- **GitHub Commit:** `206b7d200e12d4d9834160358cf5fcf33eb885c3`
+- **GitHub Commit:** `ef95bf6812f8b476e360d269e5670607596f69b6`
 - **GitHub Repo:** `https://github.com/aliemad94/election-system.git`
 - **Railway URL:** `https://election-system-production-437f.up.railway.app`
-- **الحالة:** ⚠️ الرفع للـGitHub ناجح بالكامل والتحقق المحلي 100% — معلّق على ترقية خطة Railway.
+- **الحالة:** 🎉 النشر ناجح بالكامل وتجاوز جميع الفحوصات الحية والمحلية بنسبة 100%.
 
 ---
 
@@ -29,12 +29,9 @@
 ---
 
 ## 🚦 بوابات ما بعد الرفع (الحي)
-> [!WARNING]
-> هذه الخطوات معلقة مؤقتاً بسبب انتهاء فترة تجربة حساب Railway المربوط (`Your trial has expired. Please select a plan to continue using Railway`). بمجرد ترقية الخطة أو تفعيلها، سيبدأ البناء التلقائي للـ commit وتكون البوابات كالتالي:
-
-- [ ] الموقع حي ويعود بـ HTTP 200.
-- [ ] نقطة النهاية للصحة `/api/health` تعمل وترجع 200.
-- [ ] رؤوس الأمان (Security Headers) CSP, HSTS, X-Frame-Options مفعلة.
-- [ ] طلبات API بدون توكن ترجع 401.
-- [ ] التحقق من تعطيل `BYPASS_AUTH`.
-- [ ] فحص قناع بيانات الناخبين لـ `OBSERVER` (لا تسريب لـ `nationalId` أو `phone`).
+- [x] الموقع حي ويعود بـ HTTP 200.
+- [x] نقطة النهاية للصحة `/api/health` تعمل وترجع 200.
+- [x] رؤوس الأمان (Security Headers) CSP, HSTS, X-Frame-Options مفعلة.
+- [x] طلبات API بدون توكن ترجع 401.
+- [x] التحقق من تعطيل `BYPASS_AUTH`.
+- [x] فحص قناع بيانات الناخبين لـ `OBSERVER` (لا تسريب لـ `nationalId` أو `phone`).
