@@ -50,6 +50,28 @@ const REFERENCE_TRIBES = [
 async function main() {
   console.log("🌱 بدء تهيئة قاعدة البيانات (Electoral Machine)...");
 
+  console.log("🧹 تنظيف البيانات الوهمية القديمة...");
+  await prisma.$transaction([
+    prisma.confidenceLog.deleteMany(),
+    prisma.earlyWarning.deleteMany(),
+    prisma.dynamicIndicator.deleteMany(),
+    prisma.compositeIndicator.deleteMany(),
+    prisma.sMSCampaign.deleteMany(),
+    prisma.alert.deleteMany(),
+    prisma.service.deleteMany(),
+    prisma.task.deleteMany(),
+    prisma.sentimentTrend.deleteMany(),
+    prisma.voter.deleteMany(),
+    prisma.electionKey.deleteMany(),
+    prisma.electionResult.deleteMany(),
+    prisma.tribe.deleteMany(),
+    prisma.subTribe.deleteMany(),
+    prisma.commissionData.deleteMany(),
+    prisma.competitor.deleteMany(),
+    prisma.volunteer.deleteMany(),
+  ]);
+  console.log("✅ تم تنظيف كافة البيانات العالقة بنجاح.");
+
   // ---- 1. التحقق من متغيرات البيئة ----
   const adminPassword = process.env.ADMIN_PASSWORD || "DhiQarOwner2026!";
   const userPassword = process.env.USER_PASSWORD || "DhiQarUser2026!";
