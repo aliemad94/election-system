@@ -16,7 +16,8 @@
     "db:migrate:prod": "prisma migrate deploy",
     "db:reset": "prisma migrate reset",
     "db:seed": "node prisma/seed.js",
-    "postinstall": "prisma generate || true"
+    "postinstall": "prisma generate || true",
+    "precommit": "npx tsc --noEmit && npx vitest run && npm run build && node scripts/verify-security.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
