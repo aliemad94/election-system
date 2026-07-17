@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, Settings, Map, Menu, LogOut, Shield, Sun, Moon, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
@@ -26,8 +26,18 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
   const [searching, setSearching] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const searchRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setMounted(true);
+    
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -118,22 +128,125 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
           </div>
 
           {/* Search */}
-          <div className="hidden md:flex relative">
+          <div ref={searchRef} className="hidden md:flex relative">
             <button
               onClick={() => setIsModalOpen(true)}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-el-outline hover:text-el-primary transition-colors cursor-pointer"
+              title="البحث المتقدم"
             >
               <Search className="w-4 h-4" />
             </button>
             <input
-              className="pl-3 pr-8 py-1 rounded bg-el-surface-container-low border border-el-outline-variant text-[12px] leading-[16px] h-8 w-64 focus:ring-el-primary focus:border-el-primary text-right cursor-pointer"
+              className="pl-8 pr-8 py-1 rounded bg-el-surface-container-low border border-el-outline-variant text-[12px] leading-[16px] h-8 w-64 focus:ring-el-primary focus:border-el-primary text-right focus:outline-none"
               placeholder="البحث السريع..."
               type="text"
               value={searchQuery}
-              readOnly
-              onClick={() => setIsModalOpen(true)}
-              onFocus={() => setIsModalOpen(true)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowResults(true);
+              }}
+              onFocus={() => setShowResults(true)}
             />
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setShowResults(false);
+                }}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-el-outline hover:text-el-error transition-colors cursor-pointer"
+                title="مسح البحث"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Dropdown Results Box */}
+            {showResults && searchQuery.trim() && (
+              <div className="absolute right-0 top-full mt-1.5 w-[380px] bg-el-surface border border-el-outline-variant rounded-lg shadow-2xl max-h-[400px] overflow-y-auto z-50 flex flex-col gap-3 p-4 text-right" dir="rtl">
+                {searching ? (
+                  <div className="text-center text-xs text-el-on-surface-variant p-4">جاري البحث...</div>
+                ) : (searchResults.voters.length === 0 && searchResults.electionKeys.length === 0 && searchResults.tribes.length === 0) ? (
+                  <div className="text-center text-xs text-el-on-surface-variant p-4">لا توجد نتائج</div>
+                ) : (
+                  <>
+                    {/* Voters Section */}
+                    {searchResults.voters.length > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <div className="font-bold text-[11px] text-el-primary border-b border-el-outline-variant/60 pb-1 mb-1 flex justify-between items-center">
+                          <span>الناخبون</span>
+                          <span className="bg-el-primary-container text-el-on-primary-container px-1.5 py-0.5 rounded text-[9px] font-semibold">{searchResults.voters.length}</span>
+                        </div>
+                        <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
+                          {searchResults.voters.slice(0, 5).map((v) => (
+                            <button
+                              key={v.id}
+                              onClick={() => {
+                                handleSearchSelect('voter', v);
+                                setShowResults(false);
+                              }}
+                              className="w-full text-right px-2 py-1.5 hover:bg-el-surface-container-high rounded text-[11px] transition-colors flex flex-col cursor-pointer"
+                            >
+                              <span className="font-semibold text-el-on-surface">{v.fullName}</span>
+                              <span className="text-[9px] text-el-on-surface-variant">{v.subtitle}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Electoral Keys Section */}
+                    {searchResults.electionKeys.length > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <div className="font-bold text-[11px] text-el-primary border-b border-el-outline-variant/60 pb-1 mb-1 flex justify-between items-center">
+                          <span>المفاتيح الانتخابية</span>
+                          <span className="bg-el-primary-container text-el-on-primary-container px-1.5 py-0.5 rounded text-[9px] font-semibold">{searchResults.electionKeys.length}</span>
+                        </div>
+                        <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
+                          {searchResults.electionKeys.slice(0, 5).map((k) => (
+                            <button
+                              key={k.id}
+                              onClick={() => {
+                                handleSearchSelect('key', k);
+                                setShowResults(false);
+                              }}
+                              className="w-full text-right px-2 py-1.5 hover:bg-el-surface-container-high rounded text-[11px] transition-colors flex flex-col cursor-pointer"
+                            >
+                              <span className="font-semibold text-el-on-surface">{k.fullName}</span>
+                              <span className="text-[9px] text-el-on-surface-variant">{k.subtitle}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tribes Section */}
+                    {searchResults.tribes.length > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <div className="font-bold text-[11px] text-el-primary border-b border-el-outline-variant/60 pb-1 mb-1 flex justify-between items-center">
+                          <span>العشائر</span>
+                          <span className="bg-el-primary-container text-el-on-primary-container px-1.5 py-0.5 rounded text-[9px] font-semibold">{searchResults.tribes.length}</span>
+                        </div>
+                        <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
+                          {searchResults.tribes.slice(0, 5).map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => {
+                                handleSearchSelect('tribe', t);
+                                setShowResults(false);
+                              }}
+                              className="w-full text-right px-2 py-1.5 hover:bg-el-surface-container-high rounded text-[11px] transition-colors flex flex-col cursor-pointer"
+                            >
+                              <span className="font-semibold text-el-on-surface">{t.fullName}</span>
+                              <span className="text-[9px] text-el-on-surface-variant">{t.subtitle}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Theme Toggle */}
