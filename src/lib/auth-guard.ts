@@ -20,7 +20,7 @@ export type AuthenticatedHandler = (
 ) => Promise<NextResponse> | Promise<Response>;
 
 interface CachedSession {
-  user: { id: string; role: string; mustChangePwd: boolean } | null;
+  user: { id: string; role: string; mustChangePwd: boolean; tokenIssuedBefore: Date | null } | null;
   expiresAt: number;
 }
 
@@ -65,7 +65,7 @@ export function withAuth(
     const normalizedRole = role.toUpperCase();
 
     // 2. التحقق من قاعدة البيانات مع نظام كاش وصمود
-    let dbUser: { id: string; role: string; mustChangePwd: boolean } | null = null;
+    let dbUser: { id: string; role: string; mustChangePwd: boolean; tokenIssuedBefore: Date | null } | null = null;
     let databaseFailed = false;
 
     const cached = sessionCache.get(userId);
@@ -76,7 +76,7 @@ export function withAuth(
       try {
         dbUser = await prisma.user.findUnique({
           where: { id: userId },
-          select: { id: true, role: true, mustChangePwd: true }
+          select: { id: true, role: true, mustChangePwd: true, tokenIssuedBefore: true }
         });
         sessionCache.set(userId, { user: dbUser, expiresAt: now + CACHE_TTL_MS });
       } catch (dbError) {
@@ -86,8 +86,16 @@ export function withAuth(
     }
 
     if (databaseFailed) {
-      // وضع الصمود: قاعدة البيانات معطلة ولكن التوكن موقع رقمياً وصالح
-      console.warn(`AUTH WARNING: Database offline. Authorizing user '${username}' with role '${normalizedRole}' from JWT signature.`);
+      // وضع الصمود: قاعدة البيانات معطلة — نسمح بالقراءة فقط (GET)
+      const isReadOnly = method === "GET";
+      if (!isReadOnly) {
+        console.warn(`AUTH WARNING: Database offline. Blocking write operation (${method}) for user '${username}'.`);
+        return NextResponse.json(
+          { error: "الخدمة غير متوفرة مؤقتاً — لا يمكن إجراء عمليات كتابة أثناء انقطاع قاعدة البيانات" },
+          { status: 503 }
+        );
+      }
+      console.warn(`AUTH WARNING: Database offline. Authorizing read-only for user '${username}' with role '${normalizedRole}' from JWT signature.`);
     } else {
       if (!dbUser) {
         return NextResponse.json(
@@ -103,7 +111,19 @@ export function withAuth(
         );
       }
 
-      // 3. فرض تغيير كلمة المرور عند أول دخول
+      // 3. فحص إبطال الجلسة (tokenIssuedBefore)
+      if (dbUser.tokenIssuedBefore && payload.iat) {
+        // JWT iat هو Unix timestamp بالثواني
+        const tokenIssuedAt = new Date(payload.iat * 1000);
+        if (tokenIssuedAt < dbUser.tokenIssuedBefore) {
+          return NextResponse.json(
+            { error: "غير مصرح - تم إبطال الجلسة بسبب تغيير كلمة المرور. يرجى إعادة تسجيل الدخول" },
+            { status: 401 }
+          );
+        }
+      }
+
+      // 4. فرض تغيير كلمة المرور عند أول دخول
       if (dbUser.mustChangePwd) {
         return NextResponse.json(
           { error: "يجب تغيير كلمة المرور قبل استخدام النظام" },

@@ -9,6 +9,7 @@ import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
 import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 import { updateVoterSchema, formatZodError } from "@/lib/validators";
+import { assertOwnsVoter } from "@/lib/scope-service";
 function mapVoterToUI(v: any, userRole?: string) {
   if (!v) return null;
   
@@ -134,11 +135,9 @@ async function putHandler(
     }
 
     if (user.role === "KEY_USER") {
-      const key = await prisma.electionKey.findFirst({
-        where: { phone: user.username },
-        select: { id: true },
-      });
-      if (!key || existing.keyId !== key.id) {
+      try {
+        await assertOwnsVoter(user.userId, id);
+      } catch (err) {
         return NextResponse.json(
           { error: "غير مصرح - لا تملك صلاحية تعديل هذا الناخب" },
           { status: 403 }
@@ -194,7 +193,10 @@ async function putHandler(
     if (data.subTribeId === "" || data.subTribeId === null) {
       data.subTribeId = null;
     }
-    if (data.keyId === "" || data.keyId === null) {
+
+    if (user.role === "KEY_USER") {
+      delete data.keyId; // يمنع نقل ناخب إلى مفتاح آخر
+    } else if (data.keyId === "" || data.keyId === null) {
       delete data.keyId;
     }
 

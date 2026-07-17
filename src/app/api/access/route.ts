@@ -322,6 +322,7 @@ export async function POST(req: NextRequest) {
         data: {
           password: hashedPassword,
           mustChangePwd: false,
+          tokenIssuedBefore: new Date(), // إبطال كل الجلسات السابقة
         },
       });
 

@@ -159,6 +159,32 @@ export async function runBackup(): Promise<BackupResult> {
     const encryptedData = encryptData(serializedData);
     await fs.writeFile(filePath, encryptedData, "utf-8");
 
+    // إرسال النسخة الاحتياطية المشفرة لـ Webhook خارجي في حال ضبطه (حماية من ephemeral storage في Railway)
+    if (process.env.BACKUP_WEBHOOK_URL) {
+      try {
+        console.log(`Sending encrypted backup to webhook: ${process.env.BACKUP_WEBHOOK_URL}`);
+        const response = await fetch(process.env.BACKUP_WEBHOOK_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Backup-File": fileName,
+          },
+          body: JSON.stringify({
+            fileName,
+            timestamp: backupData.timestamp,
+            encryptedData,
+          }),
+        });
+        if (!response.ok) {
+          console.error(`Backup webhook returned status: ${response.status}`);
+        } else {
+          console.log("Encrypted backup sent to webhook successfully!");
+        }
+      } catch (webhookErr) {
+        console.error("Failed to send backup to external webhook:", webhookErr);
+      }
+    }
+
     // تنظيف النسخ القديمة والاحتفاظ بآخر 7 نسخ فقط
     // يدعم كلا الامتدادين (.json و .enc.json) للتوافق مع النسخ القديمة
     const files = await fs.readdir(backupDir);

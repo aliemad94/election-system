@@ -9,6 +9,7 @@ import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
 import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 import { updateElectionKeySchema, formatZodError } from "@/lib/validators";
+import { assertOwnsKey } from "@/lib/scope-service";
 import { calculateAll } from "@/lib/electoral-calculations";
 
 function mapElectionKeyToUI(k: any) {
@@ -152,11 +153,15 @@ async function putHandler(
     }
 
     // KEY_USER يمكنه تعديل مفتاحه فقط
-    if (user.role === "KEY_USER" && existing.phone !== user.username) {
-      return NextResponse.json(
-        { error: "غير مصرح - يمكنك تعديل مفتاحك فقط" },
-        { status: 403 }
-      );
+    if (user.role === "KEY_USER") {
+      try {
+        await assertOwnsKey(user.userId, id);
+      } catch {
+        return NextResponse.json(
+          { error: "غير مصرح - يمكنك تعديل مفتاحك فقط" },
+          { status: 403 }
+        );
+      }
     }
 
     const d = parsed.data;
@@ -201,11 +206,25 @@ async function putHandler(
       }
     }
 
-    // Always recalculate derived vote/scoring fields (these are always safe to update)
-    data.totalVotes    = merged.totalVotes;
-    data.netVotes      = Math.round(calcResult.netVotes);
-    data.weightedScore = calcResult.weightedScore;
-    data.classification = calcResult.classification;
+    if (user.role === "KEY_USER") {
+      // تطبيق قائمة السماح لـ KEY_USER
+      const allowed = new Set([
+        "phone", "phone2", "education", "educationLevel", "socialMedia",
+        "nickname", "notes", "address", "neighborhood", "email",
+        "profession", "specialization", "maritalStatus", "familySize"
+      ]);
+      for (const key of Object.keys(data)) {
+        if (!allowed.has(key)) {
+          delete data[key];
+        }
+      }
+    } else {
+      // Always recalculate derived vote/scoring fields (these are always safe to update)
+      data.totalVotes    = merged.totalVotes;
+      data.netVotes      = Math.round(calcResult.netVotes);
+      data.weightedScore = calcResult.weightedScore;
+      data.classification = calcResult.classification;
+    }
 
     // Handle dateOfBirth → birthDate rename
     if (wasProvided('dateOfBirth') && d.dateOfBirth) {

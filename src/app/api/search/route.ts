@@ -1,13 +1,18 @@
 // ====================================================================
 // /api/search — بحث شامل عبر الناخبين والعشائر والمفاتيح
+// مع حماية البيانات حسب الدور (OBSERVER / KEY_USER / ADMIN)
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withAuth } from "@/lib/auth-guard";
+import { withAuth, type AuthenticatedUser } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/security";
+import { applyKeyUserScope } from "@/lib/scope-service";
 
-async function searchHandler(req: NextRequest) {
+async function searchHandler(
+  req: NextRequest,
+  { user }: { user: AuthenticatedUser }
+) {
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("q")?.trim();
   const entity = searchParams.get("entity") ?? "all";
@@ -28,17 +33,37 @@ async function searchHandler(req: NextRequest) {
     let keysList: any[] = [];
 
     if (entity === "voters" || entity === "all") {
+      // === حماية البحث حسب الدور ===
+      // OBSERVER: لا يبحث في nationalId أو phone (بيانات حساسة)
+      // KEY_USER: يبحث في ناخبي مفتاحه فقط
+      const voterSearchFields: any[] = [
+        { firstName: { contains: query } },
+        { fatherName: { contains: query } },
+        { grandfatherName: { contains: query } },
+        { fourthName: { contains: query } },
+      ];
+
+      // إضافة البحث في البيانات الحساسة فقط للأدوار المخوّلة
+      if (user.role === "ADMIN") {
+        voterSearchFields.push(
+          { nationalId: { contains: query } },
+          { phone: { contains: query } }
+        );
+      } else if (user.role === "KEY_USER") {
+        // KEY_USER يمكنه البحث بالهاتف لكن ليس بالهوية الوطنية
+        voterSearchFields.push({ phone: { contains: query } });
+      }
+      // OBSERVER: لا بحث في nationalId ولا phone
+
+      const voterWhere: any = {
+        OR: voterSearchFields,
+      };
+
+      // تقييد KEY_USER بناخبي مفتاحه فقط
+      await applyKeyUserScope(voterWhere, user);
+
       const voters = await prisma.voter.findMany({
-        where: {
-          OR: [
-            { firstName: { contains: query } },
-            { fatherName: { contains: query } },
-            { grandfatherName: { contains: query } },
-            { fourthName: { contains: query } },
-            { nationalId: { contains: query } },
-            { phone: { contains: query } },
-          ],
-        },
+        where: voterWhere,
         take: perEntity,
         select: {
           id: true,
@@ -46,17 +71,22 @@ async function searchHandler(req: NextRequest) {
           fatherName: true,
           grandfatherName: true,
           fourthName: true,
-          nationalId: true,
+          // لا نُرجع nationalId في نتائج البحث — حساس
           votedOnDay: true,
           district: true,
           tribe: { select: { name: true } },
         },
       });
-      votersList = voters.map((v) => ({
-        id: v.id,
-        fullName: `${v.firstName} ${v.fatherName} ${v.grandfatherName}`.trim(),
-        subtitle: `${v.district} — ${v.tribe?.name ?? ""}${v.votedOnDay ? " ✓" : ""}`,
-      }));
+      votersList = voters.map((v) => {
+        const nameVal = user.role === "OBSERVER" 
+          ? `${v.firstName} ***` 
+          : `${v.firstName} ${v.fatherName} ${v.grandfatherName}`.trim();
+        return {
+          id: v.id,
+          fullName: nameVal,
+          subtitle: `${v.district} — ${v.tribe?.name ?? ""}${v.votedOnDay ? " ✓" : ""}`,
+        };
+      });
     }
 
     if (entity === "tribes" || entity === "all") {
@@ -73,14 +103,21 @@ async function searchHandler(req: NextRequest) {
     }
 
     if (entity === "keys" || entity === "all") {
+      // تقييد البحث في المفاتيح حسب الدور
+      const keySearchFields: any[] = [
+        { firstName: { contains: query } },
+        { fatherName: { contains: query } },
+        { keyCode: { contains: query } },
+      ];
+
+      // الهاتف في المفاتيح: ADMIN و KEY_USER فقط
+      if (user.role === "ADMIN" || user.role === "KEY_USER") {
+        keySearchFields.push({ phone: { contains: query } });
+      }
+
       const keys = await prisma.electionKey.findMany({
         where: {
-          OR: [
-            { firstName: { contains: query } },
-            { fatherName: { contains: query } },
-            { phone: { contains: query } },
-            { keyCode: { contains: query } },
-          ],
+          OR: keySearchFields,
         },
         take: perEntity,
         select: {
@@ -92,11 +129,16 @@ async function searchHandler(req: NextRequest) {
           tribe: { select: { name: true } },
         },
       });
-      keysList = keys.map((k) => ({
-        id: k.id,
-        fullName: `${k.keyCode} — ${k.firstName} ${k.fatherName}`,
-        subtitle: `${k.district} — ${k.tribe?.name ?? ""}`,
-      }));
+      keysList = keys.map((k) => {
+        const nameVal = user.role === "OBSERVER"
+          ? `${k.firstName} ***`
+          : `${k.firstName} ${k.fatherName}`;
+        return {
+          id: k.id,
+          fullName: `${k.keyCode} — ${nameVal}`,
+          subtitle: `${k.district} — ${k.tribe?.name ?? ""}`,
+        };
+      });
     }
 
     const flatResults = [
@@ -121,4 +163,3 @@ async function searchHandler(req: NextRequest) {
 export const GET = withAuth(searchHandler, {
   GET: ["ADMIN", "KEY_USER", "OBSERVER"],
 });
-

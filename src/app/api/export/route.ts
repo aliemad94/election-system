@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, type AuthenticatedUser } from "@/lib/auth-guard";
+import { applyKeyUserScope } from "@/lib/scope-service";
 import * as XLSX from "xlsx";
 
 async function getHandler(
@@ -26,13 +27,7 @@ async function getHandler(
     switch (entity) {
       case "voters": {
         const where: any = {};
-        if (user.role === "KEY_USER") {
-          const key = await prisma.electionKey.findFirst({
-            where: { phone: user.username },
-            select: { id: true },
-          });
-          where.keyId = key?.id || "none";
-        }
+        await applyKeyUserScope(where, user);
         const voters = await prisma.voter.findMany({
           where,
           include: { electionKey: { select: { keyCode: true, firstName: true } }, tribe: { select: { name: true } } },
@@ -167,5 +162,5 @@ async function getHandler(
 }
 
 export const GET = withAuth(getHandler, {
-  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+  GET: ["ADMIN", "KEY_USER"],
 });

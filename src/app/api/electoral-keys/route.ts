@@ -9,31 +9,51 @@ import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
 import { createElectionKeySchema, formatZodError } from "@/lib/validators";
 import { calculateAll } from "@/lib/electoral-calculations";
+import { getKeyUserScope } from "@/lib/scope-service";
 
-function mapElectionKeyToUI(k: any) {
+function mapElectionKeyToUI(k: any, userRole?: string) {
   if (!k) return null;
   const votersCount = k.voters ? k.voters.length : (k._count?.voters ?? 0);
+  const isObserver = userRole === "OBSERVER";
+
+  const firstName = k.firstName;
+  const fatherName = isObserver ? "***" : (k.fatherName || "");
+  const grandfatherName = isObserver ? "***" : (k.grandfatherName || "");
+  const fourthName = isObserver ? "***" : (k.fourthName || "");
+
+  const fullName = [firstName, fatherName, grandfatherName, fourthName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  let phoneVal = k.phone || "";
+  if (isObserver && phoneVal) {
+    phoneVal = phoneVal.substring(0, 3) + "****" + phoneVal.substring(phoneVal.length - 3);
+  }
+
+  let phone2Val = k.phone2 || null;
+  if (isObserver && phone2Val) {
+    phone2Val = "***";
+  }
+
   return {
     id: k.id,
     code: k.keyCode,
     keyCode: k.keyCode,
-    fullName: [k.firstName, k.fatherName, k.grandfatherName, k.fourthName]
-      .filter(Boolean)
-      .join(" ")
-      .trim(),
-    firstName: k.firstName,
-    fatherName: k.fatherName,
-    grandfatherName: k.grandfatherName,
-    fourthName: k.fourthName,
+    fullName,
+    firstName,
+    fatherName: isObserver ? "***" : (k.fatherName || null),
+    grandfatherName: isObserver ? "***" : (k.grandfatherName || null),
+    fourthName: isObserver ? "***" : (k.fourthName || null),
     gender: k.gender,
-    phone: k.phone,
+    phone: phoneVal,
     district: k.district,
     subDistrict: k.subDistrict,
     area: k.subDistrict, // UI name mapping
     pollingCenter: k.pollingCenter,
-    dateOfBirth: k.birthDate ? (k.birthDate instanceof Date ? k.birthDate : new Date(k.birthDate)).toISOString().split("T")[0] : null,
-    education: k.education || "",
-    educationLevel: k.education || "",
+    dateOfBirth: isObserver ? null : (k.birthDate ? (k.birthDate instanceof Date ? k.birthDate : new Date(k.birthDate)).toISOString().split("T")[0] : null),
+    education: isObserver ? null : (k.education || ""),
+    educationLevel: isObserver ? null : (k.education || ""),
     expectedVotes: k.expectedVotes || 0,
     totalVotes: k.totalVotes !== undefined && k.totalVotes !== null ? k.totalVotes : (k.expectedVotes || 0),
     influenceLevel: k.influenceLevel || 3,
@@ -46,27 +66,27 @@ function mapElectionKeyToUI(k: any) {
     tribeName: k.tribe?.name || "غير محدد",
     voterCount: votersCount,
     createdAt: k.createdAt ? (k.createdAt instanceof Date ? k.createdAt : new Date(k.createdAt)).toISOString() : null,
-    profession: k.profession || null,
-    socialMedia: k.socialMedia || null,
-    nickname: k.nickname || null,
-    phone2: k.phone2 || null,
-    email: k.email || null,
-    address: k.address || null,
-    neighborhood: k.neighborhood || null,
+    profession: isObserver ? null : (k.profession || null),
+    socialMedia: isObserver ? null : (k.socialMedia || null),
+    nickname: isObserver ? null : (k.nickname || null),
+    phone2: phone2Val,
+    email: isObserver ? null : (k.email || null),
+    address: isObserver ? null : (k.address || null),
+    neighborhood: isObserver ? null : (k.neighborhood || null),
     pollingStation: k.pollingStation || null,
-    age: k.age || null,
-    specialization: k.specialization || null,
-    maritalStatus: k.maritalStatus || null,
-    familySize: k.familySize || null,
-    notes: k.notes || null,
+    age: isObserver ? null : (k.age || null),
+    specialization: isObserver ? null : (k.specialization || null),
+    maritalStatus: isObserver ? null : (k.maritalStatus || null),
+    familySize: isObserver ? null : (k.familySize || null),
+    notes: isObserver ? null : (k.notes || null),
     isActive: k.isActive !== undefined ? k.isActive : true,
-    firstContactDate: k.firstContactDate ? (k.firstContactDate instanceof Date ? k.firstContactDate : new Date(k.firstContactDate)).toISOString() : null,
-    lastContactDate: k.lastContactDate ? (k.lastContactDate instanceof Date ? k.lastContactDate : new Date(k.lastContactDate)).toISOString() : null,
-    lastSpentDate: k.lastSpentDate ? (k.lastSpentDate instanceof Date ? k.lastSpentDate : new Date(k.lastSpentDate)).toISOString() : null,
-    trainingStatus: k.trainingStatus || null,
-    dataAccuracy: k.dataAccuracy || null,
+    firstContactDate: isObserver ? null : (k.firstContactDate ? (k.firstContactDate instanceof Date ? k.firstContactDate : new Date(k.firstContactDate)).toISOString() : null),
+    lastContactDate: isObserver ? null : (k.lastContactDate ? (k.lastContactDate instanceof Date ? k.lastContactDate : new Date(k.lastContactDate)).toISOString() : null),
+    lastSpentDate: isObserver ? null : (k.lastSpentDate ? (k.lastSpentDate instanceof Date ? k.lastSpentDate : new Date(k.lastSpentDate)).toISOString() : null),
+    trainingStatus: isObserver ? null : (k.trainingStatus || null),
+    dataAccuracy: isObserver ? null : (k.dataAccuracy || null),
     createdBy: k.createdBy || null,
-    lastEvaluationAt: k.lastEvaluationAt ? (k.lastEvaluationAt instanceof Date ? k.lastEvaluationAt : new Date(k.lastEvaluationAt)).toISOString() : null,
+    lastEvaluationAt: isObserver ? null : (k.lastEvaluationAt ? (k.lastEvaluationAt instanceof Date ? k.lastEvaluationAt : new Date(k.lastEvaluationAt)).toISOString() : null),
 
     // الأصوات
     supportedVotes: k.supportedVotes || 0,
@@ -92,10 +112,10 @@ function mapElectionKeyToUI(k: any) {
     campaignROI: k.campaignROI || 0,
 
     // مالية
-    totalSpent: k.totalSpent || 0,
-    monthlyBudget: k.monthlyBudget || 0,
-    totalInvestment: k.totalInvestment || 0,
-    costPerVote: k.costPerVote || 0,
+    totalSpent: isObserver ? 0 : (k.totalSpent || 0),
+    monthlyBudget: isObserver ? 0 : (k.monthlyBudget || 0),
+    totalInvestment: isObserver ? 0 : (k.totalInvestment || 0),
+    costPerVote: isObserver ? 0 : (k.costPerVote || 0),
   };
 }
 
@@ -106,6 +126,11 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
     const district = searchParams.get("district");
     const search = searchParams.get("search");
     const tribeId = searchParams.get("tribeId");
+
+    const pageParam = searchParams.get("page");
+    const limitParam = searchParams.get("limit");
+    const page = pageParam ? parseInt(pageParam, 10) : null;
+    const limit = limitParam ? parseInt(limitParam, 10) : null;
 
     const where: Record<string, unknown> = {};
 
@@ -118,7 +143,11 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
 
     // KEY_USER يرى مفتاحه فقط
     if (user.role === "KEY_USER") {
-      where.phone = user.username;
+      const scope = await getKeyUserScope(user.userId);
+      if (!scope) {
+        return NextResponse.json(page && limit ? { keys: [], total: 0, page, limit } : []);
+      }
+      where.id = scope.keyId;
     }
 
     if (search && search.trim()) {
@@ -132,11 +161,6 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
         { keyCode: { contains: q, mode: "insensitive" } },
       ];
     }
-
-    const pageParam = searchParams.get("page");
-    const limitParam = searchParams.get("limit");
-    const page = pageParam ? parseInt(pageParam, 10) : null;
-    const limit = limitParam ? parseInt(limitParam, 10) : null;
 
     const findOptions: any = {
       where,
@@ -159,7 +183,7 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
       prisma.electionKey.count({ where }),
     ]);
 
-    const result = (keys as any[]).map(mapElectionKeyToUI);
+    const result = (keys as any[]).map((k) => mapElectionKeyToUI(k, user.role));
 
     if (page && limit) {
       return NextResponse.json({ keys: result, total, page, limit });

@@ -19,6 +19,7 @@ import { handleApiError, auditLog } from "@/lib/security";
 import { checkinSchema, formatZodError } from "@/lib/validators";
 import { invalidateIndicatorsCache } from "@/lib/indicators-cache";
 import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
+import { assertOwnsVoter } from "@/lib/scope-service";
 
 async function checkinHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   let body: unknown;
@@ -56,11 +57,9 @@ async function checkinHandler(req: NextRequest, { user }: { user: AuthenticatedU
     }
 
     if (user.role === "KEY_USER") {
-      const key = await prisma.electionKey.findFirst({
-        where: { phone: user.username },
-        select: { id: true },
-      });
-      if (!key || voter.keyId !== key.id) {
+      try {
+        await assertOwnsVoter(user.userId, voterId);
+      } catch (err) {
         return NextResponse.json(
           { error: "غير مصرح - لا تملك صلاحية تسجيل حضور هذا الناخب" },
           { status: 403 }

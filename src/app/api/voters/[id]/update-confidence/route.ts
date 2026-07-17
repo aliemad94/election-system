@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
+import { assertOwnsVoter } from "@/lib/scope-service";
 
 async function postHandler(
   request: NextRequest,
@@ -37,15 +38,9 @@ async function postHandler(
     }
 
     if (user.role === "KEY_USER") {
-      const key = await prisma.electionKey.findFirst({
-        where: { phone: user.username },
-        select: { id: true },
-      });
-      const v = await prisma.voter.findUnique({
-        where: { id },
-        select: { keyId: true },
-      });
-      if (!v || !key || v.keyId !== key.id) {
+      try {
+        await assertOwnsVoter(user.userId, id);
+      } catch (err) {
         return NextResponse.json(
           { error: "غير مصرح - لا تملك صلاحية تعديل هذا الناخب" },
           { status: 403 }

@@ -13,13 +13,16 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  username      String   @unique
-  password      String   // مشفّرة بـ bcryptjs
-  role          String   // ADMIN | KEY_USER | OBSERVER
-  mustChangePwd Boolean  @default(false) // إجبار تغيير كلمة المرور عند أول دخول
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now()) @updatedAt
+  id               String   @id @default(cuid())
+  username         String   @unique
+  password         String   // مشفّرة بـ bcryptjs
+  role             String   // ADMIN | KEY_USER | OBSERVER
+  mustChangePwd    Boolean  @default(false) // إجبار تغيير كلمة المرور عند أول دخول
+  tokenIssuedBefore DateTime? // إبطال الجلسات
+  electionKeyId    String?  @unique
+  electionKey      ElectionKey? @relation(fields: [electionKeyId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
 
   auditLogs AuditLog[]
 
@@ -166,6 +169,7 @@ model ElectionKey {
   earlyWarnings EarlyWarning[]
   tasks         Task[]         @relation("ElectionKeyTasks")
   lastEvaluationAt DateTime?
+  user          User?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

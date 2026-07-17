@@ -21,38 +21,42 @@ async function postHandler(request: NextRequest) {
     const keyUserHash = await bcrypt.hash(userPassword, 12);
 
     await prisma.$transaction(async (tx) => {
-      await tx.user.upsert({
-        where: { username: "admin" },
-        update: { password: adminHash, mustChangePwd: false },
-        create: {
-          username: "admin",
-          password: adminHash,
-          role: "ADMIN",
-          mustChangePwd: false,
-        },
-      });
+      // إنشاء فقط إذا غير موجود — لا نعيد كلمات المرور
+      const existingAdmin = await tx.user.findUnique({ where: { username: "admin" } });
+      if (!existingAdmin) {
+        await tx.user.create({
+          data: {
+            username: "admin",
+            password: adminHash,
+            role: "ADMIN",
+            mustChangePwd: false,
+          },
+        });
+      }
 
-      await tx.user.upsert({
-        where: { username: "observer" },
-        update: { password: observerHash, mustChangePwd: false },
-        create: {
-          username: "observer",
-          password: observerHash,
-          role: "OBSERVER",
-          mustChangePwd: false,
-        },
-      });
+      const existingObserver = await tx.user.findUnique({ where: { username: "observer" } });
+      if (!existingObserver) {
+        await tx.user.create({
+          data: {
+            username: "observer",
+            password: observerHash,
+            role: "OBSERVER",
+            mustChangePwd: false,
+          },
+        });
+      }
 
-      await tx.user.upsert({
-        where: { username: "key_user" },
-        update: { password: keyUserHash, mustChangePwd: false },
-        create: {
-          username: "key_user",
-          password: keyUserHash,
-          role: "KEY_USER",
-          mustChangePwd: false,
-        },
-      });
+      const existingKeyUser = await tx.user.findUnique({ where: { username: "key_user" } });
+      if (!existingKeyUser) {
+        await tx.user.create({
+          data: {
+            username: "key_user",
+            password: keyUserHash,
+            role: "KEY_USER",
+            mustChangePwd: false,
+          },
+        });
+      }
 
       await tx.systemConfig.upsert({
         where: { id: "system" },
@@ -65,7 +69,7 @@ async function postHandler(request: NextRequest) {
   } catch (error) {
     console.error("Error seeding core database:", error);
     return NextResponse.json(
-      { error: "حدث خطأ في تهيئة قاعدة البيانات", details: error instanceof Error ? error.message : String(error) },
+      { error: "حدث خطأ في تهيئة قاعدة البيانات" },
       { status: 500 }
     );
   }
