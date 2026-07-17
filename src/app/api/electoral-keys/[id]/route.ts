@@ -47,6 +47,7 @@ function mapElectionKeyToUI(k: any) {
     tribeName: k.tribe?.name || "غير محدد",
     voterCount: votersCount,
     createdAt: k.createdAt ? (k.createdAt instanceof Date ? k.createdAt : new Date(k.createdAt)).toISOString() : null,
+    profession: k.profession || null,
     socialMedia: k.socialMedia || null,
     nickname: k.nickname || null,
     phone2: k.phone2 || null,
@@ -121,7 +122,17 @@ async function putHandler(
     if (body.mobilizationAbility !== undefined && body.mobilizationCap === undefined) {
       body.mobilizationCap = body.mobilizationAbility;
     }
-    
+
+    // ============================================================
+    // CRITICAL GUARD: Capture which keys were EXPLICITLY provided
+    // in the request BEFORE Zod parses and applies .default() values.
+    // Without this, a partial update (e.g. { firstName: 'X' }) would
+    // cause Zod to fill in default(0) for votes, default('') for
+    // text fields, etc., and then { ...d } would silently wipe every
+    // field in the DB that was not sent by the client.
+    // ============================================================
+    const explicitKeys = new Set(Object.keys(body));
+
     const parsed = updateElectionKeySchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -150,53 +161,70 @@ async function putHandler(
 
     const d = parsed.data;
 
+    // Helper: check if a field was actually sent by the client
+    // (not just a Zod default). We check both the original name and
+    // common UI aliases that were remapped above.
+    const wasProvided = (dbKey: string, ...uiAliases: string[]): boolean =>
+      explicitKeys.has(dbKey) || uiAliases.some(a => explicitKeys.has(a));
+
+    // Merge: prefer the explicitly-sent value; fall back to the current DB value.
     const merged = {
-      supportedVotes: d.supportedVotes !== undefined ? d.supportedVotes : existing.supportedVotes,
-      neutralVotes: d.neutralVotes !== undefined ? d.neutralVotes : existing.neutralVotes,
-      weakVotes: d.weakVotes !== undefined ? d.weakVotes : existing.weakVotes,
-      totalVotes: d.totalVotes !== undefined ? d.totalVotes : existing.totalVotes,
-      loyaltyScore: d.loyaltyScore !== undefined ? d.loyaltyScore : existing.loyaltyScore,
-      influenceLevel: d.influenceLevel !== undefined ? d.influenceLevel : existing.influenceLevel,
-      mobilizationCap: d.mobilizationCap !== undefined ? d.mobilizationCap : existing.mobilizationCap,
-      voteProtection: d.voteProtection !== undefined ? d.voteProtection : existing.voteProtection,
-      supportReason: d.supportReason !== undefined ? d.supportReason : existing.supportReason,
-      needsLevel: d.needsLevel !== undefined ? d.needsLevel : existing.needsLevel,
-      politicalNote: d.politicalNote !== undefined ? d.politicalNote : existing.politicalNote,
-      organizationalNote: d.organizationalNote !== undefined ? d.organizationalNote : existing.organizationalNote,
-      generalNote: d.generalNote !== undefined ? d.generalNote : existing.generalNote,
+      supportedVotes: wasProvided('supportedVotes') ? (d.supportedVotes ?? existing.supportedVotes) : existing.supportedVotes,
+      neutralVotes:   wasProvided('neutralVotes')   ? (d.neutralVotes   ?? existing.neutralVotes)   : existing.neutralVotes,
+      weakVotes:      wasProvided('weakVotes')       ? (d.weakVotes      ?? existing.weakVotes)       : existing.weakVotes,
+      totalVotes:     wasProvided('totalVotes')      ? (d.totalVotes     ?? existing.totalVotes)      : existing.totalVotes,
+      loyaltyScore:   wasProvided('loyaltyScore', 'loyaltyLevel')         ? (d.loyaltyScore    ?? existing.loyaltyScore)    : existing.loyaltyScore,
+      influenceLevel: wasProvided('influenceLevel')                        ? (d.influenceLevel  ?? existing.influenceLevel)  : existing.influenceLevel,
+      mobilizationCap: wasProvided('mobilizationCap', 'mobilizationAbility') ? (d.mobilizationCap ?? existing.mobilizationCap) : existing.mobilizationCap,
+      voteProtection:   wasProvided('voteProtection')    ? (d.voteProtection   ?? existing.voteProtection)   : existing.voteProtection,
+      supportReason:    wasProvided('supportReason')     ? (d.supportReason    ?? existing.supportReason)    : existing.supportReason,
+      needsLevel:       wasProvided('needsLevel')        ? (d.needsLevel       ?? existing.needsLevel)       : existing.needsLevel,
+      politicalNote:    wasProvided('politicalNote')     ? (d.politicalNote    ?? existing.politicalNote)    : existing.politicalNote,
+      organizationalNote: wasProvided('organizationalNote') ? (d.organizationalNote ?? existing.organizationalNote) : existing.organizationalNote,
+      generalNote:      wasProvided('generalNote')       ? (d.generalNote      ?? existing.generalNote)      : existing.generalNote,
     };
 
-    if (d.totalVotes === undefined && (d.supportedVotes !== undefined || d.neutralVotes !== undefined || d.weakVotes !== undefined)) {
+    // Auto-sum totalVotes when individual vote buckets are sent but totalVotes is not
+    if (!wasProvided('totalVotes') && (wasProvided('supportedVotes') || wasProvided('neutralVotes') || wasProvided('weakVotes'))) {
       merged.totalVotes = merged.supportedVotes + merged.neutralVotes + merged.weakVotes;
     }
 
     const calcResult = calculateAll(merged);
 
-    const data: Record<string, unknown> = {
-      ...d,
-      totalVotes: merged.totalVotes,
-      netVotes: Math.round(calcResult.netVotes),
-      weightedScore: calcResult.weightedScore,
-      classification: calcResult.classification,
-    };
+    // Build update payload: only include fields the client explicitly sent.
+    // This is the key safeguard — Zod default values are never written to the DB
+    // unless the client actually sent that field.
+    const data: Record<string, unknown> = {};
+    for (const key of Object.keys(d as object)) {
+      if (explicitKeys.has(key)) {
+        data[key] = (d as Record<string, unknown>)[key];
+      }
+    }
 
-    if (d.dateOfBirth) {
+    // Always recalculate derived vote/scoring fields (these are always safe to update)
+    data.totalVotes    = merged.totalVotes;
+    data.netVotes      = Math.round(calcResult.netVotes);
+    data.weightedScore = calcResult.weightedScore;
+    data.classification = calcResult.classification;
+
+    // Handle dateOfBirth → birthDate rename
+    if (wasProvided('dateOfBirth') && d.dateOfBirth) {
       data.birthDate = new Date(d.dateOfBirth);
     }
     delete data.dateOfBirth;
 
+    // Handle optional date fields — only touch if explicitly provided
     const dateFields = ["firstContactDate", "lastContactDate", "lastSpentDate"];
     for (const field of dateFields) {
-      const val = d[field as keyof typeof d];
-      if (val === undefined) {
-        delete data[field];
-      } else if (val === null || val === "") {
-        data[field] = null;
+      if (!explicitKeys.has(field)) {
+        delete data[field]; // not sent — keep existing DB value
       } else {
-        data[field] = new Date(val as string);
+        const val = (d as Record<string, unknown>)[field];
+        data[field] = (val === null || val === "" || val === undefined) ? null : new Date(val as string);
       }
     }
 
+    // Normalise empty-string foreign keys to null
     if (data.tribeId === "" || data.tribeId === null) {
       data.tribeId = null;
     }
@@ -238,7 +266,7 @@ async function putHandler(
       action: "UPDATE",
       entity: "ElectionKey",
       entityId: id,
-      details: { fields: Object.keys(parsed.data).join(', ') },
+      details: { fields: [...explicitKeys].join(', ') },
     });
 
     invalidateComprehensiveIndicatorsCache();
