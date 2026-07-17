@@ -24,7 +24,7 @@ async function seedCore(tx = prisma) {
 
   await tx.user.upsert({
     where: { username: "admin" },
-    update: { mustChangePwd: false },
+    update: { password: adminHash, mustChangePwd: false },
     create: {
       username: "admin",
       password: adminHash,
@@ -35,7 +35,7 @@ async function seedCore(tx = prisma) {
 
   await tx.user.upsert({
     where: { username: "observer" },
-    update: { mustChangePwd: false },
+    update: { password: observerHash, mustChangePwd: false },
     create: {
       username: "observer",
       password: observerHash,
@@ -46,7 +46,7 @@ async function seedCore(tx = prisma) {
 
   await tx.user.upsert({
     where: { username: "key_user" },
-    update: { mustChangePwd: false },
+    update: { password: keyUserHash, mustChangePwd: false },
     create: {
       username: "key_user",
       password: keyUserHash,
