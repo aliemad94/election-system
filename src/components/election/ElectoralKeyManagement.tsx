@@ -580,12 +580,14 @@ export default function ElectoralKeyManagement() {
               <Trash2 className="w-3.5 h-3.5" /> حذف المحدد ({selectedIds.size})
             </button>
           )}
-          <button
-            onClick={() => setShowClearConfirm(true)}
-            className="bg-red-900/50 hover:bg-red-800 text-red-300 px-3 py-1.5 rounded text-[12px] font-bold border border-red-700/50"
-          >
-            مسح الكل
-          </button>
+          {process.env.NODE_ENV !== 'production' && (
+            <button
+              onClick={() => setShowClearConfirm(true)}
+              className="bg-red-900/50 hover:bg-red-800 text-red-300 px-3 py-1.5 rounded text-[12px] font-bold border border-red-700/50"
+            >
+              مسح الكل
+            </button>
+          )}
         </div>
       )}
 
