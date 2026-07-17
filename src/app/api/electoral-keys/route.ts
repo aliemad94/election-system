@@ -46,6 +46,7 @@ function mapElectionKeyToUI(k: any) {
     tribeName: k.tribe?.name || "غير محدد",
     voterCount: votersCount,
     createdAt: k.createdAt ? (k.createdAt instanceof Date ? k.createdAt : new Date(k.createdAt)).toISOString() : null,
+    profession: k.profession || null,
     socialMedia: k.socialMedia || null,
     nickname: k.nickname || null,
     phone2: k.phone2 || null,
