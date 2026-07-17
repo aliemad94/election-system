@@ -82,7 +82,7 @@ async function postHandler(
   } catch (error) {
     console.error("Error resetting data:", error);
     return NextResponse.json(
-      { error: "حدث خطأ في إعادة تعيين البيانات", details: error instanceof Error ? error.message : String(error) },
+      { error: "حدث خطأ في إعادة تعيين البيانات" },
       { status: 500 }
     );
   }
