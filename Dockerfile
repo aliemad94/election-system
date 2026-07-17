@@ -50,7 +50,7 @@ RUN npm install --omit=dev bcryptjs prisma@6.11.1 @prisma/client@6.11.1
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
-# Create startup script - with validation for required env vars
+# Create startup script - with validation for required env vars and smart seed
 RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'set -e' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
@@ -61,20 +61,27 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     echo '  exit 1' >> /app/start.sh && \
     echo 'fi' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
-    echo 'if [ -z "$ADMIN_PASSWORD" ]; then' >> /app/start.sh && \
-    echo '  echo "FATAL: ADMIN_PASSWORD environment variable is required"' >> /app/start.sh && \
-    echo '  exit 1' >> /app/start.sh && \
-    echo 'fi' >> /app/start.sh && \
-    echo '' >> /app/start.sh && \
-    echo 'if [ -z "$USER_PASSWORD" ]; then' >> /app/start.sh && \
-    echo '  echo "FATAL: USER_PASSWORD environment variable is required"' >> /app/start.sh && \
-    echo '  exit 1' >> /app/start.sh && \
-    echo 'fi' >> /app/start.sh && \
-    echo '' >> /app/start.sh && \
     echo 'echo "Deploying database migrations..."' >> /app/start.sh && \
     echo 'npx prisma migrate deploy || echo "Database migration failed or skipped (continuing...)"' >> /app/start.sh && \
-    echo 'echo "Running database seed..."' >> /app/start.sh && \
-    echo 'npx prisma db seed || echo "Seed skipped (may already exist)"' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Smart seed: only create users if they do not exist (never overwrite passwords)' >> /app/start.sh && \
+    echo 'echo "Checking if seed is needed..."' >> /app/start.sh && \
+    echo 'node -e "' >> /app/start.sh && \
+    echo '  const {PrismaClient} = require(\"@prisma/client\");' >> /app/start.sh && \
+    echo '  const p = new PrismaClient();' >> /app/start.sh && \
+    echo '  p.user.findFirst({where:{role:\"ADMIN\"}})' >> /app/start.sh && \
+    echo '    .then(u => {' >> /app/start.sh && \
+    echo '      if (!u) {' >> /app/start.sh && \
+    echo '        console.log(\"No admin user found, running seed...\");' >> /app/start.sh && \
+    echo '        return require(\"./prisma/seed.core.js\").seedCore().then(() => p.\$disconnect());' >> /app/start.sh && \
+    echo '      } else {' >> /app/start.sh && \
+    echo '        console.log(\"Users exist, skipping seed (passwords preserved).\");' >> /app/start.sh && \
+    echo '        return p.\$disconnect();' >> /app/start.sh && \
+    echo '      }' >> /app/start.sh && \
+    echo '    })' >> /app/start.sh && \
+    echo '    .catch(e => { console.error(\"Seed check failed:\", e.message); p.\$disconnect(); });' >> /app/start.sh && \
+    echo '" || echo "Seed check completed"' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
     echo 'echo "Starting server..."' >> /app/start.sh && \
     echo 'exec node server.js' >> /app/start.sh && \
     chmod +x /app/start.sh && chown nextjs:nodejs /app/start.sh

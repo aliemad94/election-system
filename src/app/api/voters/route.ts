@@ -8,34 +8,56 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
 import { createVoterSchema, formatZodError } from "@/lib/validators";
+import { applyKeyUserScope, getKeyUserScope } from "@/lib/scope-service";
 
 function mapVoterToUI(v: any, userRole?: string) {
   if (!v) return null;
   
+  const isObserver = userRole === "OBSERVER";
+  const isAuthorized = userRole === "ADMIN" || userRole === "KEY_USER";
+  const isAdmin = userRole === "ADMIN";
+
   const electionKeyVal = v.electionKey ? {
     id: v.electionKey.id || v.keyId || "",
     code: v.electionKey.keyCode || v.electionKey.code || "",
     keyCode: v.electionKey.keyCode || v.electionKey.code || "",
     firstName: v.electionKey.firstName || "",
-    fatherName: v.electionKey.fatherName || null,
+    fatherName: isObserver ? "***" : (v.electionKey.fatherName || null),
   } : null;
 
-  const isAuthorized = userRole === "ADMIN" || userRole === "KEY_USER";
-  const isAdmin = userRole === "ADMIN";
+  let fullName = [v.firstName, v.fatherName, v.grandfatherName, v.fourthName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 
-  const phoneVal = isAuthorized ? (v.phone || "") : "";
-  const nationalIdVal = isAdmin ? (v.nationalId || null) : undefined;
+  let firstName = v.firstName;
+  let fatherName = v.fatherName;
+  let grandfatherName = v.grandfatherName;
+  let fourthName = v.fourthName;
+  let phoneVal = v.phone || "";
+  let nationalIdVal = v.nationalId || null;
+
+  if (isObserver) {
+    fullName = `${v.firstName} ***`;
+    fatherName = "***";
+    grandfatherName = "***";
+    fourthName = "***";
+    if (phoneVal) {
+      phoneVal = phoneVal.substring(0, 3) + "****" + phoneVal.substring(phoneVal.length - 3);
+    }
+    nationalIdVal = "***";
+  } else {
+    phoneVal = isAuthorized ? (v.phone || "") : "";
+    nationalIdVal = isAdmin ? (v.nationalId || null) : undefined;
+  }
 
   return {
     id: v.id,
-    fullName: [v.firstName, v.fatherName, v.grandfatherName, v.fourthName]
-      .filter(Boolean)
-      .join(" ")
-      .trim(),
-    firstName: v.firstName,
-    fatherName: v.fatherName,
-    grandfatherName: v.grandfatherName,
-    fourthName: v.fourthName,
+    fullName,
+    firstName,
+    fatherName: fatherName || null,
+    grandfatherName: grandfatherName || null,
+    fourthName: fourthName || null,
     gender: v.gender,
     phone: phoneVal,
     phoneNumber: phoneVal, // UI name mapping
@@ -48,7 +70,7 @@ function mapVoterToUI(v: any, userRole?: string) {
     status: v.status || "NEUTRAL",
     supportDegree: v.supportDegree || 3,
     confidenceScore: v.supportDegree || 3, // UI name mapping
-    supportReason: v.supportReason || null,
+    supportReason: isObserver ? null : (v.supportReason || null),
     
     votedOnDay: v.votedOnDay || false,
     votedStatus: v.votedOnDay || false, // UI name mapping
@@ -73,19 +95,19 @@ function mapVoterToUI(v: any, userRole?: string) {
     influenceRate: v.influenceRate || 0,
     lastContactDate: v.lastContactDate ? (v.lastContactDate instanceof Date ? v.lastContactDate : new Date(v.lastContactDate)).toISOString() : null,
     createdAt: v.createdAt ? (v.createdAt instanceof Date ? v.createdAt : new Date(v.createdAt)).toISOString() : null,
-    socialMedia: v.socialMedia || null,
-    specialization: v.specialization || null,
-    profession: v.profession || null,
-    education: v.education || null,
-    educationLevel: v.education || null, // UI name mapping
+    socialMedia: isObserver ? null : (v.socialMedia || null),
+    specialization: isObserver ? null : (v.specialization || null),
+    profession: isObserver ? null : (v.profession || null),
+    education: isObserver ? null : (v.education || null),
+    educationLevel: isObserver ? null : (v.education || null), // UI name mapping
     
     gpsVerified: v.gpsVerified || false,
-    latitude: v.latitude || null,
-    longitude: v.longitude || null,
+    latitude: isObserver ? null : (v.latitude || null),
+    longitude: isObserver ? null : (v.longitude || null),
     isRegistryVerified: v.isRegistryVerified || false,
-    registryVoterId: v.registryVoterId || null,
+    registryVoterId: isObserver ? null : (v.registryVoterId || null),
     voterCategory: v.status || "NEUTRAL",
-    notes: v.notes || null,
+    notes: isObserver ? null : (v.notes || null),
   };
 }
 
@@ -113,14 +135,8 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
     if (votedStatus === "voted") where.votedOnDay = true;
     else if (votedStatus === "not_voted") where.votedOnDay = false;
 
-    // KEY_USER يرى ناخبي مفتاحه فقط
-    if (user.role === "KEY_USER") {
-      const key = await prisma.electionKey.findFirst({
-        where: { phone: user.username },
-        select: { id: true },
-      });
-      where.keyId = key?.id || "none";
-    }
+    // KEY_USER يرى ناخبي مفتاحه فقط (منطق مركزي)
+    await applyKeyUserScope(where, user);
 
     if (search && search.trim()) {
       const q = search.trim();
@@ -160,6 +176,18 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
 async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const body = await req.json();
+
+    if (user.role === "KEY_USER") {
+      const scope = await getKeyUserScope(user.userId);
+      if (!scope) {
+        return NextResponse.json(
+          { error: "غير مصرح - لا يملك صلاحية إنشاء ناخب لعدم وجود مفتاح مرتبط بحسابه" },
+          { status: 403 }
+        );
+      }
+      body.keyId = scope.keyId;
+      body.electoralKeyId = scope.keyId;
+    }
     
     // Map UI names to DB names before Zod validation
     if (body.phoneNumber !== undefined && body.phone === undefined) {

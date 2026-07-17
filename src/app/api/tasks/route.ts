@@ -7,8 +7,9 @@ import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
+import { getKeyUserScope, assertOwnsTask, assertOwnsVoter } from "@/lib/scope-service";
 
-async function getHandler(req: NextRequest) {
+async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const { searchParams } = new URL(req.url);
     const district = searchParams.get("district");
@@ -17,6 +18,15 @@ async function getHandler(req: NextRequest) {
     const where: Record<string, unknown> = {};
     if (district) where.district = district;
     if (status) where.status = status;
+
+    // تطبيق النطاق لـ KEY_USER
+    if (user.role === "KEY_USER") {
+      const scope = await getKeyUserScope(user.userId);
+      if (!scope) {
+        return NextResponse.json({ tasks: [], statusCounts: [] }, { status: 200 });
+      }
+      where.electoralKeyId = scope.keyId;
+    }
 
     const tasks = await prisma.task.findMany({
       where,
@@ -82,6 +92,7 @@ async function getHandler(req: NextRequest) {
 
     const counts = await prisma.task.groupBy({
       by: ["status"],
+      where,
       _count: { id: true },
     });
 
@@ -112,11 +123,36 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
       dueDate,
     } = body;
 
+    let electoralKeyId = body.electoralKeyId || null;
+
     if (!title) {
       return NextResponse.json(
         { error: "عنوان المهمة حقل مطلوب" },
         { status: 400 }
       );
+    }
+
+    if (user.role === "KEY_USER") {
+      const scope = await getKeyUserScope(user.userId);
+      if (!scope) {
+        return NextResponse.json(
+          { error: "غير مصرح - لا يملك صلاحية إنشاء مهام لعدم وجود مفتاح مرتبط" },
+          { status: 403 }
+        );
+      }
+      electoralKeyId = scope.keyId;
+
+      // التحقق من ملكية الناخب المستهدف
+      if (targetVoterId) {
+        try {
+          await assertOwnsVoter(user.userId, targetVoterId);
+        } catch {
+          return NextResponse.json(
+            { error: "غير مصرح - الناخب المحدد لا ينتمي لنطاقك" },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     const task = await prisma.task.create({
@@ -130,6 +166,7 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
         impactEstimate: impactEstimate || null,
         targetVoterId: targetVoterId || null,
         assignedToId: assignedToId || null,
+        electoralKeyId: electoralKeyId,
         dueDate: dueDate ? new Date(dueDate) : null,
       },
     });
@@ -172,6 +209,18 @@ async function putHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
     if (status !== undefined) updateData.status = status;
     if (priority !== undefined) updateData.priority = priority;
 
+    if (user.role === "KEY_USER") {
+      try {
+        await assertOwnsTask(user.userId, id);
+      } catch {
+        return NextResponse.json(
+          { error: "غير مصرح - لا تملك صلاحية تعديل هذه المهمة" },
+          { status: 403 }
+        );
+      }
+      delete (updateData as any).electoralKeyId; // منع نقل المهمة لمفتاح آخر
+    }
+
     // إذا اكتملت المهمة، نزيد عدّاد المهام المكتملة للمتطوع
     if (status === "COMPLETED") {
       const task = await prisma.task.findUnique({
@@ -207,8 +256,7 @@ async function putHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
 }
 
 export const GET = withAuth(getHandler, {
-  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+  GET: ["ADMIN", "KEY_USER"],
 });
 export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
 export const PUT = withAuth(putHandler, { PUT: ["ADMIN", "KEY_USER"] });
-

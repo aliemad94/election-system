@@ -7,6 +7,7 @@ import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/security";
+import { getKeyUserScope } from "@/lib/scope-service";
 
 async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
@@ -14,11 +15,8 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
 
     // KEY_USER يرى إحصاءات ناخبيه فقط
     if (user.role === "KEY_USER") {
-      const key = await prisma.electionKey.findFirst({
-        where: { phone: user.username },
-        select: { id: true },
-      });
-      where.keyId = key?.id || "none";
+      const scope = await getKeyUserScope(user.userId);
+      where.keyId = scope?.keyId || "none";
     }
 
     const [

@@ -5,9 +5,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
+import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/security";
 
-async function getHandler(req: NextRequest) {
+async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const { searchParams } = new URL(req.url);
     const district = searchParams.get("district") || undefined;
@@ -90,7 +91,6 @@ async function getHandler(req: NextRequest) {
         id: v.id,
         fullName,
         phone: formattedPhone,
-        rawPhone: v.phone, // used for sending preview
         district: v.district,
         pollingCenter: v.pollingCenter,
         tribeName: v.tribe?.name || "غير محدد",
@@ -107,5 +107,6 @@ async function getHandler(req: NextRequest) {
 }
 
 export const GET = withAuth(getHandler, {
-  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+  GET: ["ADMIN", "KEY_USER"],
 });
+

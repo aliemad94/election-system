@@ -1,11 +1,13 @@
 // ====================================================================
 // المصادقة — JWT عبر jose (متوافق مع Edge Runtime في middleware)
+// يدعم تدوير JWT_SECRET عبر JWT_SECRET_PREVIOUS
 // ====================================================================
 
 import { SignJWT, jwtVerify } from "jose";
 
 // سر JWT — يجب ضبطه في .env ولا يوجد fallback للأمان
 let _cachedSecret: Uint8Array | null = null;
+let _cachedPreviousSecret: Uint8Array | null = null;
 
 const getJwtSecret = (): Uint8Array => {
   if (_cachedSecret) return _cachedSecret;
@@ -20,11 +22,25 @@ const getJwtSecret = (): Uint8Array => {
   return _cachedSecret;
 };
 
+/**
+ * استرداد السر السابق لدعم تدوير JWT_SECRET.
+ * عند تغيير JWT_SECRET، ضع القيمة القديمة في JWT_SECRET_PREVIOUS
+ * لمدة 8 ساعات (عمر التوكن) ثم احذفها.
+ */
+const getPreviousJwtSecret = (): Uint8Array | null => {
+  if (_cachedPreviousSecret) return _cachedPreviousSecret;
+  const secret = process.env.JWT_SECRET_PREVIOUS;
+  if (!secret || secret.length < 32) return null;
+  _cachedPreviousSecret = new TextEncoder().encode(secret);
+  return _cachedPreviousSecret;
+};
+
 export interface AuthPayload {
   userId: string;
   username: string;
   role: string; // ADMIN | KEY_USER | OBSERVER
   isOwner: boolean;
+  iat?: number; // Unix timestamp — وقت إصدار التوكن (ثوانٍ)
 }
 
 const TOKEN_EXPIRY = "8h";
@@ -33,6 +49,7 @@ const AUDIENCE = "electoral-system-users";
 
 /**
  * إنشاء JWT موقّع للمستخدم المصادق عليه
+ * يستخدم دائماً JWT_SECRET الحالي (الجديد)
  */
 export async function createToken(payload: AuthPayload): Promise<string> {
   return new SignJWT({ ...payload })
@@ -47,11 +64,13 @@ export async function createToken(payload: AuthPayload): Promise<string> {
 
 /**
  * التحقق من وفك تشفير JWT
+ * يحاول السر الحالي أولاً، ثم السر السابق (للتدوير)
  * يرجع payload إن صالح، null إن منتهٍ أو تالف
  */
 export async function verifyToken(
   token: string
 ): Promise<AuthPayload | null> {
+  // محاولة 1: السر الحالي
   try {
     const { payload } = await jwtVerify(token, getJwtSecret(), {
       algorithms: ["HS256"],
@@ -64,10 +83,34 @@ export async function verifyToken(
       username: payload.username as string,
       role: payload.role as string,
       isOwner: payload.isOwner as boolean,
+      iat: payload.iat as number | undefined,
     };
   } catch {
-    // التوكن غير صالح أو منتهي
-    return null;
+    // السر الحالي لم يعمل — نحاول السابق
   }
-}
 
+  // محاولة 2: السر السابق (تدوير JWT_SECRET)
+  const previousSecret = getPreviousJwtSecret();
+  if (previousSecret) {
+    try {
+      const { payload } = await jwtVerify(token, previousSecret, {
+        algorithms: ["HS256"],
+        issuer: ISSUER,
+        audience: AUDIENCE,
+      });
+
+      return {
+        userId: payload.userId as string,
+        username: payload.username as string,
+        role: payload.role as string,
+        isOwner: payload.isOwner as boolean,
+        iat: payload.iat as number | undefined,
+      };
+    } catch {
+      // كلا السرين لم يعملا
+    }
+  }
+
+  // التوكن غير صالح أو منتهي
+  return null;
+}

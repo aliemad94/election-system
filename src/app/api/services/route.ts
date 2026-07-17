@@ -12,9 +12,10 @@ import {
   updateServiceSchema,
   formatZodError,
 } from "@/lib/validators";
+import { getKeyUserScope, assertOwnsService, assertOwnsVoter } from "@/lib/scope-service";
 
-// GET /api/services — قائمة الخدمات مع فلترة
-async function getHandler(req: NextRequest) {
+// GET /api/services — قائمة الخدمات مع فلترة مع فرض نطاق الوصول
+async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
@@ -23,6 +24,15 @@ async function getHandler(req: NextRequest) {
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
     if (category) where.category = category;
+
+    // تطبيق النطاق الصارم لـ KEY_USER
+    if (user.role === "KEY_USER") {
+      const scope = await getKeyUserScope(user.userId);
+      if (!scope) {
+        return NextResponse.json([], { status: 200 });
+      }
+      where.keyId = scope.keyId;
+    }
 
     const services = await prisma.service.findMany({
       where,
@@ -64,6 +74,30 @@ async function getHandler(req: NextRequest) {
 async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
     const body = await req.json();
+
+    if (user.role === "KEY_USER") {
+      const scope = await getKeyUserScope(user.userId);
+      if (!scope) {
+        return NextResponse.json(
+          { error: "غير مصرح - لا يملك صلاحية إنشاء خدمة لعدم وجود مفتاح مرتبط" },
+          { status: 403 }
+        );
+      }
+      body.keyId = scope.keyId;
+
+      // التحقق من ملكية الناخب إن وُجد
+      if (body.voterId) {
+        try {
+          await assertOwnsVoter(user.userId, body.voterId);
+        } catch {
+          return NextResponse.json(
+            { error: "غير مصرح - الناخب المحدد لا ينتمي لنطاقك" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     const parsed = createServiceSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -118,13 +152,26 @@ async function putHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
     const { id, ...updateData } = parsed.data;
     const existing = await prisma.service.findUnique({
       where: { id },
-      select: { id: true, title: true },
+      select: { id: true, title: true, keyId: true },
     });
     if (!existing) {
       return NextResponse.json(
         { error: "الخدمة غير موجودة" },
         { status: 404 }
       );
+    }
+
+    // التحقق من الملكية قبل التحديث لـ KEY_USER
+    if (user.role === "KEY_USER") {
+      try {
+        await assertOwnsService(user.userId, id);
+      } catch {
+        return NextResponse.json(
+          { error: "غير مصرح - لا تملك صلاحية تعديل هذه الخدمة" },
+          { status: 403 }
+        );
+      }
+      delete (updateData as any).keyId; // منع نقل الخدمة لمفتاح آخر
     }
 
     // إزالة الحقول الفارغة
@@ -143,8 +190,8 @@ async function putHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
       username: user.username,
       action: "UPDATE",
       entity: "Service",
-      entityId: id,
-      details: { fields: Object.keys(cleanData).join(', ') },
+      entityId: updated.id,
+      details: { title: updated.title, changedFields: Object.keys(cleanData).join(", ") },
     });
 
     return NextResponse.json(updated);
@@ -154,8 +201,7 @@ async function putHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
 }
 
 export const GET = withAuth(getHandler, {
-  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+  GET: ["ADMIN", "KEY_USER"],
 });
 export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
 export const PUT = withAuth(putHandler, { PUT: ["ADMIN", "KEY_USER"] });
-

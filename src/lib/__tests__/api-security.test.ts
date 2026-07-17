@@ -309,8 +309,8 @@ describe("ثغرات التحكم بالوصول (IDOR) لـ KEY_USER", () => {
       const res = await getVoters(req, {});
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.voters[0].nationalId).toBeUndefined();
-      expect(data.voters[0].phone).toBe("");
+      expect(data.voters[0].nationalId).toBe("***");
+      expect(data.voters[0].phone).toBe("077****111");
     });
 
     it("يجب إظهار nationalId وهاتف الناخب لـ ADMIN كاملة (GET)", async () => {

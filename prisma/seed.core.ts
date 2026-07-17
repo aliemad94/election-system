@@ -22,40 +22,54 @@ export async function seedCore(tx: any = prisma) {
   const observerHash = await bcrypt.hash(userPassword, 12);
   const keyUserHash = await bcrypt.hash(userPassword, 12);
 
-  await tx.user.upsert({
-    where: { username: "admin" },
-    update: { password: adminHash, mustChangePwd: false },
-    create: {
-      username: "admin",
-      password: adminHash,
-      role: "ADMIN",
-      mustChangePwd: false,
-    },
-  });
+  // التحقق من وجود المستخدمين قبل الإنشاء لمنع إعادة تعيين كلمات المرور عند النشر
+  const existingAdmin = await tx.user.findUnique({ where: { username: "admin" } });
+  const existingObserver = await tx.user.findUnique({ where: { username: "observer" } });
+  const existingKeyUser = await tx.user.findUnique({ where: { username: "key_user" } });
 
-  await tx.user.upsert({
-    where: { username: "observer" },
-    update: { password: observerHash, mustChangePwd: false },
-    create: {
-      username: "observer",
-      password: observerHash,
-      role: "OBSERVER",
-      mustChangePwd: false,
-    },
-  });
+  if (!existingAdmin) {
+    await tx.user.create({
+      data: {
+        username: "admin",
+        password: adminHash,
+        role: "ADMIN",
+        mustChangePwd: false,
+      },
+    });
+    console.log("✅ تم إنشاء مستخدم admin جديد");
+  } else {
+    console.log("⏭️ مستخدم admin موجود — لم تُعدّل كلمة المرور");
+  }
 
-  await tx.user.upsert({
-    where: { username: "key_user" },
-    update: { password: keyUserHash, mustChangePwd: false },
-    create: {
-      username: "key_user",
-      password: keyUserHash,
-      role: "KEY_USER",
-      mustChangePwd: false,
-    },
-  });
+  if (!existingObserver) {
+    await tx.user.create({
+      data: {
+        username: "observer",
+        password: observerHash,
+        role: "OBSERVER",
+        mustChangePwd: false,
+      },
+    });
+    console.log("✅ تم إنشاء مستخدم observer جديد");
+  } else {
+    console.log("⏭️ مستخدم observer موجود — لم تُعدّل كلمة المرور");
+  }
 
-  console.log("✅ تم إنشاء/تحديث المستخدمين الثلاثة: admin / observer / key_user");
+  if (!existingKeyUser) {
+    await tx.user.create({
+      data: {
+        username: "key_user",
+        password: keyUserHash,
+        role: "KEY_USER",
+        mustChangePwd: false,
+      },
+    });
+    console.log("✅ تم إنشاء مستخدم key_user جديد");
+  } else {
+    console.log("⏭️ مستخدم key_user موجود — لم تُعدّل كلمة المرور");
+  }
+
+  console.log("✅ تم التحقق من حسابات المستخدمين الأساسية.");
 
   await tx.systemConfig.upsert({
     where: { id: "system" },
