@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "npx prisma generate && next build --webpack && node copy-standalone.js",
-    "start": "npx prisma db push && node .next/standalone/server.js",
+    "start": "npx prisma migrate deploy && node .next/standalone/server.js",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -71,8 +71,8 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     echo '  exit 1' >> /app/start.sh && \
     echo 'fi' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
-    echo 'echo "Pushing database schema..."' >> /app/start.sh && \
-    echo 'npx prisma db push --skip-generate || echo "Database push failed or skipped (continuing...)"' >> /app/start.sh && \
+    echo 'echo "Deploying database migrations..."' >> /app/start.sh && \
+    echo 'npx prisma migrate deploy || echo "Database migration failed or skipped (continuing...)"' >> /app/start.sh && \
     echo 'echo "Running database seed..."' >> /app/start.sh && \
     echo 'npx prisma db seed || echo "Seed skipped (may already exist)"' >> /app/start.sh && \
     echo 'echo "Starting server..."' >> /app/start.sh && \
