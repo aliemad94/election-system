@@ -15,14 +15,15 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:prod": "prisma migrate deploy",
     "db:reset": "prisma migrate reset",
-    "db:seed": "node prisma/seed.js",
+    "db:seed": "node prisma/seed.core.js",
     "db:seed:core": "node prisma/seed.core.js",
     "db:seed:demo": "node prisma/seed.demo.js",
+    "seed:demo": "node prisma/seed.demo.js",
     "postinstall": "prisma generate || true",
     "precommit": "npx tsc --noEmit && npx vitest run && npm run build && node scripts/verify-security.js"
   },
   "prisma": {
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.core.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
