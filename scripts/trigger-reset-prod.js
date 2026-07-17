@@ -47,9 +47,9 @@ async function main() {
   try {
     // 1. تسجيل الدخول للحصول على التوكن
     console.log("⏳ محاولة تسجيل الدخول كـ admin...");
-    const loginRes = await postRequest(`${baseUrl}/api/auth/login`, {
-      username: "admin",
-      password: "YOUR_ADMIN_PASSWORD"
+    const loginRes = await postRequest(`${baseUrl}/api/access`, {
+      action: "owner-login",
+      ownerPassword: "YOUR_ADMIN_PASSWORD"
     });
 
     console.log(`   حالة الاستجابة: ${loginRes.statusCode}`);

@@ -23,6 +23,15 @@ interface WarningData {
 
 async function getHandler(request: NextRequest) {
   try {
+    const [votersCount, keysCount] = await Promise.all([
+      prisma.voter.count(),
+      prisma.electionKey.count(),
+    ]);
+
+    if (votersCount === 0 && keysCount === 0) {
+      return NextResponse.json([]);
+    }
+
     const { searchParams } = new URL(request.url);
     const filterType = searchParams.get("warningType");
     const filterSeverity = searchParams.get("severity");
