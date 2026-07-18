@@ -13,9 +13,10 @@ interface LayoutProps {
   onOwnerPanelOpen?: () => void;
   onLogout?: () => void;
   excelToolbar?: React.ReactNode;
+  userRole?: string;
 }
 
-export default function Layout({ activePage, onPageChange, children, isOwner, onOwnerPanelOpen, onLogout, excelToolbar }: LayoutProps) {
+export default function Layout({ activePage, onPageChange, children, isOwner, onOwnerPanelOpen, onLogout, excelToolbar, userRole }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -25,6 +26,7 @@ export default function Layout({ activePage, onPageChange, children, isOwner, on
         onPageChange={onPageChange}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        userRole={userRole}
       />
       <TopBar
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)}

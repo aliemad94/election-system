@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
 import { z } from "zod";
+import { applyKeyUserScope } from "@/lib/scope-service";
 
 const smsSchema = z.object({
   message: z.string().min(1, "نص الرسالة مطلوب").max(480, "الرسالة طويلة جداً"),
@@ -17,14 +18,21 @@ const smsSchema = z.object({
   status: z.enum(["SUPPORTED", "NEUTRAL", "WEAK"]).optional(),
 });
 
-async function getHandler() {
+async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
-    // إرجاع سجل الحملات السابقة (من AuditLog حيث action = CREATE و entity = SMS)
+    const where: Record<string, any> = {
+      action: "CREATE",
+      entity: "SMS",
+    };
+
+    // تقييد رؤية الأرشيف لـ KEY_USER
+    if (user.role === "KEY_USER") {
+      where.userId = user.userId;
+    }
+
+    // إرجاع سجل الحملات السابقة
     const logs = await prisma.auditLog.findMany({
-      where: {
-        action: "CREATE",
-        entity: "SMS",
-      },
+      where,
       orderBy: { createdAt: "desc" },
       take: 20,
       select: {
@@ -71,12 +79,15 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
 
     const { message, district, tribeId, minSupportDegree, status } = parsed.data;
 
-    // حساب المستلمين المحتملين
-    const where: Record<string, unknown> = {};
+    // حساب المستلمين المحتملين مع تطبيق النطاق الصارم
+    const where: Record<string, any> = {};
     if (district) where.district = district;
     if (tribeId) where.tribeId = tribeId;
     if (status) where.status = status;
     if (minSupportDegree) where.supportDegree = { gte: minSupportDegree };
+
+    // تطبيق حارس النطاق لـ KEY_USER
+    await applyKeyUserScope(where, user);
 
     const recipientCount = await prisma.voter.count({
       where: { ...where, phone: { not: null } },
@@ -131,7 +142,6 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
 }
 
 export const GET = withAuth(getHandler, {
-  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+  GET: ["ADMIN", "KEY_USER"],
 });
 export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
-

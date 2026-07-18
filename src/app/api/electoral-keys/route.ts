@@ -10,114 +10,7 @@ import { handleApiError, auditLog } from "@/lib/security";
 import { createElectionKeySchema, formatZodError } from "@/lib/validators";
 import { calculateAll } from "@/lib/electoral-calculations";
 import { getKeyUserScope } from "@/lib/scope-service";
-
-function mapElectionKeyToUI(k: any, userRole?: string) {
-  if (!k) return null;
-  const votersCount = k.voters ? k.voters.length : (k._count?.voters ?? 0);
-  const isObserver = userRole === "OBSERVER";
-
-  const firstName = k.firstName;
-  const fatherName = isObserver ? "***" : (k.fatherName || "");
-  const grandfatherName = isObserver ? "***" : (k.grandfatherName || "");
-  const fourthName = isObserver ? "***" : (k.fourthName || "");
-
-  const fullName = [firstName, fatherName, grandfatherName, fourthName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-
-  let phoneVal = k.phone || "";
-  if (isObserver && phoneVal) {
-    phoneVal = phoneVal.substring(0, 3) + "****" + phoneVal.substring(phoneVal.length - 3);
-  }
-
-  let phone2Val = k.phone2 || null;
-  if (isObserver && phone2Val) {
-    phone2Val = "***";
-  }
-
-  return {
-    id: k.id,
-    code: k.keyCode,
-    keyCode: k.keyCode,
-    fullName,
-    firstName,
-    fatherName: isObserver ? "***" : (k.fatherName || null),
-    grandfatherName: isObserver ? "***" : (k.grandfatherName || null),
-    fourthName: isObserver ? "***" : (k.fourthName || null),
-    gender: k.gender,
-    phone: phoneVal,
-    district: k.district,
-    subDistrict: k.subDistrict,
-    area: k.subDistrict, // UI name mapping
-    pollingCenter: k.pollingCenter,
-    dateOfBirth: isObserver ? null : (k.birthDate ? (k.birthDate instanceof Date ? k.birthDate : new Date(k.birthDate)).toISOString().split("T")[0] : null),
-    education: isObserver ? null : (k.education || ""),
-    educationLevel: isObserver ? null : (k.education || ""),
-    expectedVotes: k.expectedVotes || 0,
-    totalVotes: k.totalVotes !== undefined && k.totalVotes !== null ? k.totalVotes : (k.expectedVotes || 0),
-    influenceLevel: k.influenceLevel || 3,
-    mobilizationCap: k.mobilizationCap || 3,
-    mobilizationAbility: k.mobilizationCap || 3,
-    loyaltyScore: k.loyaltyScore || 3,
-    loyaltyLevel: k.loyaltyScore || 3,
-    riskLevel: k.riskLevel || 1,
-    tribeId: k.tribeId || null,
-    tribeName: k.tribe?.name || "غير محدد",
-    voterCount: votersCount,
-    createdAt: k.createdAt ? (k.createdAt instanceof Date ? k.createdAt : new Date(k.createdAt)).toISOString() : null,
-    profession: isObserver ? null : (k.profession || null),
-    socialMedia: isObserver ? null : (k.socialMedia || null),
-    nickname: isObserver ? null : (k.nickname || null),
-    phone2: phone2Val,
-    email: isObserver ? null : (k.email || null),
-    address: isObserver ? null : (k.address || null),
-    neighborhood: isObserver ? null : (k.neighborhood || null),
-    pollingStation: k.pollingStation || null,
-    age: isObserver ? null : (k.age || null),
-    specialization: isObserver ? null : (k.specialization || null),
-    maritalStatus: isObserver ? null : (k.maritalStatus || null),
-    familySize: isObserver ? null : (k.familySize || null),
-    notes: isObserver ? null : (k.notes || null),
-    isActive: k.isActive !== undefined ? k.isActive : true,
-    firstContactDate: isObserver ? null : (k.firstContactDate ? (k.firstContactDate instanceof Date ? k.firstContactDate : new Date(k.firstContactDate)).toISOString() : null),
-    lastContactDate: isObserver ? null : (k.lastContactDate ? (k.lastContactDate instanceof Date ? k.lastContactDate : new Date(k.lastContactDate)).toISOString() : null),
-    lastSpentDate: isObserver ? null : (k.lastSpentDate ? (k.lastSpentDate instanceof Date ? k.lastSpentDate : new Date(k.lastSpentDate)).toISOString() : null),
-    trainingStatus: isObserver ? null : (k.trainingStatus || null),
-    dataAccuracy: isObserver ? null : (k.dataAccuracy || null),
-    createdBy: k.createdBy || null,
-    lastEvaluationAt: isObserver ? null : (k.lastEvaluationAt ? (k.lastEvaluationAt instanceof Date ? k.lastEvaluationAt : new Date(k.lastEvaluationAt)).toISOString() : null),
-
-    // الأصوات
-    supportedVotes: k.supportedVotes || 0,
-    neutralVotes: k.neutralVotes || 0,
-    weakVotes: k.weakVotes || 0,
-    netVotes: k.netVotes || 0,
-
-    // التقييمات
-    voteProtection: k.voteProtection || 3,
-    supportReason: k.supportReason || 3,
-    needsLevel: k.needsLevel || 3,
-    politicalNote: k.politicalNote || 3,
-    organizationalNote: k.organizationalNote || 3,
-    generalNote: k.generalNote || 3,
-
-    // الدرجات
-    weightedScore: k.weightedScore || 0,
-    classification: k.classification || "مقبول",
-    eiiScore: k.eiiScore || 0,
-    kriScore: k.kriScore || 0,
-    vpsScore: k.vpsScore || 0,
-    drsScore: k.drsScore || 0,
-    campaignROI: k.campaignROI || 0,
-
-    // مالية
-    totalSpent: isObserver ? 0 : (k.totalSpent || 0),
-    monthlyBudget: isObserver ? 0 : (k.monthlyBudget || 0),
-    totalInvestment: isObserver ? 0 : (k.totalInvestment || 0),
-    costPerVote: isObserver ? 0 : (k.costPerVote || 0),
-  };
-}
+import { toElectionKeyDTO } from "@/lib/response-dto";
 
 // GET /api/electoral-keys — قائمة المفاتيح مع فلترة وبحث
 async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
@@ -183,7 +76,7 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
       prisma.electionKey.count({ where }),
     ]);
 
-    const result = (keys as any[]).map((k) => mapElectionKeyToUI(k, user.role));
+    const result = (keys as any[]).map((k) => toElectionKeyDTO(k, user.role));
 
     if (page && limit) {
       return NextResponse.json({ keys: result, total, page, limit });
@@ -356,13 +249,13 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
       details: { keyCode: key.keyCode, name: key.firstName },
     });
 
-    return NextResponse.json(mapElectionKeyToUI(key), { status: 201 });
+    return NextResponse.json(toElectionKeyDTO(key, user.role), { status: 201 });
   } catch (error) {
     return handleApiError(error, "electoral-keys-post");
   }
 }
 
 export const GET = withAuth(getHandler, {
-  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+  GET: ["ADMIN", "KEY_USER"],
 });
 export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });

@@ -8,8 +8,9 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
 
-async function getHandler(_req: NextRequest) {
+async function getHandler(_req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
+    const isAuthorized = user.role === "ADMIN" || user.role === "KEY_USER";
     const volunteers = await prisma.volunteer.findMany({
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { tasks: true } } },
@@ -17,6 +18,8 @@ async function getHandler(_req: NextRequest) {
 
     const mapped = volunteers.map((v) => ({
       ...v,
+      phone: isAuthorized ? v.phone : "",
+      email: isAuthorized ? v.email : null,
       taskCount: v._count.tasks,
       completionRate:
         v.totalAssignedTasks > 0
@@ -79,7 +82,7 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
 }
 
 export const GET = withAuth(getHandler, {
-  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+  GET: ["ADMIN", "KEY_USER"],
 });
 export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
 

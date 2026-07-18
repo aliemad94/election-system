@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
 import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/security";
+import { applyKeyUserScope } from "@/lib/scope-service";
 
 async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
   try {
@@ -42,6 +43,9 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
     } else if (votedStr === "false") {
       where.votedOnDay = false;
     }
+
+    // تقييد نطاق البحث لـ KEY_USER
+    await applyKeyUserScope(where, user);
 
     // 1. حساب إجمالي عدد المستهدفين المطابقين
     const totalCount = await prisma.voter.count({

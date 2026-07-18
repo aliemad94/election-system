@@ -206,7 +206,7 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
 }
 
 export const GET = withAuth(getHandler, {
-  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+  GET: ["ADMIN", "KEY_USER"],
 });
 export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
 

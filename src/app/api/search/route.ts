@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, type AuthenticatedUser } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/security";
-import { applyKeyUserScope } from "@/lib/scope-service";
+import { applyKeyUserScope, getKeyUserScope } from "@/lib/scope-service";
 
 async function searchHandler(
   req: NextRequest,
@@ -32,9 +32,8 @@ async function searchHandler(
     let tribesList: any[] = [];
     let keysList: any[] = [];
 
-    if (entity === "voters" || entity === "all") {
+    if (user.role !== "OBSERVER" && (entity === "voters" || entity === "all")) {
       // === حماية البحث حسب الدور ===
-      // OBSERVER: لا يبحث في nationalId أو phone (بيانات حساسة)
       // KEY_USER: يبحث في ناخبي مفتاحه فقط
       const voterSearchFields: any[] = [
         { firstName: { contains: query } },
@@ -53,7 +52,6 @@ async function searchHandler(
         // KEY_USER يمكنه البحث بالهاتف لكن ليس بالهوية الوطنية
         voterSearchFields.push({ phone: { contains: query } });
       }
-      // OBSERVER: لا بحث في nationalId ولا phone
 
       const voterWhere: any = {
         OR: voterSearchFields,
@@ -78,9 +76,7 @@ async function searchHandler(
         },
       });
       votersList = voters.map((v) => {
-        const nameVal = user.role === "OBSERVER" 
-          ? `${v.firstName} ***` 
-          : `${v.firstName} ${v.fatherName} ${v.grandfatherName}`.trim();
+        const nameVal = `${v.firstName} ${v.fatherName} ${v.grandfatherName}`.trim();
         return {
           id: v.id,
           fullName: nameVal,
@@ -102,7 +98,7 @@ async function searchHandler(
       }));
     }
 
-    if (entity === "keys" || entity === "all") {
+    if (user.role !== "OBSERVER" && (entity === "keys" || entity === "all")) {
       // تقييد البحث في المفاتيح حسب الدور
       const keySearchFields: any[] = [
         { firstName: { contains: query } },
@@ -115,10 +111,22 @@ async function searchHandler(
         keySearchFields.push({ phone: { contains: query } });
       }
 
+      const keyWhere: any = {
+        OR: keySearchFields,
+      };
+
+      // تقييد KEY_USER بمفتاحه فقط
+      if (user.role === "KEY_USER") {
+        const scope = await getKeyUserScope(user.userId);
+        if (scope) {
+          keyWhere.id = scope.keyId;
+        } else {
+          keyWhere.id = "none";
+        }
+      }
+
       const keys = await prisma.electionKey.findMany({
-        where: {
-          OR: keySearchFields,
-        },
+        where: keyWhere,
         take: perEntity,
         select: {
           id: true,
@@ -130,9 +138,7 @@ async function searchHandler(
         },
       });
       keysList = keys.map((k) => {
-        const nameVal = user.role === "OBSERVER"
-          ? `${k.firstName} ***`
-          : `${k.firstName} ${k.fatherName}`;
+        const nameVal = `${k.firstName} ${k.fatherName}`;
         return {
           id: k.id,
           fullName: `${k.keyCode} — ${nameVal}`,
