@@ -9,107 +9,7 @@ import { withAuth } from "@/lib/auth-guard";
 import { handleApiError, auditLog } from "@/lib/security";
 import { createVoterSchema, formatZodError } from "@/lib/validators";
 import { applyKeyUserScope, getKeyUserScope } from "@/lib/scope-service";
-
-function mapVoterToUI(v: any, userRole?: string) {
-  if (!v) return null;
-  
-  const isObserver = userRole === "OBSERVER";
-  const isAuthorized = userRole === "ADMIN" || userRole === "KEY_USER";
-  const isAdmin = userRole === "ADMIN";
-
-  const electionKeyVal = v.electionKey ? {
-    id: v.electionKey.id || v.keyId || "",
-    code: v.electionKey.keyCode || v.electionKey.code || "",
-    keyCode: v.electionKey.keyCode || v.electionKey.code || "",
-    firstName: v.electionKey.firstName || "",
-    fatherName: isObserver ? "***" : (v.electionKey.fatherName || null),
-  } : null;
-
-  let fullName = [v.firstName, v.fatherName, v.grandfatherName, v.fourthName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-
-  let firstName = v.firstName;
-  let fatherName = v.fatherName;
-  let grandfatherName = v.grandfatherName;
-  let fourthName = v.fourthName;
-  let phoneVal = v.phone || "";
-  let nationalIdVal = v.nationalId || null;
-
-  if (isObserver) {
-    fullName = `${v.firstName} ***`;
-    fatherName = "***";
-    grandfatherName = "***";
-    fourthName = "***";
-    if (phoneVal) {
-      phoneVal = phoneVal.substring(0, 3) + "****" + phoneVal.substring(phoneVal.length - 3);
-    }
-    nationalIdVal = "***";
-  } else {
-    phoneVal = isAuthorized ? (v.phone || "") : "";
-    nationalIdVal = isAdmin ? (v.nationalId || null) : undefined;
-  }
-
-  return {
-    id: v.id,
-    fullName,
-    firstName,
-    fatherName: fatherName || null,
-    grandfatherName: grandfatherName || null,
-    fourthName: fourthName || null,
-    gender: v.gender,
-    phone: phoneVal,
-    phoneNumber: phoneVal, // UI name mapping
-    nationalId: nationalIdVal,
-    district: v.district,
-    subDistrict: v.subDistrict,
-    area: v.area || v.subDistrict || "",
-    pollingCenter: v.pollingCenter,
-    ballotStation: v.ballotStation,
-    status: v.status || "NEUTRAL",
-    supportDegree: v.supportDegree || 3,
-    confidenceScore: v.supportDegree || 3, // UI name mapping
-    supportReason: isObserver ? null : (v.supportReason || null),
-    
-    votedOnDay: v.votedOnDay || false,
-    votedStatus: v.votedOnDay || false, // UI name mapping
-    checkedIn: v.checkedIn || false,
-    checkedInAt: v.checkedInAt ? (v.checkedInAt instanceof Date ? v.checkedInAt : new Date(v.checkedInAt)).toISOString() : null,
-    
-    keyId: v.keyId,
-    electoralKeyId: v.keyId, // UI name mapping
-    keyCode: v.electionKey?.keyCode || v.electionKey?.code || "",
-    electoralKey: electionKeyVal, // UI name mapping
-    electionKey: electionKeyVal,
-    
-    tribeId: v.tribeId,
-    tribeName: v.tribe?.name || "غير محدد",
-    tribe: v.tribe ? {
-      id: v.tribe.id,
-      name: v.tribe.name,
-      influence: v.tribe.influenceRating || 3,
-    } : null,
-    
-    relationship: v.relationship || null,
-    influenceRate: v.influenceRate || 0,
-    lastContactDate: v.lastContactDate ? (v.lastContactDate instanceof Date ? v.lastContactDate : new Date(v.lastContactDate)).toISOString() : null,
-    createdAt: v.createdAt ? (v.createdAt instanceof Date ? v.createdAt : new Date(v.createdAt)).toISOString() : null,
-    socialMedia: isObserver ? null : (v.socialMedia || null),
-    specialization: isObserver ? null : (v.specialization || null),
-    profession: isObserver ? null : (v.profession || null),
-    education: isObserver ? null : (v.education || null),
-    educationLevel: isObserver ? null : (v.education || null), // UI name mapping
-    
-    gpsVerified: v.gpsVerified || false,
-    latitude: isObserver ? null : (v.latitude || null),
-    longitude: isObserver ? null : (v.longitude || null),
-    isRegistryVerified: v.isRegistryVerified || false,
-    registryVoterId: isObserver ? null : (v.registryVoterId || null),
-    voterCategory: v.status || "NEUTRAL",
-    notes: isObserver ? null : (v.notes || null),
-  };
-}
+import { toVoterDTO } from "@/lib/response-dto";
 
 // GET /api/voters — pagination + search + filters
 async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser }) {
@@ -140,14 +40,19 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
 
     if (search && search.trim()) {
       const q = search.trim();
-      where.OR = [
+      const orConditions: any[] = [
         { firstName: { contains: q, mode: "insensitive" } },
         { fatherName: { contains: q, mode: "insensitive" } },
         { grandfatherName: { contains: q, mode: "insensitive" } },
         { fourthName: { contains: q, mode: "insensitive" } },
-        { phone: { contains: q, mode: "insensitive" } },
-        { nationalId: { contains: q, mode: "insensitive" } },
       ];
+      if (user.role === "ADMIN" || user.role === "KEY_USER") {
+        orConditions.push(
+          { phone: { contains: q, mode: "insensitive" } },
+          { nationalId: { contains: q, mode: "insensitive" } }
+        );
+      }
+      where.OR = orConditions;
     }
 
     const [voters, total] = await Promise.all([
@@ -164,7 +69,7 @@ async function getHandler(req: NextRequest, { user }: { user: AuthenticatedUser 
       prisma.voter.count({ where }),
     ]);
 
-    const mapped = voters.map((v) => mapVoterToUI(v, user.role));
+    const mapped = voters.map((v) => toVoterDTO(v, user.role));
 
     return NextResponse.json({ voters: mapped, total, page, limit });
   } catch (error) {
@@ -305,14 +210,14 @@ async function postHandler(req: NextRequest, { user }: { user: AuthenticatedUser
       details: { name: voter.firstName, keyId: voter.keyId },
     });
 
-    return NextResponse.json(mapVoterToUI(voter, user.role), { status: 201 });
+    return NextResponse.json(toVoterDTO(voter, user.role), { status: 201 });
   } catch (error) {
     return handleApiError(error, "voters-post");
   }
 }
 
 export const GET = withAuth(getHandler, {
-  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+  GET: ["ADMIN", "KEY_USER"],
 });
 export const POST = withAuth(postHandler, { POST: ["ADMIN", "KEY_USER"] });
 

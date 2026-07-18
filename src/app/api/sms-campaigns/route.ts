@@ -105,9 +105,9 @@ async function postHandler(request: NextRequest) {
 }
 
 export const GET = withAuth(getHandler, {
-  GET: ["ADMIN", "KEY_USER", "OBSERVER"],
+  GET: ["ADMIN"],
 });
 
 export const POST = withAuth(postHandler, {
-  POST: ["ADMIN", "KEY_USER"],
+  POST: ["ADMIN"],
 });

@@ -164,6 +164,17 @@ export default function Home() {
   }
 
   const renderPage = () => {
+    // حماية واجهة المراقب المزدوجة (Statistics Only)
+    if (authState.userRole === 'OBSERVER') {
+      const blockedObserverPages = [
+        'voters', 'electoral-keys', 'tribes', 'services', 'tasks',
+        'volunteers', 'fieldagent', 'comms', 'sms', 'warroom'
+      ];
+      if (blockedObserverPages.includes(activePage)) {
+        return <ExecutiveDashboard />;
+      }
+    }
+
     switch (activePage) {
       case 'dashboard':
         return <ExecutiveDashboard />;
@@ -215,6 +226,7 @@ export default function Home() {
         onOwnerPanelOpen={() => setShowOwnerPanel(true)}
         onLogout={handleLogout}
         excelToolbar={<ExcelToolbar />}
+        userRole={authState.userRole}
       >
         <ErrorBoundary>{renderPage()}</ErrorBoundary>
       </Layout>

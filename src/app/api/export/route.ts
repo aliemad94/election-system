@@ -15,9 +15,9 @@ async function getHandler(
     const { searchParams } = new URL(req.url);
     const entity = searchParams.get("entity") || "voters";
 
-    if (entity === "voters" && user.role === "OBSERVER") {
+    if ((entity === "voters" || entity === "keys") && user.role === "OBSERVER") {
       return NextResponse.json(
-        { error: "غير مصرح - لا تملك صلاحية تصدير بيانات الناخبين" },
+        { error: "غير مصرح - لا تملك صلاحية تصدير هذه البيانات التفصيلية" },
         { status: 403 }
       );
     }

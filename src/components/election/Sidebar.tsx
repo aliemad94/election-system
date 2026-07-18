@@ -49,6 +49,7 @@ interface SidebarProps {
   onPageChange: (page: PageId) => void;
   isOpen: boolean;
   onClose: () => void;
+  userRole?: string;
 }
 
 const navItems: { id: PageId; label: string; description: string; icon: React.ElementType; section?: string }[] = [
@@ -76,7 +77,7 @@ const navItems: { id: PageId; label: string; description: string; icon: React.El
 
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ activePage, onPageChange, isOpen, onClose, userRole }: SidebarProps) {
   const [isMobile, setIsMobile] = React.useState(false);
 
   React.useEffect(() => {
@@ -140,8 +141,19 @@ export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: S
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto px-2 space-y-1">
           {(() => {
-            const itemsWithHeaders = navItems.map((item, idx) => {
-              const showSection = item.section && (idx === 0 || navItems[idx - 1].section !== item.section);
+            const visibleItems = navItems.filter((item) => {
+              if (userRole === "OBSERVER") {
+                const blockedObserverPages = [
+                  'voters', 'electoral-keys', 'tribes', 'services', 'tasks',
+                  'volunteers', 'fieldagent', 'comms', 'sms', 'warroom'
+                ];
+                return !blockedObserverPages.includes(item.id);
+              }
+              return true;
+            });
+
+            const itemsWithHeaders = visibleItems.map((item, idx) => {
+              const showSection = item.section && (idx === 0 || visibleItems[idx - 1].section !== item.section);
               return { ...item, showSection };
             });
 
@@ -184,15 +196,17 @@ export default function Sidebar({ activePage, onPageChange, isOpen, onClose }: S
 
         {/* Footer */}
         <div className="px-4 mt-auto space-y-4">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => handleNavClick('sms')}
-            className="w-full bg-el-primary text-el-on-primary py-2 px-4 rounded text-[14px] leading-[20px] flex items-center justify-center gap-2 hover:opacity-90 transition-opacity cursor-pointer"
-          >
-            <MessageSquare className="w-[18px] h-[18px]" />
-            بث رسائل
-          </motion.button>
+          {userRole !== 'OBSERVER' && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleNavClick('sms')}
+              className="w-full bg-el-primary text-el-on-primary py-2 px-4 rounded text-[14px] leading-[20px] flex items-center justify-center gap-2 hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              <MessageSquare className="w-[18px] h-[18px]" />
+              بث رسائل
+            </motion.button>
+          )}
           <div className="pt-2 border-t border-el-outline-variant space-y-1">
             <motion.button 
               whileHover={{ x: -4 }}

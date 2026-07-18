@@ -74,7 +74,7 @@ async function main() {
     // 1. تسجيل الدخول
     const loginRes = await postRequest(`${baseUrl}/api/access`, {
       action: "owner-login",
-      ownerPassword: "AdminSafeDhiQar2026#"
+      ownerPassword: process.env.OWNER_PASSWORD || ""
     });
     
     if (loginRes.statusCode !== 200) {

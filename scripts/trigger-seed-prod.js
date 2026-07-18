@@ -44,24 +44,12 @@ async function main() {
     console.log("⏳ محاولة تسجيل الدخول كـ admin بالرمز القديم...");
     const loginRes = await postRequest(`${baseUrl}/api/access`, {
       action: "owner-login",
-      ownerPassword: "DhiQarOwner2026!"
+      ownerPassword: process.env.OWNER_PASSWORD || ""
     });
     
     console.log(`   حالة الاستجابة: ${loginRes.statusCode}`);
     if (loginRes.statusCode !== 200) {
-      console.error(`❌ فشل تسجيل الدخول بالرمز القديم. الاستجابة: ${loginRes.body}`);
-      // فلنجرب تسجيل الدخول بالرمز الجديد في حالة أنه تم تحديثه مسبقاً!
-      console.log("⏳ محاولة تسجيل الدخول كـ admin بالرمز الجديد...");
-      const loginResNew = await postRequest(`${baseUrl}/api/access`, {
-        action: "owner-login",
-        ownerPassword: "AdminSafeDhiQar2026#"
-      });
-      console.log(`   حالة الاستجابة: ${loginResNew.statusCode}`);
-      if (loginResNew.statusCode !== 200) {
-        throw new Error("تعذر تسجيل الدخول بالرمز القديم أو الجديد.");
-      }
-      console.log("✅ مسجل الدخول بالفعل بالرمز الجديد. لا داعي للتهيئة.");
-      return;
+      throw new Error(`تعذر تسجيل الدخول بالرمز المالك. الاستجابة: ${loginRes.body}`);
     }
 
     const setCookie = loginRes.headers["set-cookie"];

@@ -251,6 +251,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // التحقق من قاعدة البيانات لمنع تسريب العمليات للأدوار المعدلة أو الجلسات الملغاة
+    const dbUser = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true, tokenIssuedBefore: true },
+    });
+
+    if (!dbUser || dbUser.role.toUpperCase() !== payload.role.toUpperCase()) {
+      return NextResponse.json(
+        { error: "غير مصرح - حساب غير صالح أو تم تعديل صلاحياته" },
+        { status: 401 }
+      );
+    }
+
+    if (dbUser.tokenIssuedBefore && payload.iat) {
+      const tokenIssuedAt = new Date(payload.iat * 1000);
+      if (tokenIssuedAt < dbUser.tokenIssuedBefore) {
+        return NextResponse.json(
+          { error: "غير مصرح - تم إبطال هذه الجلسة. يرجى تسجيل الدخول مجدداً" },
+          { status: 401 }
+        );
+      }
+    }
+
     // ===== إجراء: تفعيل/تعطيل وصول الزوار =====
     if (action === "toggle-access") {
       if (payload.role !== "ADMIN") {

@@ -80,56 +80,46 @@ export function withAuth(
         });
         sessionCache.set(userId, { user: dbUser, expiresAt: now + CACHE_TTL_MS });
       } catch (dbError) {
-        console.error("Database check failed during auth, entering Grace Mode:", dbError);
-        databaseFailed = true;
+        console.error("Database check failed during auth:", dbError);
+        return NextResponse.json(
+          { error: "الخدمة غير متوفرة حالياً — فشل التحقق من الحساب" },
+          { status: 500 }
+        );
       }
     }
 
-    if (databaseFailed) {
-      // وضع الصمود: قاعدة البيانات معطلة — نسمح بالقراءة فقط (GET)
-      const isReadOnly = method === "GET";
-      if (!isReadOnly) {
-        console.warn(`AUTH WARNING: Database offline. Blocking write operation (${method}) for user '${username}'.`);
+    if (!dbUser) {
+      return NextResponse.json(
+        { error: "غير مصرح - الحساب لم يعد موجوداً" },
+        { status: 401 }
+      );
+    }
+
+    if (dbUser.role.toUpperCase() !== normalizedRole) {
+      return NextResponse.json(
+        { error: "غير مصرح - تم تعديل صلاحيات الحساب" },
+        { status: 403 }
+      );
+    }
+
+    // 3. فحص إبطال الجلسة (tokenIssuedBefore)
+    if (dbUser.tokenIssuedBefore && payload.iat) {
+      // JWT iat هو Unix timestamp بالثواني
+      const tokenIssuedAt = new Date(payload.iat * 1000);
+      if (tokenIssuedAt < dbUser.tokenIssuedBefore) {
         return NextResponse.json(
-          { error: "الخدمة غير متوفرة مؤقتاً — لا يمكن إجراء عمليات كتابة أثناء انقطاع قاعدة البيانات" },
-          { status: 503 }
-        );
-      }
-      console.warn(`AUTH WARNING: Database offline. Authorizing read-only for user '${username}' with role '${normalizedRole}' from JWT signature.`);
-    } else {
-      if (!dbUser) {
-        return NextResponse.json(
-          { error: "غير مصرح - الحساب لم يعد موجوداً" },
+          { error: "غير مصرح - تم إبطال الجلسة بسبب تغيير كلمة المرور. يرجى إعادة تسجيل الدخول" },
           { status: 401 }
         );
       }
+    }
 
-      if (dbUser.role.toUpperCase() !== normalizedRole) {
-        return NextResponse.json(
-          { error: "غير مصرح - تم تعديل صلاحيات الحساب" },
-          { status: 403 }
-        );
-      }
-
-      // 3. فحص إبطال الجلسة (tokenIssuedBefore)
-      if (dbUser.tokenIssuedBefore && payload.iat) {
-        // JWT iat هو Unix timestamp بالثواني
-        const tokenIssuedAt = new Date(payload.iat * 1000);
-        if (tokenIssuedAt < dbUser.tokenIssuedBefore) {
-          return NextResponse.json(
-            { error: "غير مصرح - تم إبطال الجلسة بسبب تغيير كلمة المرور. يرجى إعادة تسجيل الدخول" },
-            { status: 401 }
-          );
-        }
-      }
-
-      // 4. فرض تغيير كلمة المرور عند أول دخول
-      if (dbUser.mustChangePwd) {
-        return NextResponse.json(
-          { error: "يجب تغيير كلمة المرور قبل استخدام النظام" },
-          { status: 403 }
-        );
-      }
+    // 4. فرض تغيير كلمة المرور عند أول دخول
+    if (dbUser.mustChangePwd) {
+      return NextResponse.json(
+        { error: "يجب تغيير كلمة المرور قبل استخدام النظام" },
+        { status: 403 }
+      );
     }
 
     const allowed = allowedRoles.map((r) => {

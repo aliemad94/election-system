@@ -265,7 +265,7 @@ describe("ثغرات التحكم بالوصول (IDOR) لـ KEY_USER", () => {
   });
 
   describe("قناع البيانات للناخبين (Voters PII Masking)", () => {
-    it("يجب قناع nationalId وهاتف الناخب لـ OBSERVER (GET)", async () => {
+    it("يجب حظر OBSERVER من استعلام الناخبين (GET)", async () => {
       (verifyToken as any).mockResolvedValue({
         userId: "user_obs_1",
         username: "observer",
@@ -279,38 +279,12 @@ describe("ثغرات التحكم بالوصول (IDOR) لـ KEY_USER", () => {
         mustChangePwd: false,
       });
 
-      (prisma.voter.findMany as any).mockResolvedValue([
-        {
-          id: "voter_1",
-          firstName: "احمد",
-          fatherName: "علي",
-          grandfatherName: "حسين",
-          fourthName: "عريبي",
-          gender: "ذكر",
-          phone: "07701111111",
-          nationalId: "1234567890",
-          district: "الناصرية",
-          subDistrict: "الغراف",
-          pollingCenter: "مركز 1",
-          ballotStation: "محطة 2",
-          status: "SUPPORTED",
-          supportDegree: 4,
-          votedOnDay: false,
-          checkedIn: false,
-          createdAt: new Date(),
-        },
-      ]);
-      (prisma.voter.count as any).mockResolvedValue(1);
-
       const req = mockNextRequest("http://localhost/api/voters", {
         election_auth: "valid-jwt",
       });
 
       const res = await getVoters(req, {});
-      expect(res.status).toBe(200);
-      const data = await res.json();
-      expect(data.voters[0].nationalId).toBe("***");
-      expect(data.voters[0].phone).toBe("077****111");
+      expect(res.status).toBe(403);
     });
 
     it("يجب إظهار nationalId وهاتف الناخب لـ ADMIN كاملة (GET)", async () => {

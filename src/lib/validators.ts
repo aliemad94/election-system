@@ -26,24 +26,24 @@ export const createSubTribeSchema = z.object({
 });
 
 // ===== المفاتيح الانتخابية =====
-export const createElectionKeySchema = z.object({
+export const electionKeyBaseSchema = z.object({
   firstName: z.string().min(1, "الاسم الأول مطلوب").max(100),
-  fatherName: z.string().max(100).optional().default(""),
-  grandfatherName: z.string().max(100).optional().default(""),
-  fourthName: z.string().max(100).optional().default(""),
-  gender: z.enum(["ذكر", "أنثى"]).default("ذكر"),
+  fatherName: z.string().max(100).optional(),
+  grandfatherName: z.string().max(100).optional(),
+  fourthName: z.string().max(100).optional(),
+  gender: z.enum(["ذكر", "أنثى"]).optional(),
   dateOfBirth: z.string().optional(),
-  phone: z.string().optional().default(""),
-  education: z.string().max(100).optional().default(""),
-  profession: z.string().max(100).optional().default(""),
-  district: z.string().max(100).optional().default(""),
-  subDistrict: z.string().max(100).optional().default(""),
-  pollingCenter: z.string().max(100).optional().default(""),
-  expectedVotes: z.number().default(0),
-  influenceLevel: z.number().int().min(1).max(5).default(3),
-  mobilizationCap: z.number().int().min(1).max(5).default(3),
-  loyaltyScore: z.number().int().min(1).max(5).default(3),
-  riskLevel: z.number().int().min(1).max(5).default(1),
+  phone: z.string().optional(),
+  education: z.string().max(100).optional(),
+  profession: z.string().max(100).optional(),
+  district: z.string().max(100).optional(),
+  subDistrict: z.string().max(100).optional(),
+  pollingCenter: z.string().max(100).optional(),
+  expectedVotes: z.number().optional(),
+  influenceLevel: z.number().int().min(1).max(5).optional(),
+  mobilizationCap: z.number().int().min(1).max(5).optional(),
+  loyaltyScore: z.number().int().min(1).max(5).optional(),
+  riskLevel: z.number().int().min(1).max(5).optional(),
   tribeId: z.string().optional().nullable(),
   socialMedia: z.string().max(2000).optional().nullable(),
 
@@ -59,7 +59,7 @@ export const createElectionKeySchema = z.object({
   maritalStatus: z.string().optional().nullable(),
   familySize: z.number().int().optional().nullable(),
   notes: z.string().optional().nullable().transform(val => val === null || val === undefined ? val : sanitizeString(val)),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean().optional(),
   firstContactDate: z.string().optional().nullable(),
   lastContactDate: z.string().optional().nullable(),
   lastSpentDate: z.string().optional().nullable(),
@@ -68,78 +68,136 @@ export const createElectionKeySchema = z.object({
   createdBy: z.string().optional().nullable(),
 
   // الأصوات
+  totalVotes: z.number().int().optional(),
+  supportedVotes: z.number().int().optional(),
+  neutralVotes: z.number().int().optional(),
+  weakVotes: z.number().int().optional(),
+  netVotes: z.number().optional(),
+
+  // التقييمات التسعة
+  voteProtection: z.number().int().min(1).max(5).optional(),
+  supportReason: z.number().int().min(1).max(5).optional(),
+  needsLevel: z.number().int().min(1).max(5).optional(),
+  politicalNote: z.number().int().min(1).max(5).optional(),
+  organizationalNote: z.number().int().min(1).max(5).optional(),
+  generalNote: z.number().int().min(1).max(5).optional(),
+
+  // الدرجة المرجّحة والتصنيف
+  weightedScore: z.number().optional(),
+  classification: z.string().optional(),
+
+  // المؤشرات المركبة
+  eiiScore: z.number().optional(),
+  kriScore: z.number().optional(),
+  vpsScore: z.number().optional(),
+  drsScore: z.number().optional(),
+  campaignROI: z.number().optional(),
+
+  // مالية
+  totalSpent: z.number().optional(),
+  monthlyBudget: z.number().optional(),
+  totalInvestment: z.number().optional(),
+  costPerVote: z.number().optional(),
+});
+
+export const createElectionKeySchema = electionKeyBaseSchema.extend({
+  fatherName: z.string().max(100).optional().default(""),
+  grandfatherName: z.string().max(100).optional().default(""),
+  fourthName: z.string().max(100).optional().default(""),
+  gender: z.enum(["ذكر", "أنثى"]).default("ذكر"),
+  phone: z.string().optional().default(""),
+  education: z.string().max(100).optional().default(""),
+  profession: z.string().max(100).optional().default(""),
+  district: z.string().max(100).optional().default(""),
+  subDistrict: z.string().max(100).optional().default(""),
+  pollingCenter: z.string().max(100).optional().default(""),
+  expectedVotes: z.number().default(0),
+  influenceLevel: z.number().int().min(1).max(5).default(3),
+  mobilizationCap: z.number().int().min(1).max(5).default(3),
+  loyaltyScore: z.number().int().min(1).max(5).default(3),
+  riskLevel: z.number().int().min(1).max(5).default(1),
+  isActive: z.boolean().default(true),
   totalVotes: z.number().int().default(0),
   supportedVotes: z.number().int().default(0),
   neutralVotes: z.number().int().default(0),
   weakVotes: z.number().int().default(0),
   netVotes: z.number().default(0),
-
-  // التقييمات التسعة
   voteProtection: z.number().int().min(1).max(5).default(3),
   supportReason: z.number().int().min(1).max(5).default(3),
   needsLevel: z.number().int().min(1).max(5).default(3),
   politicalNote: z.number().int().min(1).max(5).default(3),
   organizationalNote: z.number().int().min(1).max(5).default(3),
   generalNote: z.number().int().min(1).max(5).default(3),
-
-  // الدرجة المرجّحة والتصنيف
   weightedScore: z.number().default(0),
   classification: z.string().default("مقبول"),
-
-  // المؤشرات المركبة
   eiiScore: z.number().default(0),
   kriScore: z.number().default(0),
   vpsScore: z.number().default(0),
   drsScore: z.number().default(0),
   campaignROI: z.number().default(0),
-
-  // مالية
   totalSpent: z.number().default(0),
   monthlyBudget: z.number().default(0),
   totalInvestment: z.number().default(0),
   costPerVote: z.number().default(0),
 });
 
-export const updateElectionKeySchema = createElectionKeySchema.partial();
+export const updateElectionKeySchema = electionKeyBaseSchema.partial();
 
 // ===== الناخبون =====
-export const createVoterSchema = z.object({
+export const voterBaseSchema = z.object({
   firstName: z.string().min(1, "الاسم الأول مطلوب").max(100),
-  fatherName: z.string().max(100).optional().default(""),
-  grandfatherName: z.string().max(100).optional().default(""),
-  fourthName: z.string().max(100).optional().default(""),
-  gender: z.enum(["ذكر", "أنثى"]).default("ذكر"),
+  fatherName: z.string().max(100).optional(),
+  grandfatherName: z.string().max(100).optional(),
+  fourthName: z.string().max(100).optional(),
+  gender: z.enum(["ذكر", "أنثى"]).optional(),
   dateOfBirth: z.string().optional(),
   phone: z.string().optional().nullable(),
   nationalId: z.string().max(50).optional().nullable(),
-  district: z.string().max(100).optional().default(""),
-  subDistrict: z.string().max(100).optional().default(""),
+  district: z.string().max(100).optional(),
+  subDistrict: z.string().max(100).optional(),
   area: z.string().max(200).optional().nullable(),
-  pollingCenter: z.string().max(100).optional().default(""),
-  ballotStation: z.string().max(100).optional().default(""),
+  pollingCenter: z.string().max(100).optional(),
+  ballotStation: z.string().max(100).optional(),
   keyId: z.string().optional().nullable(),
   tribeId: z.string().optional().nullable(),
   subTribeId: z.string().optional().nullable(),
-  status: z.enum(["SUPPORTED", "NEUTRAL", "WEAK"]).default("NEUTRAL"),
-  supportDegree: z.number().int().min(1).max(5).default(3),
+  status: z.enum(["SUPPORTED", "NEUTRAL", "WEAK"]).optional(),
+  supportDegree: z.number().int().min(1).max(5).optional(),
   supportReason: z.string().max(500).optional().nullable().transform(val => val === null || val === undefined ? val : sanitizeString(val)),
   profession: z.string().max(100).optional().nullable(),
   education: z.string().max(100).optional().nullable(),
   specialization: z.string().max(100).optional().nullable(),
   maritalStatus: z.string().max(50).optional().nullable(),
-  familySize: z.number().default(1),
+  familySize: z.number().optional(),
   relationship: z.string().max(100).optional().nullable(),
-  influenceRate: z.number().default(50),
+  influenceRate: z.number().optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
-  gpsVerified: z.boolean().default(false),
+  gpsVerified: z.boolean().optional(),
   socialMedia: z.string().max(2000).optional().nullable(),
-  checkedIn: z.boolean().default(false),
+  checkedIn: z.boolean().optional(),
   checkedInAt: z.string().optional().nullable(),
   votedOnDay: z.boolean().optional(),
 });
 
-export const updateVoterSchema = createVoterSchema.partial();
+export const createVoterSchema = voterBaseSchema.extend({
+  fatherName: z.string().max(100).optional().default(""),
+  grandfatherName: z.string().max(100).optional().default(""),
+  fourthName: z.string().max(100).optional().default(""),
+  gender: z.enum(["ذكر", "أنثى"]).default("ذكر"),
+  district: z.string().max(100).optional().default(""),
+  subDistrict: z.string().max(100).optional().default(""),
+  pollingCenter: z.string().max(100).optional().default(""),
+  ballotStation: z.string().max(100).optional().default(""),
+  status: z.enum(["SUPPORTED", "NEUTRAL", "WEAK"]).default("NEUTRAL"),
+  supportDegree: z.number().int().min(1).max(5).default(3),
+  familySize: z.number().default(1),
+  influenceRate: z.number().default(50),
+  gpsVerified: z.boolean().default(false),
+  checkedIn: z.boolean().default(false),
+});
+
+export const updateVoterSchema = voterBaseSchema.partial();
 
 // ===== تسجيل الحضور (idempotent) =====
 export const checkinSchema = z.object({

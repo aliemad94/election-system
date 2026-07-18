@@ -49,7 +49,7 @@ async function main() {
     console.log("⏳ محاولة تسجيل الدخول كـ admin...");
     const loginRes = await postRequest(`${baseUrl}/api/access`, {
       action: "owner-login",
-      ownerPassword: "AdminSafeDhiQar2026#"
+      ownerPassword: process.env.OWNER_PASSWORD || ""
     });
 
     console.log(`   حالة الاستجابة: ${loginRes.statusCode}`);

@@ -1,5 +1,5 @@
 const {PrismaClient}=require('@prisma/client');
-const p=new PrismaClient({datasourceUrl:'postgresql://postgres:wkBueuogzBSlCHqiilhkjxXPdQtNEpHX@thomas.proxy.rlwy.net:33563/railway'});
+const p=new PrismaClient({datasourceUrl: process.env.DATABASE_URL});
 (async()=>{
   const keys=await p.electionKey.findMany({select:{keyCode:true,firstName:true,netVotes:true,totalVotes:true,weightedScore:true,classification:true},take:5});
   console.log(JSON.stringify(keys,null,2));
