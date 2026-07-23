@@ -19,6 +19,18 @@ import {
   Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 interface VoterItem {
@@ -54,6 +66,7 @@ export default function WarRoom() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [simulating, setSimulating] = useState(false);
+  const [resetConfirmation, setResetConfirmation] = useState("");
 
   const load = async () => {
     setRefreshing(true);
@@ -100,7 +113,6 @@ export default function WarRoom() {
   };
 
   const handleResetSimulate = async () => {
-    if (!window.confirm('هل أنت متأكد من تصفير حضور جميع الناخبين في الماكينة الانتخابية؟')) return;
     setSimulating(true);
     try {
       const res = await fetch('/api/reset/simulate-turnout?action=reset', { method: 'POST' });
@@ -113,6 +125,7 @@ export default function WarRoom() {
       toast.error('حدث خطأ أثناء تصفير الحضور');
     } finally {
       setSimulating(false);
+      setResetConfirmation("");
     }
   };
 
@@ -201,15 +214,43 @@ export default function WarRoom() {
           >
             إقبال مكثف (+100)
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleResetSimulate}
-            disabled={simulating}
-            className="h-8 text-xs font-bold border-red-500/30 text-red-500 hover:bg-red-500/10 cursor-pointer"
-          >
-            تصفير يوم الاقتراع
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={simulating}
+                className="h-10 text-xs font-bold border-red-500/30 text-red-500 hover:bg-red-500/10 cursor-pointer"
+              >
+                تصفير يوم الاقتراع
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent dir="rtl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>تأكيد تصفير حضور يوم الاقتراع</AlertDialogTitle>
+                <AlertDialogDescription>
+                  هذا الإجراء يزيل تسجيل الحضور من جميع الناخبين ولا يمكن التراجع عنه من هذه الشاشة.
+                  اكتب «تصفير» للتأكيد.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <Input
+                value={resetConfirmation}
+                onChange={(event) => setResetConfirmation(event.target.value)}
+                placeholder="اكتب تصفير"
+                aria-label="تأكيد تصفير حضور يوم الاقتراع"
+              />
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setResetConfirmation("")}>إلغاء</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={resetConfirmation.trim() !== "تصفير" || simulating}
+                  onClick={() => void handleResetSimulate()}
+                  className="bg-red-600 text-white hover:bg-red-700"
+                >
+                  {simulating ? "جارٍ التصفير..." : "تصفير الحضور"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 

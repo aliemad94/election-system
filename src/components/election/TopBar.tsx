@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, Settings, Map, Menu, LogOut, Shield, Sun, Moon, X } from 'lucide-react';
+import { Search, Bell, Settings, Map, Menu, LogOut, Shield, Sun, Moon, X, Contrast } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 interface TopBarProps {
@@ -25,11 +25,15 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
   const [showResults, setShowResults] = useState(false);
   const [searching, setSearching] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
 
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
+    const savedContrast = window.localStorage.getItem('high-contrast') === 'true';
+    setHighContrast(savedContrast);
+    document.documentElement.classList.toggle('high-contrast', savedContrast);
     
     function handleClickOutside(event: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -39,6 +43,29 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const handleKeyboardShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setIsModalOpen(true);
+      }
+
+      if (event.key === 'Escape') {
+        setIsModalOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyboardShortcut);
+    return () => window.removeEventListener('keydown', handleKeyboardShortcut);
+  }, []);
+
+  const toggleHighContrast = () => {
+    const nextValue = !highContrast;
+    setHighContrast(nextValue);
+    window.localStorage.setItem('high-contrast', String(nextValue));
+    document.documentElement.classList.toggle('high-contrast', nextValue);
+  };
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -132,13 +159,13 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
             <button
               onClick={() => setIsModalOpen(true)}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-el-outline hover:text-el-primary transition-colors cursor-pointer"
-              title="البحث المتقدم"
+              title="البحث المتقدم (Ctrl + K)"
             >
               <Search className="w-4 h-4" />
             </button>
             <input
               className="pl-8 pr-8 py-1 rounded bg-el-surface-container-low border border-el-outline-variant text-[12px] leading-[16px] h-8 w-64 focus:ring-el-primary focus:border-el-primary text-right focus:outline-none"
-              placeholder="البحث السريع..."
+              placeholder="البحث السريع... (Ctrl + K)"
               type="text"
               value={searchQuery}
               onChange={(e) => {
@@ -249,11 +276,23 @@ export default function TopBar({ onMenuToggle, isOwner, onOwnerPanelOpen, onLogo
             )}
           </div>
 
+          {mounted && (
+            <button
+              onClick={toggleHighContrast}
+              className="touch-target text-el-on-surface-variant hover:bg-el-surface-container-high transition-colors p-1.5 rounded cursor-pointer active:opacity-80 flex items-center justify-center"
+              title="وضع التباين العالي"
+              aria-label="تبديل وضع التباين العالي"
+              aria-pressed={highContrast}
+            >
+              <Contrast className="w-5 h-5" />
+            </button>
+          )}
+
           {/* Theme Toggle */}
           {mounted && (
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="text-el-on-surface-variant hover:bg-el-surface-container-high transition-colors p-1.5 rounded cursor-pointer active:opacity-80 flex items-center justify-center"
+              className="touch-target text-el-on-surface-variant hover:bg-el-surface-container-high transition-colors p-1.5 rounded cursor-pointer active:opacity-80 flex items-center justify-center"
               title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
             >
               {theme === 'dark' ? (

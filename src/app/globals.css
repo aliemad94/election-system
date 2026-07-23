@@ -457,5 +457,41 @@
   border-color: var(--color-el-secondary);
 }
 
+/* Outdoor mode: reinforces the election palette for sunlight readability. */
+.high-contrast {
+  --el-surface: #ffffff;
+  --el-surface-container: #f4f6f8;
+  --el-on-surface: #071a33;
+  --el-on-surface-variant: #182d48;
+  --el-outline-variant: #40536a;
+  --el-primary: #003d7a;
+  --el-secondary: #9a4f00;
+}
+
+.high-contrast .premium-noise-bg::before {
+  display: none;
+}
+
+.high-contrast :focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 3px;
+}
+
+@media (max-width: 639px) {
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 
 

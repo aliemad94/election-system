@@ -14,6 +14,11 @@ import {
   UserCheck,
   Loader2,
   Filter,
+  Wifi,
+  WifiOff,
+  Clock3,
+  BookmarkCheck,
+  RotateCcw,
 } from "lucide-react";
 import {
   Card,
@@ -41,6 +46,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { DHIQAR_DISTRICTS } from "@/lib/types";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 interface Voter {
   id: string;
@@ -61,6 +67,8 @@ export default function FieldAgentPortal() {
   const [search, setSearch] = useState("");
   const [district, setDistrict] = useState("all");
   const [checkinLoading, setCheckinLoading] = useState<string | null>(null);
+  const [lastCheckin, setLastCheckin] = useState<string | null>(null);
+  const online = useOnlineStatus();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -90,7 +98,36 @@ export default function FieldAgentPortal() {
     return () => clearTimeout(t);
   }, [load]);
 
+  useEffect(() => {
+    const saved = window.localStorage.getItem("field-agent-filter");
+    if (!saved) return;
+
+    try {
+      const filter = JSON.parse(saved) as { search?: string; district?: string };
+      setSearch(filter.search ?? "");
+      setDistrict(filter.district ?? "all");
+    } catch {
+      window.localStorage.removeItem("field-agent-filter");
+    }
+  }, []);
+
+  const saveCurrentFilter = () => {
+    window.localStorage.setItem("field-agent-filter", JSON.stringify({ search, district }));
+    toast.success("تم حفظ الفلتر على هذا الجهاز");
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setDistrict("all");
+    window.localStorage.removeItem("field-agent-filter");
+  };
+
   const handleCheckin = async (voterId: string, name: string) => {
+    if (!online) {
+      toast.error("لا يوجد اتصال. لم يتم تسجيل الحضور.");
+      return;
+    }
+
     setCheckinLoading(voterId);
     try {
       const res = await fetch("/api/voters/checkin", {
@@ -105,6 +142,7 @@ export default function FieldAgentPortal() {
         } else {
           toast.info(`${name} سبق تسجيله`);
         }
+        setLastCheckin(name);
         setVoters((prev) =>
           prev.map((v) =>
             v.id === voterId ? { ...v, votedOnDay: true } : v
@@ -130,6 +168,26 @@ export default function FieldAgentPortal() {
         <p className="text-sm text-[var(--el-on-surface-variant)] mt-1">
           {total} ناخب بانتظار التصويت — تسجيل حضور سريع وموثوق
         </p>
+      </div>
+
+      <div
+        className={`rounded-lg border px-3 py-2 flex items-center justify-between gap-3 text-sm ${
+          online
+            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+            : "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+        }`}
+        role="status"
+      >
+        <span className="flex items-center gap-2 font-medium">
+          {online ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+          {online ? "متصل بالخادم — التسجيل مؤكد فقط بعد الاستجابة" : "لا يوجد اتصال — التسجيل متوقف لحماية البيانات"}
+        </span>
+        {lastCheckin && (
+          <span className="hidden sm:flex items-center gap-1 text-xs">
+            <Clock3 className="w-3.5 h-3.5" />
+            آخر تسجيل: {lastCheckin}
+          </span>
+        )}
       </div>
 
       {/* بطاقات إحصائية سريعة */}
@@ -187,6 +245,16 @@ export default function FieldAgentPortal() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={saveCurrentFilter} className="touch-target gap-1.5">
+              <BookmarkCheck className="w-4 h-4" />
+              حفظ الفلتر
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={clearFilters} className="touch-target gap-1.5">
+              <RotateCcw className="w-4 h-4" />
+              مسح الفلاتر
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -262,7 +330,7 @@ export default function FieldAgentPortal() {
                             size="sm"
                             onClick={() => handleCheckin(v.id, v.fullName)}
                             disabled={checkinLoading === v.id}
-                            className="h-8"
+                            className="h-12 px-4 text-sm sm:h-9 sm:px-3 sm:text-xs"
                           >
                             {checkinLoading === v.id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -345,4 +413,3 @@ function QuickStat({
     </Card>
   );
 }
-
