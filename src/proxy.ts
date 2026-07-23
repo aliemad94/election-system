@@ -9,6 +9,7 @@ import { verifyToken } from "@/lib/auth";
 const PUBLIC_API_PATHS = new Set([
   "/api/access",
   "/api/health",
+  "/api/me",
   "/api/webhooks/twilio/status",
 ]);
 
