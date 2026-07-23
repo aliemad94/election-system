@@ -7,6 +7,14 @@ import { z } from "zod";
 import { sanitizeString } from "./security";
 import { NextRequest } from "next/server";
 
+/** Normalize Iraqi mobile numbers before storage and unique-index checks. */
+export function normalizeIraqiPhoneForStorage(value: string): string {
+  const compact = value.replace(/[\s()\-]/g, "");
+  if (compact.startsWith("+9647")) return `0${compact.slice(4)}`;
+  if (compact.startsWith("9647")) return `0${compact.slice(3)}`;
+  return compact;
+}
+
 // ===== العشائر =====
 export const createTribeSchema = z.object({
   name: z.string().min(1, "اسم العشيرة مطلوب").max(200),
@@ -68,11 +76,11 @@ export const electionKeyBaseSchema = z.object({
   createdBy: z.string().optional().nullable(),
 
   // الأصوات
-  totalVotes: z.number().int().optional(),
-  supportedVotes: z.number().int().optional(),
-  neutralVotes: z.number().int().optional(),
-  weakVotes: z.number().int().optional(),
-  netVotes: z.number().optional(),
+  totalVotes: z.number().int().min(0).optional(),
+  supportedVotes: z.number().int().min(0).optional(),
+  neutralVotes: z.number().int().min(0).optional(),
+  weakVotes: z.number().int().min(0).optional(),
+  netVotes: z.number().min(0).optional(),
 
   // التقييمات التسعة
   voteProtection: z.number().int().min(1).max(5).optional(),
@@ -111,17 +119,17 @@ export const createElectionKeySchema = electionKeyBaseSchema.extend({
   district: z.string().max(100).optional().default(""),
   subDistrict: z.string().max(100).optional().default(""),
   pollingCenter: z.string().max(100).optional().default(""),
-  expectedVotes: z.number().default(0),
+  expectedVotes: z.number().min(0).default(0),
   influenceLevel: z.number().int().min(1).max(5).default(3),
   mobilizationCap: z.number().int().min(1).max(5).default(3),
   loyaltyScore: z.number().int().min(1).max(5).default(3),
   riskLevel: z.number().int().min(1).max(5).default(1),
   isActive: z.boolean().default(true),
-  totalVotes: z.number().int().default(0),
-  supportedVotes: z.number().int().default(0),
-  neutralVotes: z.number().int().default(0),
-  weakVotes: z.number().int().default(0),
-  netVotes: z.number().default(0),
+  totalVotes: z.number().int().min(0).default(0),
+  supportedVotes: z.number().int().min(0).default(0),
+  neutralVotes: z.number().int().min(0).default(0),
+  weakVotes: z.number().int().min(0).default(0),
+  netVotes: z.number().min(0).default(0),
   voteProtection: z.number().int().min(1).max(5).default(3),
   supportReason: z.number().int().min(1).max(5).default(3),
   needsLevel: z.number().int().min(1).max(5).default(3),
@@ -171,8 +179,8 @@ export const voterBaseSchema = z.object({
   familySize: z.number().optional(),
   relationship: z.string().max(100).optional().nullable(),
   influenceRate: z.number().optional(),
-  latitude: z.number().optional().nullable(),
-  longitude: z.number().optional().nullable(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
   gpsVerified: z.boolean().optional(),
   socialMedia: z.string().max(2000).optional().nullable(),
   checkedIn: z.boolean().optional(),
@@ -211,8 +219,8 @@ export const createServiceSchema = z.object({
   category: z.string().default("أخرى"),
   priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
   status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).default("PENDING"),
-  cost: z.number().default(0),
-  estimatedVotesImpact: z.number().default(0),
+  cost: z.number().min(0).default(0),
+  estimatedVotesImpact: z.number().min(0).default(0),
   assignedTo: z.string().optional().nullable(),
   keyId: z.string().optional().nullable(),
   voterId: z.string().optional().nullable(),

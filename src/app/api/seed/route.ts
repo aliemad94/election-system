@@ -9,11 +9,11 @@ async function postHandler(request: NextRequest) {
     const adminPassword = process.env.ADMIN_PASSWORD || "YOUR_ADMIN_PASSWORD";
     const userPassword = process.env.USER_PASSWORD || "YOUR_USER_PASSWORD";
 
-    if (!adminPassword || adminPassword.length < 8) {
-      throw new Error("ADMIN_PASSWORD must be at least 8 characters");
+    if (!adminPassword || adminPassword.length < 12) {
+      throw new Error("ADMIN_PASSWORD must be at least 12 characters");
     }
-    if (!userPassword || userPassword.length < 8) {
-      throw new Error("USER_PASSWORD must be at least 8 characters");
+    if (!userPassword || userPassword.length < 12) {
+      throw new Error("USER_PASSWORD must be at least 12 characters");
     }
 
     const adminHash = await bcrypt.hash(adminPassword, 12);

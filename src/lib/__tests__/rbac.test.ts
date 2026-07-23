@@ -4,20 +4,21 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// === إعداد الـ Mock لـ scope-service ===
+const { mockFindUnique } = vi.hoisted(() => ({
+  mockFindUnique: vi.fn(),
+}));
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    user: {
+      findUnique: (...args: any[]) => mockFindUnique(...args),
+    },
+  },
+}));
+
 // === اختبارات scope-service (وحدة) ===
 describe("scope-service", () => {
-  // vi.hoisted ensures the mock fn is available during module factory hoisting
-  const { mockFindUnique } = vi.hoisted(() => ({
-    mockFindUnique: vi.fn(),
-  }));
-
-  vi.mock("@/lib/prisma", () => ({
-    prisma: {
-      user: {
-        findUnique: (...args: any[]) => mockFindUnique(...args),
-      },
-    },
-  }));
 
   // Static import works now because vi.mock is hoisted
   let applyKeyUserScope: typeof import("@/lib/scope-service").applyKeyUserScope;

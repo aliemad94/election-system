@@ -56,7 +56,7 @@ export function maskName(
   fourthName: string | null | undefined,
   role: string
 ) {
-  if (role === "OBSERVER") {
+  if (role === "OBSERVER" || role === "KEY_USER") {
     return {
       fullName: `${firstName} ***`,
       firstName: firstName,
@@ -79,7 +79,7 @@ export function maskName(
 
 export function maskPhone(phone: string | null | undefined, role: string): string {
   if (!phone) return "";
-  if (role === "OBSERVER") {
+  if (role === "OBSERVER" || role === "KEY_USER") {
     const clean = phone.trim();
     if (clean.length <= 6) return "***";
     return clean.substring(0, 3) + "****" + clean.substring(clean.length - 3);

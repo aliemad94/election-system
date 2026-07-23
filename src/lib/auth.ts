@@ -41,6 +41,7 @@ export interface AuthPayload {
   role: string; // ADMIN | KEY_USER | OBSERVER
   isOwner: boolean;
   iat?: number; // Unix timestamp — وقت إصدار التوكن (ثوانٍ)
+  issuedAtMs?: number;
 }
 
 const TOKEN_EXPIRY = "8h";
@@ -52,7 +53,7 @@ const AUDIENCE = "electoral-system-users";
  * يستخدم دائماً JWT_SECRET الحالي (الجديد)
  */
 export async function createToken(payload: AuthPayload): Promise<string> {
-  return new SignJWT({ ...payload })
+  return new SignJWT({ ...payload, issuedAtMs: Date.now() })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRY)
@@ -77,6 +78,7 @@ export async function verifyToken(
       issuer: ISSUER,
       audience: AUDIENCE,
     });
+    if (typeof payload.issuedAtMs !== "number") return null;
 
     return {
       userId: payload.userId as string,
@@ -84,6 +86,7 @@ export async function verifyToken(
       role: payload.role as string,
       isOwner: payload.isOwner as boolean,
       iat: payload.iat as number | undefined,
+      issuedAtMs: typeof payload.issuedAtMs === "number" ? payload.issuedAtMs : undefined,
     };
   } catch {
     // السر الحالي لم يعمل — نحاول السابق
@@ -98,6 +101,7 @@ export async function verifyToken(
         issuer: ISSUER,
         audience: AUDIENCE,
       });
+      if (typeof payload.issuedAtMs !== "number") return null;
 
       return {
         userId: payload.userId as string,
@@ -105,6 +109,7 @@ export async function verifyToken(
         role: payload.role as string,
         isOwner: payload.isOwner as boolean,
         iat: payload.iat as number | undefined,
+        issuedAtMs: typeof payload.issuedAtMs === "number" ? payload.issuedAtMs : undefined,
       };
     } catch {
       // كلا السرين لم يعملا

@@ -76,7 +76,7 @@ export interface AuditLogParams {
   action: AuditAction;
   entity?: string;
   entityId?: string;
-  details?: Record<string, string | number | boolean | null>;
+  details?: Record<string, unknown>;
   ipAddress?: string;
 }
 
@@ -126,6 +126,41 @@ export async function auditLog(params: AuditLogParams): Promise<void> {
 
   // تشغيل الخلفية فوراً
   logTask();
+}
+
+/**
+ * Compatibility name for audited write paths. Keeping one implementation
+ * prevents endpoints from bypassing the append-only audit trail.
+ */
+export async function writeAuditLog(params: AuditLogParams): Promise<void>;
+export async function writeAuditLog(
+  client: { auditLog: { create: (args: any) => Promise<any> } },
+  params: AuditLogParams,
+): Promise<void>;
+export async function writeAuditLog(
+  clientOrParams: AuditLogParams | { auditLog: { create: (args: any) => Promise<any> } },
+  maybeParams?: AuditLogParams,
+): Promise<void> {
+  const client = (clientOrParams && typeof clientOrParams === "object" && "auditLog" in clientOrParams && (clientOrParams as any).auditLog?.create)
+    ? clientOrParams as { auditLog: { create: (args: any) => Promise<any> } }
+    : db;
+  const params = maybeParams || (clientOrParams as AuditLogParams);
+
+  try {
+    await client.auditLog.create({
+      data: {
+        userId: params.userId || null,
+        username: params.username,
+        action: params.action,
+        entity: params.entity || null,
+        entityId: params.entityId || null,
+        details: params.details ? JSON.stringify(params.details) : null,
+        ipAddress: params.ipAddress || null,
+      },
+    });
+  } catch (err) {
+    console.error("writeAuditLog execution error:", err);
+  }
 }
 
 // ==================== تحديد المعدل (DB-backed — متعدد المثيلات) ====================
@@ -289,8 +324,8 @@ export interface PasswordValidation {
 export function validatePassword(password: string): PasswordValidation {
   const errors: string[] = [];
 
-  if (password.length < 8) {
-    errors.push("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
+  if (password.length < 12) {
+    errors.push("كلمة المرور يجب أن تكون 12 حرفاً على الأقل");
   }
   if (password.length > 128) {
     errors.push("كلمة المرور يجب ألا تتجاوز 128 حرف");
