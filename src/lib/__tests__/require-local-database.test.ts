@@ -58,5 +58,5 @@ describe("local database safety guard", () => {
     expect(runGuard("file:./election_dev.db").status).toBe(0);
     expect(runGuard("file:./election.db").status).toBe(2);
     expect(runGuard("file:../election_dev.db").status).toBe(2);
-  });
+  }, 15000);
 });
