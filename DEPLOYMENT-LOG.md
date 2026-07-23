@@ -1,37 +1,68 @@
-# سجل النشر — 2026-07-17
+# 🚀 توثيق النشر الإنتاجي — Railway & Supabase
 
-## النسخة
-- **GitHub Commit:** `ef95bf6812f8b476e360d269e5670607596f69b6`
-- **GitHub Repo:** `https://github.com/aliemad94/election-system.git`
-- **Railway URL:** `https://election-system-production-437f.up.railway.app`
-- **الحالة:** 🎉 النشر ناجح بالكامل وتجاوز جميع الفحوصات الحية والمحلية بنسبة 100%.
-
----
-
-## 📊 بوابات ما قبل الرفع (Pre-flight Checks)
-- [x] **TypeScript Validation (tsc):** PASS (0 errors)
-- [x] **ESLint Linting:** PASS (0 warnings, 0 errors)
-- [x] **Unit & Regression Tests:** PASS (67/67 tests passed)
-- [x] **Production Build Check:** PASS (Standalone config successfully compiled)
-- [x] **Dependencies Audit (npm audit):** PASS (0 critical/high vulnerabilities excluding verified xlsx)
-- [x] **Security Hardcoding Checks:** PASS (All environment variables cleaned, backups untracked and ignored)
+**تاريخ النشر:** 2026-07-23  
+**الرابط الحي:** https://election-system-production-437f.up.railway.app/  
+**المستودع:** `aliemad94/election-system` (فرع `main`)  
+**معرّف المشروع على Railway:** `e73cdf77-ba91-47d7-9aeb-776fb2253b00` (`gracious-warmth`)  
 
 ---
 
-## ⚙️ إعداد متغيرات بيئة الإنتاج على Railway
-تم ضبط وتأكيد المتغيرات التالية بنجاح عبر Railway CLI:
-- `DATABASE_URL` و `DIRECT_DATABASE_URL`: موجهة لـ Supabase الإنتاجي.
-- `JWT_SECRET`: مفتاح تشفير قوي جديد.
-- `ADMIN_PASSWORD` و `USER_PASSWORD`: معينة لكلمات المرور الإنتاجية الآمنة.
-- `NODE_ENV`: `production`.
-- `BYPASS_AUTH`: `false` (معطل تماماً للحماية القصوى).
+## 📊 حالة الخدمة وقاعدة البيانات
+
+| العنصر | الحالة | الدليل الحرفي |
+|---|---|---|
+| الخادم (Railway) | ● Online | `HTTP 200 OK` على الرابط الرئيس |
+| قاعدة البيانات (Supabase PostgreSQL) | connected | `{"status":"ok","database":"connected"}` من `/api/health` |
+| ترحيل الهيكلية (Migrations) | 100% | تنفيذ `prisma migrate deploy` مباشر عبر `DIRECT_DATABASE_URL` |
+| سياسة أمان المحتوى (CSP Nonce) | PASS | `Content-Security-Policy` ديناميكية مع `wasm-unsafe-eval` |
+| حماية الرؤوس (Headers Security) | PASS | `X-Frame-Options: DENY`, `HSTS`, منع تزويف `x-user-role` |
 
 ---
 
-## 🚦 بوابات ما بعد الرفع (الحي)
-- [x] الموقع حي ويعود بـ HTTP 200.
-- [x] نقطة النهاية للصحة `/api/health` تعمل وترجع 200.
-- [x] رؤوس الأمان (Security Headers) CSP, HSTS, X-Frame-Options مفعلة.
-- [x] طلبات API بدون توكن ترجع 401.
-- [x] التحقق من تعطيل `BYPASS_AUTH`.
-- [x] فحص قناع بيانات الناخبين لـ `OBSERVER` (لا تسريب لـ `nationalId` أو `phone`).
+## 🔍 نتائج فحوصات التحقق السبعة (7 Live Quality Gates)
+
+```bash
+# 1. فحص الصفحة الرئيسية
+curl -s -o /dev/null -w "%{http_code}" https://election-system-production-437f.up.railway.app/
+# Result: 200 OK
+
+# 2. فحص صحة الخادم وقاعدة البيانات
+curl -s https://election-system-production-437f.up.railway.app/api/health
+# Result: {"status":"ok","database":"connected","system":"electoral-machine","governorate":"ذي قار","version":"0.1.0-foundation"}
+
+# 3. فحص الترويسات الأمنية (CSP & Security Headers)
+curl -sI https://election-system-production-437f.up.railway.app/ | grep -iE "x-frame|content-security|strict-transport"
+# Result: Strict-Transport-Security, X-Frame-Options: DENY, CSP dynamic nonce present
+
+# 4. فحص منع الوصول غير المصرح به إلى API المحمي
+curl -s -o /dev/null -w "%{http_code}" https://election-system-production-437f.up.railway.app/api/voters
+# Result: 401 Unauthorized
+
+# 5. فحص التجريد والتنعيم ضد تزوير الترويسات (Header Forgery Protection)
+curl -s -o /dev/null -w "%{http_code}" https://election-system-production-437f.up.railway.app/api/voters -H "x-user-role: ADMIN"
+# Result: 401 Unauthorized (proxy.ts strips x-user-role headers from outside)
+
+# 6. فحص استجابة /api/me للجلسات غير المصرحة
+curl -s https://election-system-production-437f.up.railway.app/api/me
+# Result: {"authenticated":false}
+
+# 7. فحص قفل العمليات الحرجة (/api/seed)
+curl -s -o /dev/null -w "%{http_code}" https://election-system-production-437f.up.railway.app/api/seed
+# Result: 401 Unauthorized
+```
+
+---
+
+## 🔒 الثغرات المكتشفة والمصلحة في هذه الدورة
+
+1. **حل تضارب قرص التخزين المستقل (Railway Volume Conflict):**
+   - تم حذف المجلد الميت `election-system-volume-1qCo` لربط القرص الأصلي وحل خطأ الربط المزدوج.
+2. **تجاوز تعليق PgBouncer Advisory Locks أثناء المهاجرة:**
+   - تم تعديل `scripts/start-production.sh` و `Dockerfile` لتمرير `DIRECT_DATABASE_URL` بدلاً من رابط التجميع `PgBouncer` لمنع تجمد `prisma migrate deploy`.
+3. **تفعيل الهيدريشن ودعم WebAssembly في سياسة CSP:**
+   - تم إضافة `wasm-unsafe-eval` و `unsafe-inline` لـ `script-src` وتمرير `nonce` ديناميكي في `src/app/layout.tsx` لمنع تعليق التصفح.
+4. **فتح مسار `/api/me` للجلسات العامة:**
+   - تم إضافة `/api/me` إلى `PUBLIC_API_PATHS` في `src/proxy.ts` لتسمح للواجهة الأمامية بالتحقق من المصادقة بسلاسة دون حظر الرابط بـ 401 مسبقاً.
+
+---
+*تم توليد هذا التقرير آلياً وفقاً لدستور المشروع في AGENTS.md.*
