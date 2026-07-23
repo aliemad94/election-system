@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       where: { username },
     });
 
-    if (!user) {
+    if (!user || user.isActive === false) {
       // تسجيل المحاولة الفاشلة
       await upsertRateLimit(rateLimitKey);
       return NextResponse.json(

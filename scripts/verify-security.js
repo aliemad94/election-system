@@ -86,7 +86,9 @@ if (!trackedEnv) {
 
 // 2. التحقق من وجود رؤوس الأمان في Middleware
 printSection("2. فحص رؤوس الأمان (Security Headers Check)");
-const middlewarePath = path.join(ROOT, "src", "middleware.ts");
+const middlewarePath = fs.existsSync(path.join(ROOT, "src", "proxy.ts"))
+  ? path.join(ROOT, "src", "proxy.ts")
+  : path.join(ROOT, "src", "middleware.ts");
 if (fs.existsSync(middlewarePath)) {
   const content = fs.readFileSync(middlewarePath, "utf8");
   const hasCSP = content.includes("Content-Security-Policy");
@@ -198,17 +200,15 @@ if (testResult.status === 0) {
 // 8. فحص الثغرات الأمنية في التبعيات
 printSection("8. فحص ثغرات التبعيات (Dependencies Audit)");
 console.log("  تشغيل npm audit ...");
-const auditResult = runCommand("npm audit --json");
+const auditResult = runCommand("npm audit --omit=dev --json");
 try {
   const a = JSON.parse(auditResult.stdout || "{}");
   const meta = a.metadata && a.metadata.vulnerabilities;
   if (meta) {
-    const totalExcludingXlsx = (meta.critical || 0) + (meta.high || 0) + (meta.moderate || 0) + (meta.low || 0);
-    // xlsx لا يوجد لها حل رسمي وهي مقبولة ومؤمنة، لذا نتحقق من عدم وجود أي ثغرات أخرى حرجة أو عالية
-    if (meta.critical > 0 || (meta.high > 1 && meta.high !== undefined)) {
-      fail(`تم اكتشاف ثغرات أمنية جديدة في التبعيات (critical: ${meta.critical}, high: ${meta.high})`);
+    if ((meta.critical || 0) > 0 || (meta.high || 0) > 0) {
+      fail(`تم اكتشاف ثغرات أمنية في التبعيات (critical: ${meta.critical || 0}, high: ${meta.high || 0})`);
     } else {
-      ok(`التبعيات آمنة (فقط ثغرة xlsx المقبولة والمؤمنة بالتحقق هي الموجودة)`);
+      ok(`لا توجد ثغرات Critical أو High في تبعيات الإنتاج`);
     }
   } else {
     ok("لا توجد أي ثغرات في التبعيات");

@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
-import { handleApiError, auditLog } from "@/lib/security";
+import { handleApiError, auditLog, writeAuditLog } from "@/lib/security";
 import { invalidateComprehensiveIndicatorsCache } from "@/lib/comprehensive-indicators-cache";
 import { updateElectionKeySchema, formatZodError } from "@/lib/validators";
 import { assertOwnsKey } from "@/lib/scope-service";
@@ -279,7 +279,7 @@ async function putHandler(
       });
     }
 
-    await auditLog({
+    await writeAuditLog({
       userId: user.userId,
       username: user.username,
       action: "UPDATE",
@@ -315,14 +315,18 @@ async function deleteHandler(
     }
 
     // حذف السجلات المرتبطة لتفادي انتهاك القيود الخارجية (Foreign Key Constraints)
-    await prisma.$transaction([
-      prisma.task.deleteMany({ where: { electoralKeyId: id } }),
-      prisma.service.deleteMany({ where: { keyId: id } }),
-      prisma.voter.deleteMany({ where: { keyId: id } }),
-      prisma.electionKey.delete({ where: { id } }),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      await tx.user.updateMany({
+        where: { electionKeyId: id },
+        data: { isActive: false, electionKeyId: null, tokenIssuedBefore: new Date() },
+      });
+      await tx.task.deleteMany({ where: { electoralKeyId: id } });
+      await tx.service.deleteMany({ where: { keyId: id } });
+      await tx.voter.deleteMany({ where: { keyId: id } });
+      await tx.electionKey.delete({ where: { id } });
+    });
 
-    await auditLog({
+    await writeAuditLog({
       userId: user.userId,
       username: user.username,
       action: "DELETE",

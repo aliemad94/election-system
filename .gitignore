@@ -63,6 +63,7 @@ skills-lock.json
 
 # archives and source backups
 *.zip
+*.docx
 project_*.md
 MERGE_REPORT.md
 generate-md-source.js

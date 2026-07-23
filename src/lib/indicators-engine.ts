@@ -373,3 +373,8 @@ export async function calculateAllCompositeIndicators(): Promise<CompositeIndica
   };
 }
 
+export function calculatePollingCenterCoverage(centers: readonly string[], declaredTotal: number): number {
+  if (!Number.isFinite(declaredTotal) || declaredTotal <= 0) return 0;
+  const distinct = new Set(centers.map((center) => center.trim()).filter(Boolean)).size;
+  return Math.min(100, Math.round((distinct / declaredTotal) * 100));
+}

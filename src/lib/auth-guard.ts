@@ -19,13 +19,14 @@ export type AuthenticatedHandler = (
   context: { params: any; user: AuthenticatedUser }
 ) => Promise<NextResponse> | Promise<Response>;
 
-interface CachedSession {
-  user: { id: string; role: string; mustChangePwd: boolean; tokenIssuedBefore: Date | null } | null;
-  expiresAt: number;
-}
-
-const sessionCache = new Map<string, CachedSession>();
-const CACHE_TTL_MS = 20 * 1000; // كاش الجلسات مدته 20 ثانية لتقليل عبء قاعدة البيانات
+type CurrentUser = {
+  id: string;
+  username: string;
+  role: string;
+  isActive: boolean;
+  mustChangePwd: boolean;
+  tokenIssuedBefore: Date | null;
+};
 
 /**
  * غلاف يفرض التحكم بالوصول حسب الدور لكل طريقة HTTP.
@@ -42,6 +43,14 @@ export function withAuth(
         { error: "طريقة الطلب غير مسموح بها" },
         { status: 405 }
       );
+    }
+
+    if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+      const origin = req.headers.get("origin");
+      const fetchSite = req.headers.get("sec-fetch-site");
+      if ((origin && origin !== req.nextUrl.origin) || fetchSite === "cross-site") {
+        return NextResponse.json({ error: "Cross-site request rejected" }, { status: 403 });
+      }
     }
 
     // 1. التحقق من التوكن مباشرة من الكوكيز لمنع هجمات التجاوز
@@ -61,38 +70,41 @@ export function withAuth(
       );
     }
 
-    const { userId, role, username } = payload;
+    const { userId, role } = payload;
     const normalizedRole = role.toUpperCase();
 
-    // 2. التحقق من قاعدة البيانات مع نظام كاش وصمود
-    let dbUser: { id: string; role: string; mustChangePwd: boolean; tokenIssuedBefore: Date | null } | null = null;
-    let databaseFailed = false;
-
-    const cached = sessionCache.get(userId);
-    const now = Date.now();
-    if (cached && cached.expiresAt > now) {
-      dbUser = cached.user;
-    } else {
-      try {
-        dbUser = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { id: true, role: true, mustChangePwd: true, tokenIssuedBefore: true }
-        });
-        sessionCache.set(userId, { user: dbUser, expiresAt: now + CACHE_TTL_MS });
-      } catch (dbError) {
+    // 2. Verify the current account on every request. This makes disablement,
+    // role changes, and token revocation effective immediately.
+    let dbUser: CurrentUser | null;
+    try {
+      dbUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, username: true, role: true, isActive: true, mustChangePwd: true, tokenIssuedBefore: true }
+      }) as CurrentUser | null;
+    } catch (dbError) {
         console.error("Database check failed during auth:", dbError);
         return NextResponse.json(
           { error: "الخدمة غير متوفرة حالياً — فشل التحقق من الحساب" },
           { status: 500 }
         );
       }
-    }
 
     if (!dbUser) {
       return NextResponse.json(
         { error: "غير مصرح - الحساب لم يعد موجوداً" },
         { status: 401 }
       );
+    }
+
+    if (dbUser.isActive === false) {
+      return NextResponse.json({ error: "غير مصرح - الحساب معطّل" }, { status: 403 });
+    }
+
+    if (normalizedRole === "OBSERVER" && prisma.systemConfig) {
+      const access = await prisma.systemConfig.findUnique({ where: { id: "observer_access" } });
+      if (access && !access.enabled) {
+        return NextResponse.json({ error: "غير مصرح - وصول المراقب معطّل" }, { status: 403 });
+      }
     }
 
     if (dbUser.role.toUpperCase() !== normalizedRole) {
@@ -138,7 +150,7 @@ export function withAuth(
     const user: AuthenticatedUser = {
       userId,
       role: normalizedRole,
-      username,
+      username: dbUser.username,
     };
 
     // انتظار params إن كانت Promise (Next.js 15+)

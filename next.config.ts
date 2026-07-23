@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   reactStrictMode: true,
+  // This application does not use next/image. Disable the optimizer so the
+  // bundled Sharp code has no runtime route exposed by the application.
+  images: {
+    unoptimized: true,
+  },
   // PWA headers
   async headers() {
     return [
@@ -38,11 +43,13 @@ const sentryConfig: NextConfig = withSentryConfig(nextConfig, {
   project: process.env.SENTRY_PROJECT,
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  reactComponentAnnotation: { enabled: true },
   tunnelRoute: "/monitoring",
   sourcemaps: { deleteSourcemapsAfterUpload: true },
-  disableLogger: true,
-  automaticVercelMonitors: true,
+  webpack: {
+    treeshake: { removeDebugLogging: true },
+    automaticVercelMonitors: true,
+    reactComponentAnnotation: { enabled: true },
+  },
 });
 
 export default process.env.NEXT_PUBLIC_SENTRY_DSN ? sentryConfig : nextConfig;

@@ -24,6 +24,7 @@ model User {
   username         String    @unique
   password         String    // مشفّرة بـ bcryptjs
   role             String    // ADMIN | KEY_USER | OBSERVER
+  isActive         Boolean   @default(true)
   mustChangePwd    Boolean   @default(false) // إجبار تغيير كلمة المرور عند أول دخول
   tokenIssuedBefore DateTime? // إبطال الجلسات: أي توكن صدر قبل هذا التاريخ يُرفض
   electionKeyId    String?   @unique
@@ -108,10 +109,10 @@ model ElectionKey {
   grandfatherName String
   fourthName      String
   gender          String      // ذكر | أنثى
-  birthDate       DateTime
+  birthDate       DateTime?
   education       String
   profession      String
-  phone           String      @unique
+  phone           String?     @unique
   socialMedia     String?     // JSON string
   province        String      @default("ذي قار")
   district        String      @default("الغراف")
@@ -216,7 +217,7 @@ model Voter {
   grandfatherName String
   fourthName      String
   gender          String      // ذكر | أنثى
-  birthDate       DateTime
+  birthDate       DateTime?
   phone           String?
   education       String?
   profession      String?
@@ -497,11 +498,53 @@ model SMSCampaign {
   scheduledAt    DateTime?
   sentAt         DateTime?
   provider       String    @default("TWILIO") // TWILIO | VONAGE
+  createdById    String?
+  createdByUsername String?
+  lastError      String?
+  processingStartedAt DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  deliveries     SMSDelivery[]
+
   @@index([status])
   @@index([scheduledAt])
+}
+
+// Persistent scheduler locks prevent duplicate work when more than one
+// application instance is running.
+model SchedulerLease {
+  name        String   @id
+  owner       String
+  lockedUntil DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@index([lockedUntil])
+}
+
+// Delivery records are intentionally separated from voters: the database
+// migration has no foreign key to Voter, so historical campaign evidence is
+// retained if a voter record is later removed.
+model SMSDelivery {
+  id                String      @id @default(cuid())
+  campaignId        String
+  campaign          SMSCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  voterId           String
+  maskedPhone       String
+  status            String      @default("PENDING")
+  attempts          Int         @default(0)
+  providerMessageId String?
+  providerStatus    String?
+  providerErrorCode String?
+  lastError         String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@unique([campaignId, voterId])
+  @@index([campaignId, status])
+  @@index([status])
 }
 
 // ====================================================================

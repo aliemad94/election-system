@@ -7,6 +7,7 @@ import { getCachedIndicators } from "./indicators-cache";
 import { prisma } from "./prisma";
 import fs from "fs/promises";
 import path from "path";
+import { processDueCampaigns } from "./sms-campaign-processor";
 
 let isStarted = false;
 
@@ -36,6 +37,24 @@ async function retryWithBackoff<T>(
   }
 }
 
+async function runInitialTasks(): Promise<void> {
+  try {
+    await retryWithBackoff(getCachedIndicators, "Initial Cache Warm Up");
+    await retryWithBackoff(runBackup, "Initial Daily Backup", 3, 10000);
+    await retryWithBackoff(processDueCampaigns, "Initial SMS Campaign Processing");
+    await retryWithBackoff(
+      () => prisma.rateLimit.deleteMany({ where: { lastAttemptAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } } }),
+      "Initial Rate Limit Cleanup"
+    );
+    await retryWithBackoff(
+      () => prisma.schedulerLease.deleteMany({ where: { lockedUntil: { lt: new Date() } } }),
+      "Initial Scheduler Lease Cleanup"
+    );
+  } catch (error) {
+    console.error("[Scheduler] Initial background tasks failed:", error);
+  }
+}
+
 /**
  * يبدأ بتشغيل المهام المجدولة في الخلفية مرة واحدة فقط لكل عملية Node.
  */
@@ -48,25 +67,7 @@ export function startScheduler(): void {
   // 1. تشغيل أولي بعد 10 ثوانٍ لتهيئة الكاش وضمان وجود نسخة احتياطية لليوم الحالي
   setTimeout(async () => {
     console.log("=== [Scheduler] Running initial background tasks (Cache warm up & daily backup) ===");
-    
-    // تدفئة الكاش وحساب المؤشرات لسرعة التحميل مع آلية إعادة المحاولة
-    retryWithBackoff(async () => {
-      await getCachedIndicators();
-    }, "Initial Cache Warm Up", 3, 5000).catch((err) => {
-      console.error("[Scheduler] Failed critical cache warm up:", err);
-    });
-
-    // التحقق من النسخ الاحتياطي اليومي مع آلية إعادة المحاولة
-    retryWithBackoff(async () => {
-      await checkAndRunDailyBackup();
-    }, "Initial Daily Backup Check", 3, 10000).catch((err) => {
-      console.error("[Scheduler] Failed critical daily backup check:", err);
-    });
-
-    // تشغيل فحص أولي لحملات الرسائل المعلقة
-    processQueuedCampaigns().catch((err) => {
-      console.error("[Scheduler] Failed initial queued campaigns check:", err);
-    });
+    await runInitialTasks();
   }, 10000);
 
   // 2. تكرار المهام كل 4 ساعات لتتزامن دورياً

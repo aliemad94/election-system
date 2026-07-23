@@ -20,6 +20,7 @@ import { z } from "zod";
 
 const accessActionSchema = z.object({
   action: z.enum(["login", "owner-login", "logout", "toggle-access", "change-password"]),
+  username: z.string().min(1).max(100).optional(),
   password: z.string().max(128).optional(),
   ownerPassword: z.string().max(128).optional(),
   currentPassword: z.string().max(128).optional(),
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
       currentPassword,
       newPassword,
       enabled,
+      username,
     } = parsed.data;
     const clientIp = getClientIp(req);
 
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
       action === "owner-login" ||
       action === "change-password"
     ) {
-      limitKey = `rate_limit_${action}_${clientIp}`;
+      limitKey = action === "login" ? `rate_limit_login_ip_${clientIp}` : `rate_limit_${action}_${clientIp}`;
       const limit = await checkRateLimit(limitKey, 5, 15 * 60 * 1000); // 5 محاولات / 15 دقيقة
       if (!limit.allowed) {
         return NextResponse.json(
@@ -87,13 +89,14 @@ export async function POST(req: NextRequest) {
       }
 
       const user = await prisma.user.findUnique({
-        where: { username: "observer" },
+        where: { username: username || "observer" },
       });
 
-      if (!user || !password) {
+      if (!user || user.isActive === false || !password) {
+        await checkRateLimit(`rate_limit_login_unknown_${clientIp}`, 5, 15 * 60 * 1000);
         return NextResponse.json(
-          { success: false, message: "فشل تسجيل الدخول - مستخدم غير موجود" },
-          { status: 400 }
+          { success: false, message: "فشل تسجيل الدخول" },
+          { status: 401 }
         );
       }
 
@@ -153,9 +156,9 @@ export async function POST(req: NextRequest) {
         where: { username: "admin" },
       });
 
-      if (!user || !ownerPassword) {
+      if (!user || user.isActive === false || !ownerPassword) {
         return NextResponse.json(
-          { success: false, message: "فشل تسجيل الدخول - مستخدم غير موجود" },
+          { success: false, message: "فشل تسجيل الدخول - مستخدم غير موجود أو معطل" },
           { status: 400 }
         );
       }
