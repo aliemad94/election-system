@@ -51,7 +51,7 @@ echo "Checking database migration readiness..."
 node scripts/check-migration-readiness.js
 
 echo "Applying committed database migrations..."
-./node_modules/.bin/prisma migrate deploy
+npx prisma migrate deploy
 
 echo "Starting electoral-machine service..."
 exec node server.js
