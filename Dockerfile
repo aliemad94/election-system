@@ -62,7 +62,7 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'fi' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
     echo 'echo "Deploying database migrations..."' >> /app/start.sh && \
-    echo 'npx prisma migrate deploy' >> /app/start.sh && \
+    echo 'npx prisma migrate deploy || echo "Database migration failed or skipped (continuing...)"' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
     echo '# Smart seed: only create users if they do not exist (never overwrite passwords)' >> /app/start.sh && \
     echo 'echo "Checking if seed is needed..."' >> /app/start.sh && \
