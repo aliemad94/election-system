@@ -8,8 +8,8 @@
  */
 
 const targetUrl = process.argv[2] || process.env.LIVE_URL || 'http://localhost:3000';
-const adminPassword = process.argv[3] || process.env.ADMIN_PASSWORD || 'admin123';
-const observerPassword = process.argv[4] || process.env.OBSERVER_PASSWORD || 'observer123';
+const adminPassword = process.env.LIVE_ADMIN_PASSWORD;
+const observerPassword = process.env.LIVE_OBSERVER_PASSWORD;
 
 console.log(`\n🔍 Starting Live Security Verification for target: ${targetUrl}\n${'='.repeat(60)}`);
 
@@ -83,56 +83,61 @@ async function runLiveChecks() {
   }
 
   // 6. ADMIN Authentication Flow
-  let adminCookie = '';
-  try {
-    const res = await fetch(`${baseUrl}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'admin', password: adminPassword })
-    });
-    const cookie = res.headers.get('set-cookie');
-    if (res.status === 200 && cookie) {
-      adminCookie = cookie.split(';')[0];
-      report('6. ADMIN Authentication & Session Cookie Generation', true, `HTTP status: 200, Set-Cookie header present`);
-    } else {
-      report('6. ADMIN Authentication & Session Cookie Generation', false, `HTTP status: ${res.status}, cookie present: ${Boolean(cookie)}`);
+  if (!adminPassword) {
+    report('6. ADMIN Authentication & Session Cookie Generation', 'SKIP', 'Skipped: LIVE_ADMIN_PASSWORD environment variable is not set');
+  } else {
+    try {
+      const res = await fetch(`${baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'admin', password: adminPassword })
+      });
+      const cookie = res.headers.get('set-cookie');
+      if (res.status === 200 && cookie) {
+        report('6. ADMIN Authentication & Session Cookie Generation', 'PASS', `HTTP status: 200, Set-Cookie header present`);
+      } else {
+        report('6. ADMIN Authentication & Session Cookie Generation', 'FAIL', `HTTP status: ${res.status}, cookie present: ${Boolean(cookie)}`);
+      }
+    } catch (err) {
+      report('6. ADMIN Authentication', 'FAIL', `Error: ${err.message}`);
     }
-  } catch (err) {
-    report('6. ADMIN Authentication', false, `Error: ${err.message}`);
   }
 
   // 7. OBSERVER PII Data Masking Test
-  let observerCookie = '';
-  try {
-    const resAuth = await fetch(`${baseUrl}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'observer', password: observerPassword })
-    });
-    const cookie = resAuth.headers.get('set-cookie');
-    if (resAuth.status === 200 && cookie) {
-      observerCookie = cookie.split(';')[0];
-      const votersRes = await fetch(`${baseUrl}/api/voters`, {
-        headers: { Cookie: observerCookie }
+  if (!observerPassword) {
+    report('7. OBSERVER PII Data Masking (nationalId/phone masked)', 'SKIP', 'Skipped: LIVE_OBSERVER_PASSWORD environment variable is not set');
+  } else {
+    try {
+      const resAuth = await fetch(`${baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'observer', password: observerPassword })
       });
-      const data = await votersRes.json().catch(() => ({}));
-      const votersList = Array.isArray(data) ? data : (data.voters || data.data || []);
-      
-      let leaksNationalId = false;
-      let leaksPhone = false;
-      for (const v of votersList) {
-        if (v.nationalId && !v.nationalId.includes('*')) leaksNationalId = true;
-        if (v.phone && !v.phone.includes('*')) leaksPhone = true;
-      }
+      const cookie = resAuth.headers.get('set-cookie');
+      if (resAuth.status === 200 && cookie) {
+        const observerCookie = cookie.split(';')[0];
+        const votersRes = await fetch(`${baseUrl}/api/voters`, {
+          headers: { Cookie: observerCookie }
+        });
+        const data = await votersRes.json().catch(() => ({}));
+        const votersList = Array.isArray(data) ? data : (data.voters || data.data || []);
+        
+        let leaksNationalId = false;
+        let leaksPhone = false;
+        for (const v of votersList) {
+          if (v.nationalId && !v.nationalId.includes('*')) leaksNationalId = true;
+          if (v.phone && !v.phone.includes('*')) leaksPhone = true;
+        }
 
-      const passed = votersRes.status === 200 && !leaksNationalId && !leaksPhone;
-      report('7. OBSERVER PII Data Masking (nationalId/phone masked)', passed, 
-        `HTTP status: ${votersRes.status}, Leaks Unmasked nationalId: ${leaksNationalId}, Leaks Unmasked phone: ${leaksPhone}`);
-    } else {
-      report('7. OBSERVER PII Data Masking', false, `Observer login failed with status ${resAuth.status}`);
+        const passed = votersRes.status === 200 && !leaksNationalId && !leaksPhone;
+        report('7. OBSERVER PII Data Masking (nationalId/phone masked)', passed ? 'PASS' : 'FAIL', 
+          `HTTP status: ${votersRes.status}, Leaks Unmasked nationalId: ${leaksNationalId}, Leaks Unmasked phone: ${leaksPhone}`);
+      } else {
+        report('7. OBSERVER PII Data Masking', 'FAIL', `Observer login failed with status ${resAuth.status}`);
+      }
+    } catch (err) {
+      report('7. OBSERVER PII Data Masking', 'FAIL', `Error: ${err.message}`);
     }
-  } catch (err) {
-    report('7. OBSERVER PII Data Masking', false, `Error: ${err.message}`);
   }
 
   console.log(`\n${'='.repeat(60)}`);
