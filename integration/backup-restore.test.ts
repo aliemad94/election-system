@@ -52,7 +52,8 @@ beforeAll(async () => {
     path.join(os.tmpdir(), "electoral-backup-integration-")
   );
   process.env.BACKUP_DIR = backupDirectory;
-  process.env.BACKUP_ENCRYPTION_KEY=[REDACTED] ||
+  process.env.BACKUP_ENCRYPTION_KEY =
+    process.env.BACKUP_ENCRYPTION_KEY ||
     "integration-backup-key-with-more-than-thirty-two-characters";
 
   const passwordHash = await bcrypt.hash(password, 12);

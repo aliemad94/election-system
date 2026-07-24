@@ -7,8 +7,8 @@ fail() {
 }
 
 [ "${NODE_ENV:-}" = "production" ] || fail "NODE_ENV must be production"
-[ -n "${DATABASE_URL=[REDACTED]" ] || fail "DATABASE_URL is required"
-[ -n "${DIRECT_DATABASE_URL=[REDACTED]" ] || fail "DIRECT_DATABASE_URL is required"
+[ -n "${DATABASE_URL:-}" ] || fail "DATABASE_URL is required"
+[ -n "${DIRECT_DATABASE_URL:-}" ] || fail "DIRECT_DATABASE_URL is required"
 [ -n "${APP_ORIGIN:-}" ] || fail "APP_ORIGIN is required"
 [ "${BYPASS_AUTH:-false}" != "true" ] || fail "BYPASS_AUTH must never be true in production"
 
@@ -20,10 +20,10 @@ node -e '
       origin.pathname !== "/" || origin.search || origin.hash) process.exit(1);
 ' || fail "APP_ORIGIN must be a bare HTTPS origin (HTTP is allowed only for localhost)"
 
-jwt_length=$(printf %s "${JWT_SECRET=[REDACTED]" | wc -c | tr -d ' ')
+jwt_length=$(printf %s "${JWT_SECRET:-}" | wc -c | tr -d ' ')
 [ "$jwt_length" -ge 32 ] || fail "JWT_SECRET must contain at least 32 characters"
 
-backup_length=$(printf %s "${BACKUP_ENCRYPTION_KEY=[REDACTED]" | wc -c | tr -d ' ')
+backup_length=$(printf %s "${BACKUP_ENCRYPTION_KEY:-}" | wc -c | tr -d ' ')
 [ "$backup_length" -ge 32 ] || fail "BACKUP_ENCRYPTION_KEY must contain at least 32 characters"
 
 if [ -z "${BACKUP_DIR:-}" ] && [ -z "${BACKUP_WEBHOOK_URL:-}" ]; then
@@ -51,7 +51,7 @@ echo "Checking database migration readiness..."
 node scripts/check-migration-readiness.js
 
 echo "Applying committed database migrations..."
-DATABASE_URL=[REDACTED]" npx prisma migrate deploy
+DATABASE_URL="${DIRECT_DATABASE_URL:-$DATABASE_URL}" npx prisma migrate deploy
 
 echo "Starting electoral-machine service..."
 exec node server.js

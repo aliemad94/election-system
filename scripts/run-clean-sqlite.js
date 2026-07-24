@@ -22,7 +22,7 @@ async function main() {
 
   try {
     // 2. إعداد ملف البيئة المؤقت لـ SQLite
-    fs.writeFileSync(envPath, 'DATABASE_URL=[REDACTED]"\n');
+    fs.writeFileSync(envPath, 'DATABASE_URL="file:./dev.db"\n');
     console.log("✅ تم إعداد ملف البيئة المؤقت لـ SQLite.");
 
     // 3. نسخ مخطط SQLite مؤقتاً

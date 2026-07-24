@@ -14,7 +14,7 @@ function runGuard(databaseUrl: string, destructive = false, confirmed = false) {
       env: {
         ...process.env,
         NODE_ENV: "test",
-        DATABASE_URL=[REDACTED]
+        DATABASE_URL: databaseUrl,
         CONFIRM_DESTRUCTIVE_LOCAL_DB: confirmed ? "true" : "false",
       },
     }
@@ -23,23 +23,23 @@ function runGuard(databaseUrl: string, destructive = false, confirmed = false) {
 
 describe("local database safety guard", () => {
   it("rejects a localhost PostgreSQL database without an isolation marker", () => {
-    const result = runGuard("postgresql://[REDACTED]");
+    const result = runGuard("postgresql://user:pass@localhost:5432/election");
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("isolation marker");
   });
 
   it("allows a marked local database for non-destructive writes", () => {
-    const result = runGuard("postgresql://[REDACTED]");
+    const result = runGuard("postgresql://user:pass@localhost:5432/election_test");
     expect(result.status).toBe(0);
   });
 
   it("requires explicit confirmation for destructive commands", () => {
     const unconfirmed = runGuard(
-      "postgresql://[REDACTED]",
+      "postgresql://user:pass@127.0.0.1:5432/election_test",
       true
     );
     const confirmed = runGuard(
-      "postgresql://[REDACTED]",
+      "postgresql://user:pass@127.0.0.1:5432/election_test",
       true,
       true
     );
@@ -49,7 +49,7 @@ describe("local database safety guard", () => {
   });
 
   it("rejects remote PostgreSQL even when the database name looks isolated", () => {
-    const result = runGuard("postgresql://[REDACTED]");
+    const result = runGuard("postgresql://user:pass@db.example.com:5432/election_test");
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("remote host");
   });

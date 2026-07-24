@@ -51,8 +51,8 @@ try {
     $directConnection = Set-PasswordInConnectionString $variables.DIRECT_DATABASE_URL $plainPassword
 
     & railway variable set --service $serviceName --skip-deploys `
-      "DATABASE_URL=[REDACTED]" `
-      "DIRECT_DATABASE_URL=[REDACTED]" | Out-Null
+      "DATABASE_URL=$appConnection" `
+      "DIRECT_DATABASE_URL=$directConnection" | Out-Null
     if ($LASTEXITCODE -ne 0) {
       throw "Railway rejected the variable update."
     }

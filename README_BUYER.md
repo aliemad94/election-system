@@ -56,7 +56,7 @@
 2. **تعديل ملف البيئة `.env`:**
    افتح ملف `.env` وقم بتعديل رابط قاعدة البيانات ليشير إلى خادم PostgreSQL الخاص بك:
    ```env
-   DATABASE_URL=[REDACTED]"
+   DATABASE_URL="postgresql://username:password@localhost:5432/electoral_db"
    ```
 
 3. **تطبيق الجداول وبذر المستخدمين:**

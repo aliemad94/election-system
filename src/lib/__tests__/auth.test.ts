@@ -9,7 +9,7 @@ const secret = "vitest-jwt-secret-with-more-than-thirty-two-characters";
 
 describe("JWT session timestamps", () => {
   beforeAll(() => {
-    process.env.JWT_SECRET=[REDACTED]
+    process.env.JWT_SECRET = secret;
     delete process.env.JWT_SECRET_PREVIOUS;
   });
 

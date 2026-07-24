@@ -17,10 +17,10 @@ npm install
 
 3. ملف `.env` موجود مسبقًا بقيم تجريبية للتطوير المحلي:
 ```
-DATABASE_URL=[REDACTED]"
-JWT_SECRET=[REDACTED]"
-ADMIN_PASSWORD=[REDACTED]"
-USER_PASSWORD=[REDACTED]"
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="your_jwt_secret"
+ADMIN_PASSWORD="YOUR_ADMIN_PASSWORD"
+USER_PASSWORD="YOUR_USER_PASSWORD"
 NODE_ENV="development"
 ```
 يفضّل توليد JWT_SECRET خاص بك (32+ حرف عشوائي):

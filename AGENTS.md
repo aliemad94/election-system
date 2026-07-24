@@ -243,7 +243,7 @@ aliemad94/ (Next.js standalone → GitHub → Railway)
 ### قبل كل نشر
 - [ ] كل بوابات الـcommit سبقت
 - [ ] BYPASS_AUTH=false في Railway
-- [ ] DATABASE_URL=[REDACTED] الإنتاجي
+- [ ] DATABASE_URL = Supabase الإنتاجي
 - [ ] JWT_SECRET جديد قوي
 - [ ] npm audit → 0 Critical/High
 

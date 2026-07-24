@@ -257,7 +257,7 @@ function phase1Static() {
 
   // 1.4 Prisma validate
   info("prisma validate ...");
-  const env = { ...process.env, DATABASE_URL=[REDACTED]" };
+  const env = { ...process.env, DATABASE_URL: "file:./db/local.db" };
   const prisma = run(
     `npx prisma validate --schema=${SQLITE_SCHEMA}`,
     { env }
@@ -634,7 +634,7 @@ async function phase6Database() {
   const result = spawnSync(
     process.execPath,
     ["-e", counter],
-    { cwd: ROOT, encoding: "utf8", env: { ...process.env, DATABASE_URL=[REDACTED]" } }
+    { cwd: ROOT, encoding: "utf8", env: { ...process.env, DATABASE_URL: "file:./db/local.db" } }
   );
   const out = (result.stdout || "").trim();
   try {
