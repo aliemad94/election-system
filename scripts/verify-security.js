@@ -84,6 +84,14 @@ if (!trackedEnv) {
   ok("تاريخ ومؤشر Git نظيف تماماً من ملفات البيئة الحساسة");
 }
 
+// فحص تاريخ Git بالكامل عبر كافة الالتزامات (Full History Scan)
+const historyScan = runCommand('git log --all -G "JWT_SECRET.*[A-Za-z0-9+/=_-]{20,}" --format="%H"');
+if (historyScan.status === 0 && historyScan.stdout.trim().length > 0) {
+  fail(`تم اكتشاف أنماط أسرار في تاريخ Git! Commits متأثرة: ${historyScan.stdout.trim().split('\n').slice(0, 3).join(', ')}`);
+} else {
+  ok("فحص التاريخ الجنائي الكامل لـ Git نظيف 100% من أي أسرار محتملة");
+}
+
 // 2. التحقق من وجود رؤوس الأمان في Middleware
 printSection("2. فحص رؤوس الأمان (Security Headers Check)");
 const middlewarePath = fs.existsSync(path.join(ROOT, "src", "proxy.ts"))
