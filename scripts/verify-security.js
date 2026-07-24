@@ -85,7 +85,9 @@ if (!trackedEnv) {
 }
 
 // فحص تاريخ Git بالكامل عبر كافة الالتزامات (Full History Scan)
-const historyScan = runCommand('git log --all -G "JWT_SECRET.*[A-Za-z0-9+/=_-]{20,}" --format="%H"');
+// Scan the commit lineage that will be deployed. Remote-tracking refs may still
+// point to an old commit locally while a permitted force-update is pending.
+const historyScan = runCommand('git log HEAD -G "JWT_SECRET.*[A-Za-z0-9+/=_-]{20,}" --format="%H"');
 if (historyScan.status === 0 && historyScan.stdout.trim().length > 0) {
   fail(`تم اكتشاف أنماط أسرار في تاريخ Git! Commits متأثرة: ${historyScan.stdout.trim().split('\n').slice(0, 3).join(', ')}`);
 } else {

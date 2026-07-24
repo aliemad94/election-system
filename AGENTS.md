@@ -117,8 +117,9 @@ npx tsc --noEmit && npx vitest run && npm run build && node scripts/verify-secur
 قبل أي `git push`، اجتز هذه الـ7 بوابات بالترتيب. **أي فشل = توقف:**
 
 ```bash
-# 1. فحص الإصلاحات موجودة
-grep -l "voter.keyId !== key.id" src/app/api/voters/\[id\]/confidence-log/route.ts src/app/api/voters/checkin/route.ts
+# 1. فحص إصلاحات ملكية الناخب موجودة
+# يقبل التحقق المركزي assertOwnsVoter أو الفحص المباشر للملكية في النسخ الأقدم.
+rg -l "assertOwnsVoter|voter.keyId !== key.id" src/app/api/voters/\[id\]/confidence-log/route.ts src/app/api/voters/checkin/route.ts
 
 # 2. TypeScript
 npx tsc --noEmit

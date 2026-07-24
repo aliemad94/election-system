@@ -6,18 +6,37 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-guard";
+import { RequestBodyTooLargeError, readJsonBodyWithinLimit } from "@/lib/request-body";
+
+const MAX_IMPORT_BODY_BYTES = 5 * 1024 * 1024;
+const MAX_IMPORT_ITEMS = 1000;
 
 async function postHandler(
   request: NextRequest,
   { user }: { user: AuthenticatedUser }
 ) {
   try {
-    const body = await request.json().catch(() => ({}));
+    let body: { type?: unknown; data?: unknown };
+    try {
+      body = await readJsonBodyWithinLimit(request, MAX_IMPORT_BODY_BYTES);
+    } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        return NextResponse.json({ error: "حجم طلب الاستيراد يتجاوز الحد المسموح (5MB)" }, { status: 413 });
+      }
+      return NextResponse.json({ error: "بيانات طلب الاستيراد غير صالحة" }, { status: 400 });
+    }
     const { type, data } = body;
 
     if (!type || !data || !Array.isArray(data)) {
       return NextResponse.json(
         { error: "يجب تحديد نوع البيانات (type) ومصفوفة البيانات (data)" },
+        { status: 400 }
+      );
+    }
+
+    if (data.length > MAX_IMPORT_ITEMS) {
+      return NextResponse.json(
+        { error: `يتجاوز عدد السجلات الحد الأقصى المسموح به لعملية الاستيراد الواحدة (${MAX_IMPORT_ITEMS} سجل)` },
         { status: 400 }
       );
     }
@@ -34,7 +53,7 @@ async function postHandler(
         for (const item of data) {
           try {
             if (!item.keyCode || !item.firstName || !item.phone) {
-              results.errors.push(`مفتاح بدون بيانات كافية: ${JSON.stringify(item).slice(0, 100)}`);
+              results.errors.push(`السجل رقم ${results.created + results.errors.length + 1}: بيانات غير مكتملة للمفتاح ${item.keyCode || "غير معروف"}`);
               continue;
             }
 

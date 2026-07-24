@@ -24,8 +24,9 @@ const getJwtSecret = (): Uint8Array => {
 
 /**
  * استرداد السر السابق لدعم تدوير JWT_SECRET.
- * عند تغيير JWT_SECRET، ضع القيمة القديمة في JWT_SECRET_PREVIOUS
- * لمدة 8 ساعات (عمر التوكن) ثم احذفها.
+ * للتدوير الروتيني فقط، يمكن وضع القيمة القديمة في JWT_SECRET_PREVIOUS
+ * لمدة عمر التوكن ثم حذفها. عند الاشتباه بتسريب المفتاح يجب تركه فارغاً
+ * لإجراء قطع صارم وإبطال كل التوكينات المزوّرة فوراً.
  */
 const getPreviousJwtSecret = (): Uint8Array | null => {
   if (_cachedPreviousSecret) return _cachedPreviousSecret;
@@ -44,7 +45,8 @@ export interface AuthPayload {
   issuedAtMs?: number;
 }
 
-const TOKEN_EXPIRY = "8h";
+export const SESSION_MAX_AGE_SECONDS = 2 * 60 * 60;
+const TOKEN_EXPIRY = `${SESSION_MAX_AGE_SECONDS}s`;
 const ISSUER = "electoral-system";
 const AUDIENCE = "electoral-system-users";
 

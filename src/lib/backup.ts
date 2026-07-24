@@ -18,15 +18,14 @@ export interface BackupResult {
 }
 
 /**
- * يشتق مفتاح تشفير 256-bit من JWT_SECRET باستخدام PBKDF2.
- * يضمن أن المفتاح ثابت بين عمليات النسخ والاستعادة طالما JWT_SECRET لم يتغير.
+ * يشتق مفتاح تشفير 256-bit من BACKUP_ENCRYPTION_KEY (أو JWT_SECRET للنسخ القديمة فقط).
  */
-function deriveEncryptionKey(): Buffer {
-  const secret = process.env.JWT_SECRET;
+function deriveEncryptionKey(customSecret?: string): Buffer {
+  const secret = customSecret || process.env.BACKUP_ENCRYPTION_KEY || process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error("JWT_SECRET مطلوب لتشفير النسخ الاحتياطية");
+    throw new Error("BACKUP_ENCRYPTION_KEY أو JWT_SECRET مطلوب لتشفير النسخ الاحتياطية");
   }
-  // Salt ثابت مرتبط بالمشروع — لا يحتاج أن يكون سرياً
+  // Salt ثابت مرتبط بالمشروع
   const salt = "electoral-machine-backup-v1";
   return crypto.pbkdf2Sync(secret, salt, 100_000, 32, "sha256");
 }
@@ -55,19 +54,29 @@ export function encryptData(plaintext: string): string {
  * يفك تشفير بيانات مشفّرة بـ AES-256-GCM.
  */
 export function decryptData(encryptedJson: string): string {
-  const key = deriveEncryptionKey();
   const { iv, tag, data } = JSON.parse(encryptedJson);
 
-  const decipher = crypto.createDecipheriv(
-    "aes-256-gcm",
-    key,
-    Buffer.from(iv, "base64")
-  );
-  decipher.setAuthTag(Buffer.from(tag, "base64"));
-
-  let decrypted = decipher.update(data, "base64", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
+  try {
+    const primaryKey = deriveEncryptionKey();
+    const decipher = crypto.createDecipheriv("aes-256-gcm", primaryKey, Buffer.from(iv, "base64"));
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
+    let decrypted = decipher.update(data, "base64", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch (err) {
+    // يجب ضبط المفتاح القديم صراحة قبل تدوير JWT_SECRET حتى تبقى النسخ القديمة قابلة للاستعادة.
+    // الرجوع إلى JWT الحالي يحافظ على التوافق أثناء الانتقال، لكنه لا يغني عن BACKUP_LEGACY_ENCRYPTION_KEY.
+    const legacySecret = process.env.BACKUP_LEGACY_ENCRYPTION_KEY || process.env.JWT_SECRET;
+    if (process.env.BACKUP_ENCRYPTION_KEY && legacySecret) {
+      const fallbackKey = deriveEncryptionKey(legacySecret);
+      const decipher = crypto.createDecipheriv("aes-256-gcm", fallbackKey, Buffer.from(iv, "base64"));
+      decipher.setAuthTag(Buffer.from(tag, "base64"));
+      let decrypted = decipher.update(data, "base64", "utf8");
+      decrypted += decipher.final("utf8");
+      return decrypted;
+    }
+    throw err;
+  }
 }
 
 /**

@@ -219,16 +219,78 @@ export async function checkRateLimit(
       retryAfterMs: 0,
     };
   } catch (error) {
-    // إذا تعذّر الوصول لقاعدة البيانات، اسمح بالطلب بدل قفل الجميع
-    console.error("Rate limit DB check failed, allowing request:", error);
-    return { allowed: true, remainingAttempts: maxAttempts, retryAfterMs: 0 };
+    console.error("Rate limit DB check failed, using in-memory fail-closed fallback:", error);
+    return checkInMemoryFallback(key, maxAttempts, windowMs);
   }
+}
+
+// In-memory fallback used only while the shared DB limiter is unavailable.
+// It is bounded and cleaned to avoid turning a DB outage into a memory-exhaustion event.
+const MAX_FALLBACK_RATE_LIMIT_KEYS = 5000;
+type FallbackRateLimitEntry = {
+  count: number;
+  lastAttemptAt: number;
+  windowMs: number;
+  blockedUntil?: number;
+};
+const fallbackMemoryMap = new Map<string, FallbackRateLimitEntry>();
+
+function pruneFallbackRateLimits(now: number): void {
+  for (const [key, entry] of fallbackMemoryMap) {
+    const expiresAt = entry.blockedUntil ?? entry.lastAttemptAt + entry.windowMs;
+    if (expiresAt <= now) fallbackMemoryMap.delete(key);
+  }
+}
+
+function checkInMemoryFallback(key: string, maxAttempts: number, windowMs: number): { allowed: boolean; remainingAttempts: number; retryAfterMs: number } {
+  const now = Date.now();
+  pruneFallbackRateLimits(now);
+  const existingEntry = fallbackMemoryMap.get(key);
+  if (!existingEntry && fallbackMemoryMap.size >= MAX_FALLBACK_RATE_LIMIT_KEYS) {
+    return { allowed: false, remainingAttempts: 0, retryAfterMs: windowMs };
+  }
+
+  const entry = existingEntry || { count: 0, lastAttemptAt: now, windowMs };
+
+  if (entry.blockedUntil && entry.blockedUntil > now) {
+    return {
+      allowed: false,
+      remainingAttempts: 0,
+      retryAfterMs: entry.blockedUntil - now,
+    };
+  }
+
+  if (entry.lastAttemptAt < now - entry.windowMs) {
+    entry.count = 0;
+    entry.blockedUntil = undefined;
+  }
+
+  entry.count += 1;
+  entry.lastAttemptAt = now;
+
+  if (entry.count > maxAttempts) {
+    entry.blockedUntil = now + windowMs;
+    fallbackMemoryMap.set(key, entry);
+    return {
+      allowed: false,
+      remainingAttempts: 0,
+      retryAfterMs: windowMs,
+    };
+  }
+
+  fallbackMemoryMap.set(key, entry);
+  return {
+    allowed: true,
+    remainingAttempts: Math.max(0, maxAttempts - entry.count),
+    retryAfterMs: 0,
+  };
 }
 
 /**
  * إعادة ضبط حد المعدل بعد نجاح المصادقة
  */
 export async function resetRateLimit(key: string): Promise<void> {
+  fallbackMemoryMap.delete(key);
   try {
     await db.rateLimit.deleteMany({ where: { key } });
   } catch {

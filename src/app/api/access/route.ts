@@ -5,7 +5,7 @@
 // ====================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { createToken, verifyToken } from "@/lib/auth";
+import { createToken, SESSION_MAX_AGE_SECONDS, verifyToken } from "@/lib/auth";
 import {
   checkRateLimit,
   resetRateLimit,
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 60 * 60 * 8, // 8 ساعات — متوافق مع صلاحية JWT (TOKEN_EXPIRY = "8h")
+        maxAge: SESSION_MAX_AGE_SECONDS,
       });
 
       return response;
@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 60 * 60 * 8, // 8 ساعات — متوافق مع صلاحية JWT
+        maxAge: SESSION_MAX_AGE_SECONDS,
       });
 
       return response;
