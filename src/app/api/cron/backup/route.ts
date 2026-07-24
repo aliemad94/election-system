@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { AuthenticatedUser } from "@/lib/auth-guard";
 import { withAuth } from "@/lib/auth-guard";
-import { runBackup, decryptData } from "@/lib/backup";
+import { runBackup, decryptData, getBackupDirectory } from "@/lib/backup";
 import { handleApiError, auditLog } from "@/lib/security";
 import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
@@ -45,7 +45,7 @@ async function getHandler(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action");
 
-    const backupDir = path.join(process.cwd(), "backups");
+    const backupDir = getBackupDirectory();
     await fs.mkdir(backupDir, { recursive: true });
 
     // 1. جلب قائمة الملفات

@@ -1,5 +1,5 @@
 import { describe, expect, it, afterEach } from "vitest";
-import { encryptData, decryptData } from "@/lib/backup";
+import { encryptData, decryptData, getBackupDirectory } from "@/lib/backup";
 
 describe("Backup Encryption Key Decoupling", () => {
   const originalEnv = { ...process.env };
@@ -40,5 +40,10 @@ describe("Backup Encryption Key Decoupling", () => {
     // Decryption succeeds only through the explicit migration key.
     const decrypted = decryptData(encrypted);
     expect(decrypted).toBe(payload);
+  });
+
+  it("uses BACKUP_DIR when configured", () => {
+    process.env.BACKUP_DIR = "/persistent/backups";
+    expect(getBackupDirectory()).toBe("/persistent/backups");
   });
 });

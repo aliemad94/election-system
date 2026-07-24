@@ -2,11 +2,10 @@
 // scheduler.ts — محرك الجدولة في الخلفية لمهام الأتمتة والنسخ الاحتياطي
 // ====================================================================
 
-import { runBackup } from "./backup";
+import { getBackupDirectory, runBackup } from "./backup";
 import { getCachedIndicators } from "./indicators-cache";
 import { prisma } from "./prisma";
 import fs from "fs/promises";
-import path from "path";
 import { processDueCampaigns } from "./sms-campaign-processor";
 
 let isStarted = false;
@@ -151,7 +150,7 @@ async function checkAndRunDailyBackup(): Promise<void> {
 
   // 2. فحص القرص الفعلي في مجلد backups لضمان الصمود أمام إعادة تشغيل السيرفر
   try {
-    const backupDir = path.join(process.cwd(), "backups");
+    const backupDir = getBackupDirectory();
     await fs.mkdir(backupDir, { recursive: true });
     const files = await fs.readdir(backupDir);
     

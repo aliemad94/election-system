@@ -17,6 +17,11 @@ export interface BackupResult {
   error?: string;
 }
 
+/** Persistent storage path for encrypted backups. */
+export function getBackupDirectory(): string {
+  return process.env.BACKUP_DIR || path.join(process.cwd(), "backups");
+}
+
 /**
  * يشتق مفتاح تشفير 256-bit من BACKUP_ENCRYPTION_KEY (أو JWT_SECRET للنسخ القديمة فقط).
  */
@@ -155,7 +160,7 @@ export async function runBackup(): Promise<BackupResult> {
     };
 
     // إعداد مسار حفظ ملفات النسخ الاحتياطي
-    const backupDir = path.join(process.cwd(), "backups");
+    const backupDir = getBackupDirectory();
     await fs.mkdir(backupDir, { recursive: true });
 
     // اسم الملف الاحتياطي بالتوقيت الحالي

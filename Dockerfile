@@ -4,7 +4,7 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # Install OpenSSL (required by Prisma)
-RUN apt-get update -qq && apt-get install -y -qq openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -qq && apt-get install -y -qq openssl gosu && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 COPY package.json package-lock.json* ./
@@ -61,6 +61,11 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     echo '  exit 1' >> /app/start.sh && \
     echo 'fi' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
+    echo '# Prepare the persistent backup volume before dropping privileges' >> /app/start.sh && \
+    echo 'BACKUP_DIR="${BACKUP_DIR:-/app/backups}"' >> /app/start.sh && \
+    echo 'mkdir -p "$BACKUP_DIR"' >> /app/start.sh && \
+    echo 'chown -R nextjs:nodejs "$BACKUP_DIR"' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
     echo 'echo "Deploying database migrations..."' >> /app/start.sh && \
     echo 'DATABASE_URL="${DIRECT_DATABASE_URL:-$DATABASE_URL}" npx prisma migrate deploy' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
@@ -83,10 +88,8 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     echo '" || echo "Seed check completed"' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
     echo 'echo "Starting server..."' >> /app/start.sh && \
-    echo 'exec node server.js' >> /app/start.sh && \
+    echo 'exec gosu nextjs node server.js' >> /app/start.sh && \
     chmod +x /app/start.sh && chown nextjs:nodejs /app/start.sh
-
-USER nextjs
 
 EXPOSE 3000
 
