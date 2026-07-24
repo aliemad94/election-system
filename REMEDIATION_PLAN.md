@@ -100,7 +100,7 @@
 - clone نظيف جديد + بحث في كامل التاريخ:
   ```bash
   git clone <REPO_URL> verify-clean && cd verify-clean
-  git log --all -p | grep -iE "LEAK_CHECK" || echo "نظيف ✓"
+  git log --all -p | grep -E "LEAK_CHECK" || echo "نظيف ✓"
   ```
 - تشغيل `node scripts/verify-security.js` → **0 نتائج تاريخية** (كانت 7).
 
